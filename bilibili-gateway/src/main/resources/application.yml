@@ -1,0 +1,44 @@
+﻿server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: bilibili-gateway
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:redis123}
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR:nacos:8848}
+    gateway:
+      server:
+        webflux:
+          discovery:
+            locator:
+              enabled: true
+              lower-case-service-id: true
+          routes:
+            - id: bilibili-user-service
+              uri: lb://bilibili-user-service
+              predicates:
+                - Path=/api/user/**
+            - id: bilibili-video-service
+              uri: lb://bilibili-video-service
+              predicates:
+                - Path=/api/video/**,/api/upload/**,/api/category/**
+            - id: bilibili-danmu-service
+              uri: lb://bilibili-danmu-service
+              predicates:
+                - Path=/api/danmu/**
+            - id: bilibili-social-service
+              uri: lb://bilibili-social-service
+              predicates:
+                - Path=/api/follow/**,/api/like/**,/api/comment/**,/api/collection/**
+            - id: bilibili-search-service
+              uri: lb://bilibili-search-service
+              predicates:
+                - Path=/api/search/**
+

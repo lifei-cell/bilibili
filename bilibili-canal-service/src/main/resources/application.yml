@@ -1,0 +1,27 @@
+﻿server:
+  port: ${SERVER_PORT:8086}
+
+spring:
+  application:
+    name: bilibili-canal-service
+  elasticsearch:
+    uris: ${SPRING_ELASTICSEARCH_URIS:http://elasticsearch:9200}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:redis123}
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR:nacos:8848}
+
+rocketmq:
+  name-server: ${ROCKETMQ_NAME_SERVER:rocketmq-namesrv:9876}
+
+canal:
+  server:
+    host: ${CANAL_SERVER_HOST:canal}
+    port: ${CANAL_SERVER_PORT:11111}
+    destination: ${CANAL_DESTINATION:example}
+
