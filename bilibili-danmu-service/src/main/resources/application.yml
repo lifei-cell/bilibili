@@ -19,6 +19,20 @@ spring:
       discovery:
         server-addr: ${SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR:nacos:8848}
 
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+
 rocketmq:
   name-server: ${ROCKETMQ_NAME_SERVER:rocketmq-namesrv:9876}
+
+danmu:
+  netty:
+    port: ${DANMU_NETTY_PORT:8093}
+  persist:
+    batch-size: ${DANMU_PERSIST_BATCH_SIZE:100}
+    flush-interval: ${DANMU_PERSIST_FLUSH_INTERVAL:100}
+  stats:
+    sync-interval: ${DANMU_STATS_SYNC_INTERVAL:60000}
+    sync-initial-delay: ${DANMU_STATS_SYNC_INITIAL_DELAY:60000}
 

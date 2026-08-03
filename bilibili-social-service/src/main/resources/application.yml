@@ -18,7 +18,21 @@ spring:
     nacos:
       discovery:
         server-addr: ${SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR:nacos:8848}
+        fail-fast: ${SPRING_CLOUD_NACOS_DISCOVERY_FAIL_FAST:false}
 
 rocketmq:
   name-server: ${ROCKETMQ_NAME_SERVER:rocketmq-namesrv:9876}
 
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+social:
+  stats:
+    sync-interval: ${SOCIAL_STATS_SYNC_INTERVAL:60000}
+    sync-initial-delay: ${SOCIAL_STATS_SYNC_INITIAL_DELAY:60000}

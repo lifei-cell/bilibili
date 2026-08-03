@@ -18,12 +18,24 @@ spring:
     nacos:
       discovery:
         server-addr: ${SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR:nacos:8848}
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
 
 rocketmq:
   name-server: ${ROCKETMQ_NAME_SERVER:rocketmq-namesrv:9876}
 
 minio:
   endpoint: ${MINIO_ENDPOINT:http://minio:9000}
+  public-endpoint: ${MINIO_PUBLIC_ENDPOINT:${MINIO_ENDPOINT:http://minio:9000}}
   access-key: ${MINIO_ACCESS_KEY:minioadmin}
   secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  video-bucket: ${MINIO_VIDEO_BUCKET:videos}
+  temp-bucket: ${MINIO_TEMP_BUCKET:tmp}
+
+video:
+  stats:
+    sync-interval: ${VIDEO_STATS_SYNC_INTERVAL:60000}
+    sync-initial-delay: ${VIDEO_STATS_SYNC_INITIAL_DELAY:60000}
 

@@ -12,6 +12,7 @@ services:
 #      SPRING_DATA_REDIS_HOST: redis
 #      SPRING_DATA_REDIS_PORT: 6379
 #      SPRING_DATA_REDIS_PASSWORD: redis123
+#      DANMU_WEBSOCKET_URI: ws://bilibili-danmu-service:8093
 #    ports:
 #      - "8080:8080"
 #    depends_on:
@@ -98,8 +99,10 @@ services:
 #      SPRING_DATA_REDIS_PORT: 6379
 #      SPRING_DATA_REDIS_PASSWORD: redis123
 #      ROCKETMQ_NAME_SERVER: rocketmq-namesrv:9876
+#      DANMU_NETTY_PORT: 8093
 #    ports:
 #      - "8083:8083"
+#      - "8093:8093"
 #    depends_on:
 #      - mysql
 #      - redis

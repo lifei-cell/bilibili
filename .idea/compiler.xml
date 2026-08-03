@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Annotation profile for bilibili-cloud" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
+        </processorPath>
+        <module name="bilibili-gateway" />
+        <module name="bilibili-social-service" />
+        <module name="bilibili-search-service" />
+        <module name="bilibili-user-service" />
+        <module name="bilibili-canal-service" />
+        <module name="bilibili-common" />
+        <module name="bilibili-danmu-service" />
+        <module name="bilibili-video-service" />
+      </profile>
+    </annotationProcessing>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="bilibili-canal-service" options="-parameters" />
+      <module name="bilibili-common" options="-parameters" />
+      <module name="bilibili-danmu-service" options="-parameters" />
+      <module name="bilibili-gateway" options="-parameters" />
+      <module name="bilibili-search-service" options="-parameters" />
+      <module name="bilibili-social-service" options="-parameters" />
+      <module name="bilibili-user-service" options="-parameters" />
+      <module name="bilibili-video-service" options="-parameters" />
+    </option>
+  </component>
+</project>

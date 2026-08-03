@@ -15,4 +15,8 @@ spring:
     nacos:
       discovery:
         server-addr: ${SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR:nacos:8848}
+        fail-fast: ${SPRING_CLOUD_NACOS_DISCOVERY_FAIL_FAST:false}
 
+search:
+  hot:
+    max-size: ${SEARCH_HOT_MAX_SIZE:100}
