@@ -19,6 +19,8 @@ spring:
 
 rocketmq:
   name-server: ${ROCKETMQ_NAME_SERVER:rocketmq-namesrv:9876}
+  producer:
+    group: ${ROCKETMQ_PRODUCER_GROUP:bilibili-canal-producer}
 
 canal:
   server:

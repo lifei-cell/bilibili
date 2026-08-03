@@ -15,6 +15,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.squareup.okio</groupId>
+            <artifactId>okio-jvm</artifactId>
+            <version>3.16.1</version>
+        </dependency>
+        <dependency>
             <groupId>com.gary.bilibili</groupId>
             <artifactId>bilibili-common</artifactId>
         </dependency>

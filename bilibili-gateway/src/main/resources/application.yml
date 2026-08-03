@@ -24,7 +24,7 @@ spring:
             - id: bilibili-user-service
               uri: lb://bilibili-user-service
               predicates:
-                - Path=/api/user/**
+                - Path=/api/user/**,/user/**
             - id: bilibili-danmu-websocket
               uri: ${DANMU_WEBSOCKET_URI:ws://localhost:8093}
               predicates:

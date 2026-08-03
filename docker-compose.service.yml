@@ -1,25 +1,25 @@
 services:
-#  bilibili-gateway:
-#    image: bilibili-gateway:0.0.1
-#    build:
-#      context: ./bilibili-gateway
-#    container_name: bilibili-gateway
-#    restart: unless-stopped
-#    environment:
-#      SERVER_PORT: 8080
-#      SPRING_PROFILES_ACTIVE: docker
-#      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
-#      SPRING_DATA_REDIS_HOST: redis
-#      SPRING_DATA_REDIS_PORT: 6379
-#      SPRING_DATA_REDIS_PASSWORD: redis123
-#      DANMU_WEBSOCKET_URI: ws://bilibili-danmu-service:8093
-#    ports:
-#      - "8080:8080"
-#    depends_on:
-#      - nacos
-#      - redis
-#    networks:
-#      - bilibili-net
+  bilibili-gateway:
+    image: bilibili-gateway:0.0.1
+    build:
+      context: ./bilibili-gateway
+    container_name: bilibili-gateway
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8080
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: redis123
+      DANMU_WEBSOCKET_URI: ws://bilibili-danmu-service:8093
+    ports:
+      - "8080:8080"
+    depends_on:
+      - nacos
+      - redis
+    networks:
+      - bilibili-net
 
   bilibili-user-service:
     image: bilibili-user-service:0.0.1
@@ -50,148 +50,148 @@ services:
     networks:
       - bilibili-net
 
-#  bilibili-video-service:
-#    image: bilibili-video-service:0.0.1
-#    build:
-#      context: ./bilibili-video-service
-#    container_name: bilibili-video-service
-#    restart: unless-stopped
-#    environment:
-#      SERVER_PORT: 8082
-#      SPRING_PROFILES_ACTIVE: docker
-#      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
-#      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bilibili?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-#      SPRING_DATASOURCE_USERNAME: root
-#      SPRING_DATASOURCE_PASSWORD: root
-#      SPRING_DATA_REDIS_HOST: redis
-#      SPRING_DATA_REDIS_PORT: 6379
-#      SPRING_DATA_REDIS_PASSWORD: redis123
-#      ROCKETMQ_NAME_SERVER: rocketmq-namesrv:9876
-#      MINIO_ENDPOINT: http://minio:9000
-#      MINIO_ACCESS_KEY: minioadmin
-#      MINIO_SECRET_KEY: minioadmin
-#    ports:
-#      - "8082:8082"
-#    depends_on:
-#      - mysql
-#      - redis
-#      - nacos
-#      - rocketmq-namesrv
-#      - rocketmq-broker
-#      - minio
-#    networks:
-#      - bilibili-net
+  bilibili-video-service:
+    image: bilibili-video-service:0.0.1
+    build:
+      context: ./bilibili-video-service
+    container_name: bilibili-video-service
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8082
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bilibili?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: redis123
+      ROCKETMQ_NAME_SERVER: rocketmq-namesrv:9876
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - "8082:8082"
+    depends_on:
+      - mysql
+      - redis
+      - nacos
+      - rocketmq-namesrv
+      - rocketmq-broker
+      - minio
+    networks:
+      - bilibili-net
 
-#  bilibili-danmu-service:
-#    image: bilibili-danmu-service:0.0.1
-#    build:
-#      context: ./bilibili-danmu-service
-#    container_name: bilibili-danmu-service
-#    restart: unless-stopped
-#    environment:
-#      SERVER_PORT: 8083
-#      SPRING_PROFILES_ACTIVE: docker
-#      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
-#      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bilibili?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-#      SPRING_DATASOURCE_USERNAME: root
-#      SPRING_DATASOURCE_PASSWORD: root
-#      SPRING_DATA_REDIS_HOST: redis
-#      SPRING_DATA_REDIS_PORT: 6379
-#      SPRING_DATA_REDIS_PASSWORD: redis123
-#      ROCKETMQ_NAME_SERVER: rocketmq-namesrv:9876
-#      DANMU_NETTY_PORT: 8093
-#    ports:
-#      - "8083:8083"
-#      - "8093:8093"
-#    depends_on:
-#      - mysql
-#      - redis
-#      - nacos
-#      - rocketmq-namesrv
-#      - rocketmq-broker
-#    networks:
-#      - bilibili-net
+  bilibili-danmu-service:
+    image: bilibili-danmu-service:0.0.1
+    build:
+      context: ./bilibili-danmu-service
+    container_name: bilibili-danmu-service
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8083
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bilibili?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: redis123
+      ROCKETMQ_NAME_SERVER: rocketmq-namesrv:9876
+      DANMU_NETTY_PORT: 8093
+    ports:
+      - "8083:8083"
+      - "8093:8093"
+    depends_on:
+      - mysql
+      - redis
+      - nacos
+      - rocketmq-namesrv
+      - rocketmq-broker
+    networks:
+      - bilibili-net
 
-#  bilibili-social-service:
-#    image: bilibili-social-service:0.0.1
-#    build:
-#      context: ./bilibili-social-service
-#    container_name: bilibili-social-service
-#    restart: unless-stopped
-#    environment:
-#      SERVER_PORT: 8084
-#      SPRING_PROFILES_ACTIVE: docker
-#      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
-#      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bilibili?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-#      SPRING_DATASOURCE_USERNAME: root
-#      SPRING_DATASOURCE_PASSWORD: root
-#      SPRING_DATA_REDIS_HOST: redis
-#      SPRING_DATA_REDIS_PORT: 6379
-#      SPRING_DATA_REDIS_PASSWORD: redis123
-#      ROCKETMQ_NAME_SERVER: rocketmq-namesrv:9876
-#    ports:
-#      - "8084:8084"
-#    depends_on:
-#      - mysql
-#      - redis
-#      - nacos
-#      - rocketmq-namesrv
-#      - rocketmq-broker
-#    networks:
-#      - bilibili-net
+  bilibili-social-service:
+    image: bilibili-social-service:0.0.1
+    build:
+      context: ./bilibili-social-service
+    container_name: bilibili-social-service
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8084
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bilibili?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: redis123
+      ROCKETMQ_NAME_SERVER: rocketmq-namesrv:9876
+    ports:
+      - "8084:8084"
+    depends_on:
+      - mysql
+      - redis
+      - nacos
+      - rocketmq-namesrv
+      - rocketmq-broker
+    networks:
+      - bilibili-net
 
-#  bilibili-search-service:
-#    image: bilibili-search-service:0.0.1
-#    build:
-#      context: ./bilibili-search-service
-#    container_name: bilibili-search-service
-#    restart: unless-stopped
-#    environment:
-#      SERVER_PORT: 8085
-#      SPRING_PROFILES_ACTIVE: docker
-#      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
-#      SPRING_DATA_REDIS_HOST: redis
-#      SPRING_DATA_REDIS_PORT: 6379
-#      SPRING_DATA_REDIS_PASSWORD: redis123
-#      SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
-#    ports:
-#      - "8085:8085"
-#    depends_on:
-#      - redis
-#      - nacos
-#      - elasticsearch
-#    networks:
-#      - bilibili-net
+  bilibili-search-service:
+    image: bilibili-search-service:0.0.1
+    build:
+      context: ./bilibili-search-service
+    container_name: bilibili-search-service
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8085
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: redis123
+      SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
+    ports:
+      - "8085:8085"
+    depends_on:
+      - redis
+      - nacos
+      - elasticsearch
+    networks:
+      - bilibili-net
 
-#  bilibili-canal-service:
-#    image: bilibili-canal-service:0.0.1
-#    build:
-#      context: ./bilibili-canal-service
-#    container_name: bilibili-canal-service
-#    restart: unless-stopped
-#    environment:
-#      SERVER_PORT: 8086
-#      SPRING_PROFILES_ACTIVE: docker
-#      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
-#      SPRING_DATA_REDIS_HOST: redis
-#      SPRING_DATA_REDIS_PORT: 6379
-#      SPRING_DATA_REDIS_PASSWORD: redis123
-#      SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
-#      ROCKETMQ_NAME_SERVER: rocketmq-namesrv:9876
-#      CANAL_SERVER_HOST: canal
-#      CANAL_SERVER_PORT: 11111
-#      CANAL_DESTINATION: example
-#    ports:
-#      - "8086:8086"
-#    depends_on:
-#      - redis
-#      - nacos
-#      - elasticsearch
-#      - rocketmq-namesrv
-#      - rocketmq-broker
-#      - canal
-#    networks:
-#      - bilibili-net
+  bilibili-canal-service:
+    image: bilibili-canal-service:0.0.1
+    build:
+      context: ./bilibili-canal-service
+    container_name: bilibili-canal-service
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8086
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: redis123
+      SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
+      ROCKETMQ_NAME_SERVER: rocketmq-namesrv:9876
+      CANAL_SERVER_HOST: canal
+      CANAL_SERVER_PORT: 11111
+      CANAL_DESTINATION: example
+    ports:
+      - "8086:8086"
+    depends_on:
+      - redis
+      - nacos
+      - elasticsearch
+      - rocketmq-namesrv
+      - rocketmq-broker
+      - canal
+    networks:
+      - bilibili-net
 
 networks:
   bilibili-net:

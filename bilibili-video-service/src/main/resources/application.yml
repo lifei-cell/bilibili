@@ -25,6 +25,8 @@ spring:
 
 rocketmq:
   name-server: ${ROCKETMQ_NAME_SERVER:rocketmq-namesrv:9876}
+  producer:
+    group: ${ROCKETMQ_PRODUCER_GROUP:bilibili-video-producer}
 
 minio:
   endpoint: ${MINIO_ENDPOINT:http://minio:9000}
