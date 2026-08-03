@@ -64,7 +64,7 @@ public interface DanmuMapper extends BaseMapper<Danmu> {
             select floor(video_time / 60) * 60 as time, count(*) as count
             from danmu
             where video_id = #{videoId} and status = 0
-            group by floor(video_time / 60)
+            group by floor(video_time / 60) * 60
             order by time asc
             """)
     List<DanmuTimeCount> selectTimeDistributed(@Param("videoId") Long videoId);

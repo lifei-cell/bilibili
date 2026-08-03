@@ -267,8 +267,58 @@ MySQL 首次创建数据卷时会自动执行：
 
 - `docker/mysql/init/01-init.sql`：创建数据库和 Canal 用户
 - `docker/mysql/init/02-schema.sql`：创建业务表和初始视频分类
+- `docker/mysql/init/03-demo-data.sql`：创建可重复执行的全模块演示数据
 
 业务表包括用户、认证、视频、视频统计、分片、弹幕、评论、关注、点赞、收藏夹和收藏记录。
+
+## 演示数据
+
+演示数据覆盖用户、认证、视频状态、播放统计、上传进度、弹幕、评论与回复、关注、点赞、收藏夹和收藏关系。全新 MySQL 数据卷会自动导入；已有数据卷可手动执行：
+
+```bash
+docker cp docker/mysql/init/03-demo-data.sql bilibili-mysql:/tmp/03-demo-data.sql
+docker exec bilibili-mysql sh -c "mysql -uroot -proot < /tmp/03-demo-data.sql"
+```
+
+导入时建议保持 Canal、RocketMQ 和 Elasticsearch 运行，使视频数据同步进入 `video_index`。如果导入时同步服务尚未启动，可在服务就绪后重新执行该幂等脚本。
+
+所有演示账号的密码均为 `Demo@123`：
+
+| 用户 ID | 用户名 | 手机号 | 用途 |
+| ---: | --- | --- | --- |
+| 1001 | `demo_alice` | `13800001001` | 主要演示账号，拥有视频、关注和收藏数据 |
+| 1002 | `demo_bob` | `13800001002` | Java 与工程内容创作者 |
+| 1003 | `demo_carol` | `13800001003` | 音乐创作者与互动用户 |
+| 1004 | `demo_dan` | `13800001004` | 运动内容创作者 |
+| 1005 | `demo_admin` | `13800001005` | 管理员权限演示 |
+| 1006 | `demo_eve` | `13800001006` | 美食内容创作者 |
+
+推荐用于接口调试的固定数据：
+
+| 数据 | ID/值 | 说明 |
+| --- | --- | --- |
+| 热门视频 | `2001` | 包含弹幕、评论、点赞和统计数据 |
+| 其他已发布视频 | `2002`—`2010` | 覆盖分类、作者、热度和发布时间排序 |
+| 审核中视频 | `2011` | 不出现在公开列表 |
+| 审核拒绝视频 | `2012` | 用于状态演示 |
+| 评论及回复 | `3001`—`3019` | 覆盖一级评论与回复树 |
+| 收藏夹 | `6001`—`6006` | 覆盖公开、私密和默认收藏夹 |
+| 上传中任务 | `demo-upload-in-progress` | 已上传 2/3 个分片 |
+| 已发布文件 MD5 | `11111111111111111111111111112001` | 可用于秒传检测 |
+
+登录示例：
+
+```bash
+curl --location 'http://localhost/api/user/login' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+    "username": "demo_alice",
+    "password": "Demo@123",
+    "terminal": "web"
+  }'
+```
+
+脚本仅更新保留 ID 范围内的基准记录，不会清空普通用户数据。通过接口新建的数据也不会在重跑脚本时被删除。
 
 ## 常用运维命令
 
