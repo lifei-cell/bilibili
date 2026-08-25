@@ -10,8 +10,10 @@ import com.gary.bilibili.video.dto.VideoPublishDTO;
 import com.gary.bilibili.video.dto.VideoUpdateDTO;
 import com.gary.bilibili.video.entity.Video;
 import com.gary.bilibili.video.entity.VideoStats;
+import com.gary.bilibili.video.entity.VideoTranscodeTask;
 import com.gary.bilibili.video.mapper.VideoMapper;
 import com.gary.bilibili.video.mapper.VideoStatsMapper;
+import com.gary.bilibili.video.mapper.VideoTranscodeTaskMapper;
 import com.gary.bilibili.video.model.VideoDetailRow;
 import com.gary.bilibili.video.service.VideoBloomFilter;
 import com.gary.bilibili.video.vo.VideoDetailVO;
@@ -42,6 +44,7 @@ class VideoServiceImplTest {
 
     private VideoMapper videoMapper;
     private VideoStatsMapper videoStatsMapper;
+    private VideoTranscodeTaskMapper videoTranscodeTaskMapper;
     private StringRedisTemplate stringRedisTemplate;
     private ValueOperations<String, String> valueOperations;
     private HashOperations<String, Object, Object> hashOperations;
@@ -57,6 +60,7 @@ class VideoServiceImplTest {
                 Video.class);
         videoMapper = mock(VideoMapper.class);
         videoStatsMapper = mock(VideoStatsMapper.class);
+        videoTranscodeTaskMapper = mock(VideoTranscodeTaskMapper.class);
         stringRedisTemplate = mock(StringRedisTemplate.class);
         valueOperations = mock(ValueOperations.class);
         hashOperations = mock(HashOperations.class);
@@ -68,6 +72,7 @@ class VideoServiceImplTest {
         videoService = new VideoServiceImpl(
                 videoMapper,
                 videoStatsMapper,
+                videoTranscodeTaskMapper,
                 stringRedisTemplate,
                 rocketMQTemplate,
                 new ObjectMapper(),
@@ -77,6 +82,8 @@ class VideoServiceImplTest {
     @Test
     void shouldCreateAuditingVideoAndInitialStatsWhenPublishing() {
         when(videoMapper.selectCount(any(Wrapper.class))).thenReturn(0L);
+        when(videoTranscodeTaskMapper.selectSuccessByFileMd5("d41d8cd98f00b204e9800998ecf8427e"))
+                .thenReturn(completedTranscodeTask());
         doAnswer(invocation -> {
             Video video = invocation.getArgument(0);
             video.setId(10001L);
@@ -92,6 +99,19 @@ class VideoServiceImplTest {
             assertThat(result.getStatus()).isZero();
             verify(videoStatsMapper).insert(any(VideoStats.class));
             verify(videoBloomFilter).put(10001L);
+        }
+    }
+
+    @Test
+    void shouldRejectPublishingUntilTheVideoHasBeenTranscoded() {
+        when(videoMapper.selectCount(any(Wrapper.class))).thenReturn(0L);
+
+        try (MockedStatic<StpUtil> stpUtil = mockStatic(StpUtil.class)) {
+            stpUtil.when(StpUtil::getLoginIdAsLong).thenReturn(1L);
+
+            assertThatThrownBy(() -> videoService.publish(buildPublishRequest()))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("视频仍在转码，请完成转码后再发布");
         }
     }
 
@@ -174,5 +194,12 @@ class VideoServiceImplTest {
         row.setDanmuCount(66L);
         row.setCommentCount(12L);
         return row;
+    }
+
+    private VideoTranscodeTask completedTranscodeTask() {
+        VideoTranscodeTask task = new VideoTranscodeTask();
+        task.setSourceUrl("https://minio.example.com/source/demo.mp4");
+        task.setOutputUrl("https://minio.example.com/play/demo.mp4");
+        return task;
     }
 }

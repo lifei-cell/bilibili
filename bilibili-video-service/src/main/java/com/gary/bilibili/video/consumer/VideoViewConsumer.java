@@ -17,8 +17,11 @@ import java.util.List;
 public class VideoViewConsumer implements RocketMQListener<VideoViewMessage> {
 
     private static final DefaultRedisScript<Long> INCREMENT_VIEW_SCRIPT = new DefaultRedisScript<>(
-            "local count = redis.call('HINCRBY', KEYS[1], ARGV[1], 1); "
-                    + "redis.call('SADD', KEYS[2], ARGV[2]); return count;",
+            "if ARGV[2] ~= '' then "
+                    + "if redis.call('SETNX', KEYS[3], '1') == 0 then return -1 end; "
+                    + "redis.call('EXPIRE', KEYS[3], ARGV[3]); end; "
+                    + "local count = redis.call('HINCRBY', KEYS[1], ARGV[1], 1); "
+                    + "redis.call('SADD', KEYS[2], ARGV[4]); return count;",
             Long.class);
 
     private final StringRedisTemplate stringRedisTemplate;
@@ -35,8 +38,12 @@ public class VideoViewConsumer implements RocketMQListener<VideoViewMessage> {
         stringRedisTemplate.execute(
                 INCREMENT_VIEW_SCRIPT,
                 List.of(VideoConstant.STATS_CACHE_KEY_PREFIX + message.getVideoId(),
-                        VideoConstant.STATS_PENDING_KEY),
+                        VideoConstant.STATS_PENDING_KEY,
+                        VideoConstant.VIEW_REQUEST_DEDUP_KEY_PREFIX + message.getVideoId()
+                                + ":" + message.getRequestId()),
                 VideoConstant.VIEW_COUNT_FIELD,
+                message.getRequestId() == null ? "" : message.getRequestId(),
+                Integer.toString(VideoConstant.VIEW_REQUEST_DEDUP_TTL_SECONDS),
                 message.getVideoId().toString());
     }
 }

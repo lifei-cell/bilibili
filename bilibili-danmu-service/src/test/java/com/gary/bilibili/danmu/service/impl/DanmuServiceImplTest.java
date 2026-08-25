@@ -8,7 +8,7 @@ import com.gary.bilibili.danmu.mapper.DanmuMapper;
 import com.gary.bilibili.danmu.message.DanmuPersistMessage;
 import com.gary.bilibili.danmu.model.DanmuPage;
 import com.gary.bilibili.danmu.model.UserBrief;
-import com.gary.bilibili.danmu.netty.DanmuRoomManager;
+import com.gary.bilibili.danmu.netty.DanmuBroadcastPublisher;
 import com.gary.bilibili.danmu.vo.DanmuSendVO;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,7 +38,7 @@ class DanmuServiceImplTest {
     private StringRedisTemplate stringRedisTemplate;
     private ValueOperations<String, String> valueOperations;
     private RocketMQTemplate rocketMQTemplate;
-    private DanmuRoomManager roomManager;
+    private DanmuBroadcastPublisher broadcastPublisher;
     private DanmuServiceImpl danmuService;
 
     @BeforeEach
@@ -48,7 +48,7 @@ class DanmuServiceImplTest {
         stringRedisTemplate = mock(StringRedisTemplate.class);
         valueOperations = mock(ValueOperations.class);
         rocketMQTemplate = mock(RocketMQTemplate.class);
-        roomManager = mock(DanmuRoomManager.class);
+        broadcastPublisher = mock(DanmuBroadcastPublisher.class);
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         when(stringRedisTemplate.execute(
                 any(RedisScript.class), anyList(), any(Object[].class))).thenReturn(1L);
@@ -57,7 +57,7 @@ class DanmuServiceImplTest {
                 danmuMapper,
                 stringRedisTemplate,
                 rocketMQTemplate,
-                roomManager);
+                broadcastPublisher);
     }
 
     @Test
@@ -80,7 +80,7 @@ class DanmuServiceImplTest {
             assertThat(result.getDanmuId()).isNotNull();
             verify(rocketMQTemplate).convertAndSend(
                     eq("danmu-persist"), any(DanmuPersistMessage.class));
-            verify(roomManager).broadcast(any());
+            verify(broadcastPublisher).publish(any());
         }
     }
 
@@ -96,7 +96,7 @@ class DanmuServiceImplTest {
 
             assertThat(result.getDanmuId()).isEqualTo(90001L);
             verify(rocketMQTemplate, never()).convertAndSend(any(String.class), any(Object.class));
-            verify(roomManager, never()).broadcast(any());
+            verify(broadcastPublisher, never()).publish(any());
         }
     }
 

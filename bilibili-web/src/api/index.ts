@@ -1,7 +1,7 @@
 import { apiRequest } from './http'
 import type {
   CollectionFolder, CommentItem, CurrentUser, DanmuItem, LoginResult, SearchVideo,
-  UploadCheck, UploadMerge, UserProfile, VideoDetail, VideoListItem, VideoPlay,
+  UploadCheck, UploadMerge, UploadTranscodeTask, UserProfile, VideoCategory, VideoDetail, VideoListItem, VideoPlay,
 } from '@/types/api'
 
 export const userApi = {
@@ -25,6 +25,10 @@ export const videoApi = {
   detail: (videoId: number) => apiRequest<VideoDetail>({ method: 'GET', url: `/video/${videoId}` }),
   play: (videoId: number) => apiRequest<VideoPlay>({ method: 'GET', url: `/video/${videoId}/play` }),
   publish: (data: Record<string, unknown>) => apiRequest<{ videoId: number; status: number }>({ method: 'POST', url: '/video/publish', data }),
+}
+
+export const categoryApi = {
+  list: () => apiRequest<VideoCategory[]>({ method: 'GET', url: '/category/list' }),
 }
 
 export const searchApi = {
@@ -55,4 +59,5 @@ export const uploadApi = {
   check: (data: { fileMd5: string; fileName: string; fileSize: number; totalChunks: number }) => apiRequest<UploadCheck>({ method: 'POST', url: '/upload/check', data }),
   chunk: (data: FormData) => apiRequest<{ chunkIndex: number; uploaded: boolean }>({ method: 'POST', url: '/upload/chunk', data }),
   merge: (data: { uploadId: string; fileMd5: string; fileName: string; totalChunks: number }) => apiRequest<UploadMerge>({ method: 'POST', url: '/upload/merge', data }),
+  transcodeStatus: (taskId: string) => apiRequest<UploadTranscodeTask>({ method: 'GET', url: `/upload/transcode/${taskId}` }),
 }

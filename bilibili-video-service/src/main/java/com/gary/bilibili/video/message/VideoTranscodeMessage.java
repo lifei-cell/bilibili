@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 @Data
 public class VideoTranscodeMessage {
 
+    private String taskId;
     private Long userId;
     private String fileMd5;
     private String fileName;

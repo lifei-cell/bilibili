@@ -34,6 +34,13 @@ export interface UserProfile {
 
 export interface LoginResult { token: string; user: UserInfo }
 
+export interface VideoCategory {
+  id: number
+  parentId: number
+  name: string
+  sort: number
+}
+
 export interface VideoListItem {
   id: number
   title: string
@@ -115,7 +122,7 @@ export interface DanmuItem {
   color: string
   position: number
   fontSize: number
-  videoTime: number
+  videoTime: number // seconds
   sendTime: string
 }
 
@@ -136,4 +143,18 @@ export interface UploadCheck {
   uploadedChunks: number[]
 }
 
-export interface UploadMerge { sourceUrl: string; fileMd5: string; transcodeStatus: string }
+export interface UploadMerge {
+  sourceUrl: string
+  fileMd5: string
+  transcodeTaskId: string
+  transcodeStatus: 'waiting' | 'processing' | 'completed' | 'failed'
+}
+
+export interface UploadTranscodeTask {
+  taskId: string
+  status: 'waiting' | 'processing' | 'completed' | 'failed'
+  retryCount: number
+  errorMessage: string | null
+  outputUrl: string | null
+  nextRetryTime: string | null
+}

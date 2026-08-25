@@ -10,6 +10,8 @@ public final class VideoConstant {
     public static final String STATS_CACHE_KEY_PREFIX = "video:stats:";
     public static final String STATS_PENDING_KEY = "video:stats:pending";
     public static final String STATS_SYNC_LOCK_KEY_PREFIX = "video:stats:sync:lock:";
+    public static final String VIEW_REQUEST_DEDUP_KEY_PREFIX = "video:view:request:";
+    public static final int VIEW_REQUEST_DEDUP_TTL_SECONDS = 7 * 24 * 60 * 60;
     public static final String VIEW_COUNT_FIELD = "viewCount";
     public static final String BLOOM_FILTER_KEY = "video:bloom:id";
     public static final String VIEW_TOPIC = "video-view";

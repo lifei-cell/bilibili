@@ -2,8 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Bell, Clock3, Menu, Search, Upload, X } from 'lucide-vue-next'
+import { categoryApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
-import { avatarFallback, categories } from '@/utils/format'
+import { avatarFallback, categories, replaceCategories } from '@/utils/format'
 
 const router = useRouter()
 const route = useRoute()
@@ -17,7 +18,14 @@ function submitSearch() {
   if (value) router.push({ name: 'search', query: { keyword: value } })
 }
 
-onMounted(() => auth.hydrate())
+onMounted(async () => {
+  await auth.hydrate()
+  try {
+    replaceCategories((await categoryApi.list()).data || [])
+  } catch {
+    // Keep the built-in list while the backend is unavailable.
+  }
+})
 </script>
 
 <template>

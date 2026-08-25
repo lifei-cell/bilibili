@@ -11,7 +11,7 @@ import com.gary.bilibili.danmu.message.DanmuPersistMessage;
 import com.gary.bilibili.danmu.model.DanmuPage;
 import com.gary.bilibili.danmu.model.DanmuTimeCount;
 import com.gary.bilibili.danmu.model.UserBrief;
-import com.gary.bilibili.danmu.netty.DanmuRoomManager;
+import com.gary.bilibili.danmu.netty.DanmuBroadcastPublisher;
 import com.gary.bilibili.danmu.service.DanmuService;
 import com.gary.bilibili.danmu.vo.DanmuBroadcastVO;
 import com.gary.bilibili.danmu.vo.DanmuCountVO;
@@ -57,16 +57,16 @@ public class DanmuServiceImpl implements DanmuService {
     private final DanmuMapper danmuMapper;
     private final StringRedisTemplate stringRedisTemplate;
     private final RocketMQTemplate rocketMQTemplate;
-    private final DanmuRoomManager roomManager;
+    private final DanmuBroadcastPublisher broadcastPublisher;
 
     public DanmuServiceImpl(DanmuMapper danmuMapper,
                             StringRedisTemplate stringRedisTemplate,
                             RocketMQTemplate rocketMQTemplate,
-                            DanmuRoomManager roomManager) {
+                            DanmuBroadcastPublisher broadcastPublisher) {
         this.danmuMapper = danmuMapper;
         this.stringRedisTemplate = stringRedisTemplate;
         this.rocketMQTemplate = rocketMQTemplate;
-        this.roomManager = roomManager;
+        this.broadcastPublisher = broadcastPublisher;
     }
 
     @Override
@@ -132,7 +132,7 @@ public class DanmuServiceImpl implements DanmuService {
         }
 
         incrementDanmuCount(request.getVideoId());
-        roomManager.broadcast(broadcast);
+        broadcastPublisher.publish(broadcast);
         return buildSendResult(danmuId);
     }
 

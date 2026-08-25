@@ -6,6 +6,7 @@ import com.gary.bilibili.video.model.VideoDetailRow;
 import com.gary.bilibili.video.model.VideoListRow;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -82,4 +83,10 @@ public interface VideoMapper extends BaseMapper<Video> {
 
     @Select("select role from sys_user where id = #{userId} and status = 0 and deleted = 0 limit 1")
     String selectUserRole(@Param("userId") Long userId);
+
+    @Update("update video set play_url = #{playUrl} "
+            + "where file_md5 = #{fileMd5} and deleted = 0 "
+            + "and (play_url is null or play_url = '')")
+    int updatePlayUrlByFileMd5(@Param("fileMd5") String fileMd5,
+                               @Param("playUrl") String playUrl);
 }

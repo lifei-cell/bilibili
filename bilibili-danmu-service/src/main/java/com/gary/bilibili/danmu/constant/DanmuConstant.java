@@ -3,6 +3,7 @@ package com.gary.bilibili.danmu.constant;
 public final class DanmuConstant {
 
     public static final String PERSIST_TOPIC = "danmu-persist";
+    public static final String BROADCAST_CHANNEL = "danmu:broadcast";
     public static final String RATE_LIMIT_KEY_PREFIX = "danmu:";
     public static final String REQUEST_KEY_PREFIX = "danmu:request:";
     public static final String STATS_CACHE_KEY_PREFIX = "video:stats:";

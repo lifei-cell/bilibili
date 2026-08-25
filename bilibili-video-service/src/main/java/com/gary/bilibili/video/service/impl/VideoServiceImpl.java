@@ -11,8 +11,10 @@ import com.gary.bilibili.video.dto.VideoPublishDTO;
 import com.gary.bilibili.video.dto.VideoUpdateDTO;
 import com.gary.bilibili.video.entity.Video;
 import com.gary.bilibili.video.entity.VideoStats;
+import com.gary.bilibili.video.entity.VideoTranscodeTask;
 import com.gary.bilibili.video.mapper.VideoMapper;
 import com.gary.bilibili.video.mapper.VideoStatsMapper;
+import com.gary.bilibili.video.mapper.VideoTranscodeTaskMapper;
 import com.gary.bilibili.video.message.VideoViewMessage;
 import com.gary.bilibili.video.model.VideoDetailRow;
 import com.gary.bilibili.video.model.VideoListRow;
@@ -51,6 +53,7 @@ public class VideoServiceImpl implements VideoService {
 
     private final VideoMapper videoMapper;
     private final VideoStatsMapper videoStatsMapper;
+    private final VideoTranscodeTaskMapper videoTranscodeTaskMapper;
     private final StringRedisTemplate stringRedisTemplate;
     private final RocketMQTemplate rocketMQTemplate;
     private final ObjectMapper objectMapper;
@@ -58,12 +61,14 @@ public class VideoServiceImpl implements VideoService {
 
     public VideoServiceImpl(VideoMapper videoMapper,
                             VideoStatsMapper videoStatsMapper,
+                            VideoTranscodeTaskMapper videoTranscodeTaskMapper,
                             StringRedisTemplate stringRedisTemplate,
                             RocketMQTemplate rocketMQTemplate,
                             ObjectMapper objectMapper,
                             VideoBloomFilter videoBloomFilter) {
         this.videoMapper = videoMapper;
         this.videoStatsMapper = videoStatsMapper;
+        this.videoTranscodeTaskMapper = videoTranscodeTaskMapper;
         this.stringRedisTemplate = stringRedisTemplate;
         this.rocketMQTemplate = rocketMQTemplate;
         this.objectMapper = objectMapper;
@@ -83,12 +88,21 @@ public class VideoServiceImpl implements VideoService {
             throw new BusinessException("视频已提交，请勿重复发布");
         }
 
+        VideoTranscodeTask transcodeTask = videoTranscodeTaskMapper.selectSuccessByFileMd5(fileMd5);
+        if (transcodeTask == null || !StringUtils.hasText(transcodeTask.getOutputUrl())) {
+            throw new BusinessException("视频仍在转码，请完成转码后再发布");
+        }
+
         Video video = new Video();
         video.setUserId(userId);
         video.setTitle(request.getTitle().trim());
         video.setDescription(request.getDescription());
         video.setCoverUrl(request.getCoverUrl());
-        video.setSourceUrl(request.getSourceUrl());
+        // The original source address is only an API compatibility field. Use
+        // the finished task as the source of truth so a client cannot publish
+        // an arbitrary external URL as platform content.
+        video.setSourceUrl(transcodeTask.getSourceUrl());
+        video.setPlayUrl(transcodeTask.getOutputUrl());
         video.setFileMd5(fileMd5);
         video.setFileSize(request.getFileSize());
         video.setDuration(request.getDuration());

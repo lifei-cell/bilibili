@@ -11,14 +11,16 @@ import com.gary.bilibili.video.dto.UploadCheckDTO;
 import com.gary.bilibili.video.dto.UploadChunkDTO;
 import com.gary.bilibili.video.entity.FileChunk;
 import com.gary.bilibili.video.entity.Video;
+import com.gary.bilibili.video.entity.VideoTranscodeTask;
 import com.gary.bilibili.video.mapper.FileChunkMapper;
 import com.gary.bilibili.video.mapper.VideoMapper;
+import com.gary.bilibili.video.mapper.VideoTranscodeTaskMapper;
 import com.gary.bilibili.video.model.UploadTask;
 import com.gary.bilibili.video.vo.UploadCheckVO;
 import com.gary.bilibili.video.vo.UploadChunkVO;
 import com.gary.bilibili.video.vo.UploadProgressVO;
+import com.gary.bilibili.video.vo.VideoTranscodeStatusVO;
 import io.minio.MinioClient;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +45,7 @@ class UploadServiceImplTest {
 
     private FileChunkMapper fileChunkMapper;
     private VideoMapper videoMapper;
+    private VideoTranscodeTaskMapper videoTranscodeTaskMapper;
     private StringRedisTemplate stringRedisTemplate;
     private ValueOperations<String, String> valueOperations;
     private ObjectMapper objectMapper;
@@ -55,6 +58,7 @@ class UploadServiceImplTest {
                 FileChunk.class);
         fileChunkMapper = mock(FileChunkMapper.class);
         videoMapper = mock(VideoMapper.class);
+        videoTranscodeTaskMapper = mock(VideoTranscodeTaskMapper.class);
         stringRedisTemplate = mock(StringRedisTemplate.class);
         valueOperations = mock(ValueOperations.class);
         objectMapper = new ObjectMapper();
@@ -65,9 +69,9 @@ class UploadServiceImplTest {
         uploadService = new UploadServiceImpl(
                 fileChunkMapper,
                 videoMapper,
+                videoTranscodeTaskMapper,
                 mock(MinioClient.class),
                 stringRedisTemplate,
-                mock(RocketMQTemplate.class),
                 objectMapper,
                 "http://minio:9000",
                 "videos",
@@ -163,6 +167,27 @@ class UploadServiceImplTest {
             assertThat(result.getUploadedChunks()).containsExactly(0, 1);
             assertThat(result.getTotalChunks()).isEqualTo(4);
             assertThat(result.getPercent()).isEqualTo(50);
+        }
+    }
+
+    @Test
+    void shouldReturnOnlyTheCurrentUsersCompletedTranscodeTask() {
+        VideoTranscodeTask task = new VideoTranscodeTask();
+        task.setTaskId("up_test");
+        task.setUserId(1L);
+        task.setStatus(3);
+        task.setRetryCount(1);
+        task.setOutputUrl("https://minio.example.com/play/demo.mp4");
+        when(videoTranscodeTaskMapper.selectByTaskId("up_test")).thenReturn(task);
+
+        try (MockedStatic<StpUtil> stpUtil = mockStatic(StpUtil.class)) {
+            stpUtil.when(StpUtil::getLoginIdAsLong).thenReturn(1L);
+
+            VideoTranscodeStatusVO result = uploadService.getTranscodeStatus("up_test");
+
+            assertThat(result.getStatus()).isEqualTo("completed");
+            assertThat(result.getOutputUrl()).isEqualTo("https://minio.example.com/play/demo.mp4");
+            assertThat(result.getRetryCount()).isEqualTo(1);
         }
     }
 

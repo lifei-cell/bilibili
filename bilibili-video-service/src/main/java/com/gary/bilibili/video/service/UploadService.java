@@ -12,6 +12,7 @@ import com.gary.bilibili.video.vo.UploadCheckVO;
 import com.gary.bilibili.video.vo.UploadChunkVO;
 import com.gary.bilibili.video.vo.UploadMergeVO;
 import com.gary.bilibili.video.vo.UploadProgressVO;
+import com.gary.bilibili.video.vo.VideoTranscodeStatusVO;
 
 public interface UploadService {
 
@@ -22,6 +23,8 @@ public interface UploadService {
     UploadMergeVO merge(UploadMergeDTO request);
 
     UploadProgressVO getProgress(String uploadId);
+
+    VideoTranscodeStatusVO getTranscodeStatus(String taskId);
 
     FileCheckVO checkFile(FileCheckDTO request);
 

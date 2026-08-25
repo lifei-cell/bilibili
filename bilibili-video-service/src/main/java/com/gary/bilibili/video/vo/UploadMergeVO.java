@@ -7,5 +7,6 @@ public class UploadMergeVO {
 
     private String sourceUrl;
     private String fileMd5;
+    private String transcodeTaskId;
     private String transcodeStatus;
 }

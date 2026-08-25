@@ -1,14 +1,16 @@
-# Bilibili Cloud Backend
+# Bilibili Cloud
 
-一个基于 Java 21、Spring Boot 4 和 Spring Cloud 的视频平台后端示例项目。项目采用微服务架构，覆盖用户登录、分片上传、视频管理、弹幕、社交互动、搜索以及基于 Canal 的数据同步。
+一个基于 Java 21、Spring Boot 4、Spring Cloud 和 Vue 3 的视频平台示例项目。项目采用微服务架构，覆盖用户登录、分片上传、视频管理、弹幕、社交互动、搜索以及基于 Canal 的数据同步。
 
-> 当前仓库只包含后端和本地基础设施，不包含前端页面。访问 Nginx 根路径时只会返回环境运行提示，业务接口统一通过 `/api/**` 调用。
+> 仓库同时包含后端微服务和 `bilibili-web` 前端。Nginx 当前只负责 API 反向代理，前端开发服务器默认运行在 `5173`，业务接口统一通过 `/api/**` 调用。
 
 ## 功能概览
 
 - 手机验证码、注册、登录、退出和用户资料管理
 - 视频分片上传、秒传、合并、发布、播放和列表查询
+- RocketMQ Outbox 异步投递与 FFmpeg/MinIO 视频转码
 - HTTP 弹幕接口与 Netty WebSocket 弹幕通道
+- 数据库驱动的视频分类接口与前端动态分区
 - 关注、点赞、评论、收藏和收藏夹管理
 - Elasticsearch 视频搜索、搜索建议和热搜
 - Redis 缓存、热点统计和 Sa-Token 会话共享
@@ -20,7 +22,7 @@
 
 ```mermaid
 flowchart LR
-    Client["客户端 / API 调试工具"] --> Nginx["Nginx :80"]
+    Client["Vue 3 前端 / API 调试工具"] --> Nginx["Nginx :80"]
     Client --> Gateway["Gateway :8080"]
     Nginx --> Gateway
 
@@ -84,11 +86,13 @@ flowchart LR
 | `bilibili-social-service` | 8084 | 关注、点赞、评论、收藏和收藏夹 |
 | `bilibili-search-service` | 8085 | 视频搜索、搜索建议和热搜 |
 | `bilibili-canal-service` | 8086 | 订阅 Binlog，维护缓存、布隆过滤器和 ES 索引 |
+| `bilibili-web` | 5173 | Vue 3 视频社区前端 |
 
 ## 环境要求
 
 - JDK 21
 - Maven 3.9+
+- Node.js 20+、npm
 - Docker Desktop 或 Docker Engine，支持 Compose v2
 - 建议为 Docker 分配至少 6 GB 内存
 - 首次启动需要能够访问 Maven 仓库和 Docker 镜像仓库
@@ -120,7 +124,19 @@ docker compose -p bilibili -f docker-compose.yml -f docker-compose.service.yml u
 
 首次拉取 MySQL、Nacos、RocketMQ、Elasticsearch、MinIO、Canal 等镜像可能需要几分钟。
 
-### 3. 初始化 RocketMQ Topic
+### 3. 启动前端
+
+另开一个终端执行：
+
+```bash
+cd bilibili-web
+npm install
+npm run dev
+```
+
+前端会通过 Vite 将 `/api` 请求和弹幕 WebSocket 代理到 `http://localhost:8080`。
+
+### 4. 初始化 RocketMQ Topic
 
 首次启动或更换 RocketMQ 数据环境后执行：
 
@@ -137,7 +153,7 @@ Topic 创建后，因 Topic 尚未就绪而重启的服务会在 `restart: unles
 docker compose -p bilibili -f docker-compose.yml -f docker-compose.service.yml restart bilibili-video-service bilibili-danmu-service bilibili-canal-service
 ```
 
-### 4. 检查状态
+### 5. 检查状态
 
 ```bash
 docker compose -p bilibili -f docker-compose.yml -f docker-compose.service.yml ps
@@ -155,10 +171,13 @@ curl http://localhost:8080/actuator/health
 {"groups":["liveness","readiness"],"status":"UP"}
 ```
 
+如果使用已有 MySQL 数据卷，需要手动执行一次 `docker/mysql/migration/001-p0-video-transcode.sql`，为上传转码 Outbox 创建任务表；全新数据卷会由 `docker/mysql/init/02-schema.sql` 自动创建。
+
 ## 访问地址
 
 | 服务 | 地址 | 说明 |
 | --- | --- | --- |
+| Web 前端 | <http://localhost:5173/> | Vite 开发服务器 |
 | Nginx | <http://localhost/> | 根路径仅返回环境运行提示 |
 | 统一 API | `http://localhost/api/**` | 推荐的业务接口入口 |
 | API 网关 | <http://localhost:8080/> | 本地调试可直接访问 |
@@ -215,7 +234,8 @@ curl --location 'http://localhost:8080/user/sendCode' \
 | 模块 | 方法与路径 |
 | --- | --- |
 | 用户 | `POST /api/user/code`、`POST /api/user/sendCode`、`POST /api/user/register`、`POST /api/user/login`、`POST /api/user/logout`、`GET /api/user/me`、`PUT /api/user/profile`、`PUT /api/user/password`、`GET /api/user/profile/{userId}` |
-| 上传 | `POST /api/upload/check`、`POST /api/upload/chunk`、`POST /api/upload/merge`、`GET /api/upload/progress/{uploadId}` |
+| 分类 | `GET /api/category/list` |
+| 上传 | `POST /api/upload/check`、`POST /api/upload/chunk`、`POST /api/upload/merge`、`GET /api/upload/progress/{uploadId}`、`GET /api/upload/transcode/{taskId}` |
 | 文件兼容接口 | `POST /api/file/check-md5`、`POST /api/file/chunk-upload`、`POST /api/file/merge-chunks`、`GET /api/file/upload-progress/{md5}` |
 | 视频 | `POST /api/video/publish`、`GET /api/video/{videoId}`、`GET /api/video/{videoId}/play`、`GET /api/video/list`、`GET /api/video/user/{userId}`、`PUT /api/video/{videoId}`、`DELETE /api/video/{videoId}` |
 | 弹幕 | `GET /api/danmu/list/{videoId}`、`POST /api/danmu/send`、`GET /api/danmu/count/{videoId}` |
@@ -369,7 +389,7 @@ mvn test
 mvn -pl bilibili-video-service -am test
 ```
 
-当前测试集包含 45 个测试，覆盖视频上传与业务逻辑、弹幕批量持久化、社交互动、搜索和 Canal 同步等核心场景。
+当前测试集包含 49 个测试，覆盖视频上传与业务逻辑、转码 Outbox 投递与状态反馈、播放量幂等、弹幕批量持久化、社交互动、搜索和 Canal 同步等核心场景。
 
 ## 项目结构
 
@@ -383,6 +403,7 @@ mvn -pl bilibili-video-service -am test
 ├── bilibili-social-service/  # 关注、点赞、评论、收藏
 ├── bilibili-search-service/  # Elasticsearch 搜索
 ├── bilibili-canal-service/   # Binlog、缓存和索引同步
+├── bilibili-web/             # Vue 3 前端
 ├── docker/
 │   ├── canal/                # Canal instance 配置
 │   ├── mysql/init/           # 数据库初始化 SQL
@@ -423,6 +444,10 @@ docker logs bilibili-user-service
 ### 搜索结果为空
 
 确认 Elasticsearch、Canal Server、`bilibili-canal-service` 和 RocketMQ 均正常运行，并检查 `cache-sync` Topic 是否存在。新写入或更新的视频数据会经 Canal 同步到 Elasticsearch。
+
+### 视频转码失败或播放地址无法访问
+
+视频服务镜像会安装 FFmpeg，并从 MinIO 的 `source/` 对象读取源文件，将 MP4 产物写入 `play/`。应用默认只给播放产物前缀配置匿名读权限，不会公开源文件；可通过 `MINIO_PUBLIC_READ_ENABLED=false` 关闭。Compose 默认把 `MINIO_PUBLIC_ENDPOINT` 配置为 `http://localhost:9000`，如果前端不在宿主机访问，请按实际浏览器可访问的 MinIO 地址覆盖该变量。
 
 ### Docker 构建时访问 Docker Hub 超时
 

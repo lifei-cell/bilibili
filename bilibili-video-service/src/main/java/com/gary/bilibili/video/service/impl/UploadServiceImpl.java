@@ -15,9 +15,10 @@ import com.gary.bilibili.video.dto.UploadChunkDTO;
 import com.gary.bilibili.video.dto.UploadMergeDTO;
 import com.gary.bilibili.video.entity.FileChunk;
 import com.gary.bilibili.video.entity.Video;
+import com.gary.bilibili.video.entity.VideoTranscodeTask;
 import com.gary.bilibili.video.mapper.FileChunkMapper;
 import com.gary.bilibili.video.mapper.VideoMapper;
-import com.gary.bilibili.video.message.VideoTranscodeMessage;
+import com.gary.bilibili.video.mapper.VideoTranscodeTaskMapper;
 import com.gary.bilibili.video.model.UploadTask;
 import com.gary.bilibili.video.service.UploadService;
 import com.gary.bilibili.video.vo.FileCheckVO;
@@ -26,13 +27,13 @@ import com.gary.bilibili.video.vo.UploadCheckVO;
 import com.gary.bilibili.video.vo.UploadChunkVO;
 import com.gary.bilibili.video.vo.UploadMergeVO;
 import com.gary.bilibili.video.vo.UploadProgressVO;
+import com.gary.bilibili.video.vo.VideoTranscodeStatusVO;
 import io.minio.ComposeObjectArgs;
 import io.minio.ComposeSource;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.StatObjectArgs;
 import io.minio.errors.ErrorResponseException;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -72,9 +73,9 @@ public class UploadServiceImpl implements UploadService {
 
     private final FileChunkMapper fileChunkMapper;
     private final VideoMapper videoMapper;
+    private final VideoTranscodeTaskMapper videoTranscodeTaskMapper;
     private final MinioClient minioClient;
     private final StringRedisTemplate stringRedisTemplate;
-    private final RocketMQTemplate rocketMQTemplate;
     private final ObjectMapper objectMapper;
     private final String publicEndpoint;
     private final String videoBucket;
@@ -82,18 +83,18 @@ public class UploadServiceImpl implements UploadService {
 
     public UploadServiceImpl(FileChunkMapper fileChunkMapper,
                              VideoMapper videoMapper,
+                             VideoTranscodeTaskMapper videoTranscodeTaskMapper,
                              MinioClient minioClient,
                              StringRedisTemplate stringRedisTemplate,
-                             RocketMQTemplate rocketMQTemplate,
                              ObjectMapper objectMapper,
                              @Value("${minio.public-endpoint}") String publicEndpoint,
                              @Value("${minio.video-bucket}") String videoBucket,
                              @Value("${minio.temp-bucket}") String tempBucket) {
         this.fileChunkMapper = fileChunkMapper;
         this.videoMapper = videoMapper;
+        this.videoTranscodeTaskMapper = videoTranscodeTaskMapper;
         this.minioClient = minioClient;
         this.stringRedisTemplate = stringRedisTemplate;
-        this.rocketMQTemplate = rocketMQTemplate;
         this.objectMapper = objectMapper;
         this.publicEndpoint = publicEndpoint;
         this.videoBucket = videoBucket;
@@ -175,13 +176,14 @@ public class UploadServiceImpl implements UploadService {
             String sourceObjectName = buildSourceObjectName(task);
             composeChunks(chunks, sourceObjectName);
             String sourceUrl = buildObjectUrl(videoBucket, sourceObjectName);
-            sendTranscodeMessage(task, sourceUrl, sourceObjectName);
+            saveTranscodeTask(task, sourceUrl, sourceObjectName);
             markChunksCompleted(task);
             refreshTask(task);
 
             UploadMergeVO result = new UploadMergeVO();
             result.setSourceUrl(sourceUrl);
             result.setFileMd5(task.getFileMd5());
+            result.setTranscodeTaskId(task.getUploadId());
             result.setTranscodeStatus("waiting");
             return result;
         } finally {
@@ -203,6 +205,29 @@ public class UploadServiceImpl implements UploadService {
         result.setUploadedChunks(uploadedChunks);
         result.setTotalChunks(task.getTotalChunks());
         result.setPercent(uploadedChunks.size() * 100 / task.getTotalChunks());
+        return result;
+    }
+
+    @Override
+    public VideoTranscodeStatusVO getTranscodeStatus(String taskId) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        VideoTranscodeTask task = videoTranscodeTaskMapper.selectByTaskId(taskId);
+        if (task == null || !userId.equals(task.getUserId())) {
+            throw new BusinessException("转码任务不存在");
+        }
+
+        VideoTranscodeStatusVO result = new VideoTranscodeStatusVO();
+        result.setTaskId(task.getTaskId());
+        result.setStatus(toTranscodeState(task.getStatus()));
+        result.setRetryCount(task.getRetryCount() == null ? 0 : task.getRetryCount());
+        result.setNextRetryTime(task.getNextRetryTime());
+        if (Integer.valueOf(UploadConstant.TRANSCODE_STATUS_SUCCESS).equals(task.getStatus())) {
+            result.setOutputUrl(task.getOutputUrl());
+        }
+        if (Integer.valueOf(UploadConstant.TRANSCODE_STATUS_FAILED).equals(task.getStatus())) {
+            result.setErrorMessage(StringUtils.hasText(task.getErrorMessage())
+                    ? task.getErrorMessage() : "视频转码失败");
+        }
         return result;
     }
 
@@ -507,21 +532,41 @@ public class UploadServiceImpl implements UploadService {
         }
     }
 
-    private void sendTranscodeMessage(UploadTask task, String sourceUrl, String sourceObjectName) {
-        VideoTranscodeMessage message = new VideoTranscodeMessage();
-        message.setUserId(task.getUserId());
-        message.setFileMd5(task.getFileMd5());
-        message.setFileName(task.getFileName());
-        message.setFileSize(task.getFileSize());
-        message.setSourceUrl(sourceUrl);
-        message.setSourceObjectName(sourceObjectName);
-        message.setCreateTime(LocalDateTime.now());
-        try {
-            rocketMQTemplate.convertAndSend(UploadConstant.TRANSCODE_TOPIC, message);
-        } catch (Exception exception) {
-            log.error("Send video transcode message failed, uploadId={}", task.getUploadId(), exception);
-            throw new BusinessException("转码任务发送失败");
+    private void saveTranscodeTask(UploadTask task, String sourceUrl, String sourceObjectName) {
+        VideoTranscodeTask existing = videoTranscodeTaskMapper.selectByTaskId(task.getUploadId());
+        if (existing == null) {
+            VideoTranscodeTask transcodeTask = new VideoTranscodeTask();
+            transcodeTask.setTaskId(task.getUploadId());
+            transcodeTask.setUserId(task.getUserId());
+            transcodeTask.setFileMd5(task.getFileMd5());
+            transcodeTask.setFileName(task.getFileName());
+            transcodeTask.setFileSize(task.getFileSize());
+            transcodeTask.setSourceUrl(sourceUrl);
+            transcodeTask.setSourceObjectName(sourceObjectName);
+            transcodeTask.setStatus(UploadConstant.TRANSCODE_STATUS_PENDING);
+            transcodeTask.setRetryCount(0);
+            videoTranscodeTaskMapper.insert(transcodeTask);
+            return;
         }
+        if (!Integer.valueOf(UploadConstant.TRANSCODE_STATUS_SUCCESS).equals(existing.getStatus())) {
+            videoTranscodeTaskMapper.resetPending(
+                    task.getUploadId(), sourceUrl, sourceObjectName,
+                    task.getFileName(), task.getFileSize());
+        }
+    }
+
+    private String toTranscodeState(Integer status) {
+        if (Integer.valueOf(UploadConstant.TRANSCODE_STATUS_SUCCESS).equals(status)) {
+            return UploadConstant.TRANSCODE_STATE_COMPLETED;
+        }
+        if (Integer.valueOf(UploadConstant.TRANSCODE_STATUS_FAILED).equals(status)) {
+            return UploadConstant.TRANSCODE_STATE_FAILED;
+        }
+        if (Integer.valueOf(UploadConstant.TRANSCODE_STATUS_PROCESSING).equals(status)
+                || Integer.valueOf(UploadConstant.TRANSCODE_STATUS_DISPATCHED).equals(status)) {
+            return UploadConstant.TRANSCODE_STATE_PROCESSING;
+        }
+        return UploadConstant.TRANSCODE_STATE_WAITING;
     }
 
     private void markChunksCompleted(UploadTask task) {

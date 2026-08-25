@@ -27,6 +27,10 @@ public class DanmuSendDTO {
     @Max(100)
     private Integer fontSize;
 
+    /**
+     * Video position in whole seconds. The database and all API responses use
+     * the same unit.
+     */
     @NotNull
     @Min(0)
     private Integer videoTime;

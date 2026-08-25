@@ -47,6 +47,10 @@ public class DanmuRoomManager {
     }
 
     public void broadcast(DanmuBroadcastVO danmu) {
+        broadcastLocal(danmu);
+    }
+
+    public void broadcastLocal(DanmuBroadcastVO danmu) {
         ChannelGroup room = rooms.get(danmu.getVideoId());
         if (room == null || room.isEmpty()) {
             return;

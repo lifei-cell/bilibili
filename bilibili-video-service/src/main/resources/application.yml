@@ -35,9 +35,22 @@ minio:
   secret-key: ${MINIO_SECRET_KEY:minioadmin}
   video-bucket: ${MINIO_VIDEO_BUCKET:videos}
   temp-bucket: ${MINIO_TEMP_BUCKET:tmp}
+  public-read-enabled: ${MINIO_PUBLIC_READ_ENABLED:true}
 
 video:
   stats:
     sync-interval: ${VIDEO_STATS_SYNC_INTERVAL:60000}
     sync-initial-delay: ${VIDEO_STATS_SYNC_INITIAL_DELAY:60000}
+  transcode:
+    dispatch-interval: ${VIDEO_TRANSCODE_DISPATCH_INTERVAL:1000}
+    dispatch-initial-delay: ${VIDEO_TRANSCODE_DISPATCH_INITIAL_DELAY:5000}
+    max-retries: ${VIDEO_TRANSCODE_MAX_RETRIES:3}
+    retry-delay-seconds: ${VIDEO_TRANSCODE_RETRY_DELAY_SECONDS:10}
+    # Must cover the FFmpeg timeout and allow the worker to release its lock.
+    reclaim-after-seconds: ${VIDEO_TRANSCODE_RECLAIM_AFTER_SECONDS:1860}
+    processing-lock-seconds: ${VIDEO_TRANSCODE_PROCESSING_LOCK_SECONDS:1860}
+    ffmpeg-path: ${VIDEO_TRANSCODE_FFMPEG_PATH:ffmpeg}
+    temp-dir: ${VIDEO_TRANSCODE_TEMP_DIR:/tmp/bilibili-transcode}
+    timeout-seconds: ${VIDEO_TRANSCODE_TIMEOUT_SECONDS:1800}
+    output-prefix: ${VIDEO_TRANSCODE_OUTPUT_PREFIX:play}
 

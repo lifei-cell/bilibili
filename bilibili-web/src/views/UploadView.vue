@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Check, CloudUpload, FileVideo, LoaderCircle, Sparkles, X } from 'lucide-vue-next'
 import SparkMD5 from 'spark-md5'
@@ -10,15 +10,18 @@ const router = useRouter()
 const file = ref<File>()
 const fileInput = ref<HTMLInputElement>()
 const dragging = ref(false)
-const phase = ref<'idle' | 'hashing' | 'uploading' | 'ready' | 'publishing' | 'done'>('idle')
+const phase = ref<'idle' | 'hashing' | 'uploading' | 'transcoding' | 'ready' | 'publishing' | 'done'>('idle')
 const progress = ref(0)
 const error = ref('')
 const sourceUrl = ref('')
 const fileMd5 = ref('')
 const duration = ref(0)
 const resolution = ref('1080P')
-const form = ref({ title: '', description: '', coverUrl: '', categoryId: 7, tags: '' })
-const statusText = computed(() => ({ idle: '等待选择', hashing: '正在校验文件', uploading: '正在上传', ready: '文件已就绪', publishing: '正在发布', done: '发布成功' })[phase.value])
+let pageActive = true
+const form = ref({ title: '', description: '', coverUrl: '', categoryId: categories[0]?.id || 0, tags: '' })
+const statusText = computed(() => ({ idle: '等待选择', hashing: '正在校验文件', uploading: '正在上传', transcoding: '正在转码', ready: '文件已就绪', publishing: '正在发布', done: '发布成功' })[phase.value])
+
+onBeforeUnmount(() => { pageActive = false })
 
 function chooseFile(selected?: File) {
   if (!selected) return
@@ -88,9 +91,23 @@ async function startUpload() {
     }
     const merged = (await uploadApi.merge({ uploadId: checked.uploadId, fileMd5: fileMd5.value, fileName: currentFile.name, totalChunks })).data
     sourceUrl.value = merged.sourceUrl
+    progress.value = 96
+    phase.value = 'transcoding'
+    await waitForTranscode(merged.transcodeTaskId)
     progress.value = 100
     phase.value = 'ready'
-  } catch (e) { error.value = e instanceof Error ? e.message : '上传失败'; phase.value = 'idle' }
+  } catch (e) { error.value = e instanceof Error ? e.message : '上传失败'; phase.value = 'idle'; progress.value = 0 }
+}
+
+function wait(ms: number) { return new Promise(resolve => window.setTimeout(resolve, ms)) }
+
+async function waitForTranscode(taskId: string) {
+  while (pageActive) {
+    const task = (await uploadApi.transcodeStatus(taskId)).data
+    if (task.status === 'completed') return
+    if (task.status === 'failed') throw new Error(task.errorMessage || '视频转码失败，请重新上传')
+    await wait(3000)
+  }
 }
 
 async function publish() {
@@ -125,6 +142,7 @@ function clearFile() { file.value = undefined; sourceUrl.value = ''; fileMd5.val
           <div class="progress-track"><i :style="{ width: `${progress}%` }"></i></div><div class="progress-meta"><span>{{ statusText }}</span><b>{{ progress }}%</b></div>
           <button v-if="phase === 'idle'" class="primary-button" @click="startUpload"><CloudUpload :size="18" />开始上传</button>
           <p v-if="phase === 'hashing'" class="notice">正在计算文件 MD5，用于秒传检测和分片完整性校验。</p>
+          <p v-else-if="phase === 'transcoding'" class="notice">已安全合并源文件，正在异步转码为可播放的 MP4。你可以继续填写作品信息，转码完成后即可发布。</p>
         </div>
 
         <form class="publish-form" @submit.prevent="publish">
@@ -133,11 +151,11 @@ function clearFile() { file.value = undefined; sourceUrl.value = ''; fileMd5.val
           <div class="form-grid"><div class="field"><label>内容分区 <span>*</span></label><select v-model="form.categoryId"><option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option></select></div><div class="field"><label>视频标签 <span>*</span></label><input v-model.trim="form.tags" required placeholder="多个标签用逗号分隔" /></div></div>
           <div class="field"><label>封面地址</label><input v-model.trim="form.coverUrl" maxlength="500" type="url" placeholder="https://example.com/cover.jpg（可选）" /></div>
           <div v-if="error" class="error-banner">{{ error }}</div>
-          <button class="primary-button publish-button" :disabled="phase !== 'ready' && phase !== 'publishing'"><LoaderCircle v-if="phase === 'publishing'" :size="17" class="spin" /><Check v-else-if="phase === 'done'" :size="17" />{{ phase === 'publishing' ? '正在发布…' : phase === 'done' ? '发布成功' : '发布作品' }}</button>
+          <button class="primary-button publish-button" :disabled="phase !== 'ready'"><LoaderCircle v-if="phase === 'publishing'" :size="17" class="spin" /><Check v-else-if="phase === 'done'" :size="17" />{{ phase === 'publishing' ? '正在发布…' : phase === 'done' ? '发布成功' : phase === 'transcoding' ? '等待转码完成' : '发布作品' }}</button>
         </form>
       </section>
 
-      <aside class="upload-tips"><h3>发布小贴士</h3><ol><li><b>清晰的标题</b><p>准确表达主题，避免堆砌无关词汇。</p></li><li><b>选择合适分区</b><p>能帮助感兴趣的观众更快发现作品。</p></li><li><b>添加有效标签</b><p>推荐填写 3—5 个和内容相关的标签。</p></li></ol><div><strong>接口上传流程</strong><code>check → chunk → merge → publish</code><p>页面已按接口实现 MD5 秒传与断点分片。</p></div></aside>
+      <aside class="upload-tips"><h3>发布小贴士</h3><ol><li><b>清晰的标题</b><p>准确表达主题，避免堆砌无关词汇。</p></li><li><b>选择合适分区</b><p>能帮助感兴趣的观众更快发现作品。</p></li><li><b>添加有效标签</b><p>推荐填写 3—5 个和内容相关的标签。</p></li></ol><div><strong>接口上传流程</strong><code>check → chunk → merge → transcode → publish</code><p>页面会轮询异步转码状态，产物完成后才允许发布。</p></div></aside>
     </div>
   </div>
 </template>

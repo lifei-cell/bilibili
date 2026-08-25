@@ -1,9 +1,16 @@
-export const categories = [
+import { reactive } from 'vue'
+import type { VideoCategory } from '@/types/api'
+
+export const categories = reactive<VideoCategory[]>([
   { id: 1, name: '动画' }, { id: 2, name: '番剧' }, { id: 3, name: '国创' },
   { id: 4, name: '音乐' }, { id: 5, name: '舞蹈' }, { id: 6, name: '游戏' },
   { id: 7, name: '知识' }, { id: 8, name: '科技' }, { id: 9, name: '运动' },
   { id: 10, name: '生活' }, { id: 11, name: '美食' }, { id: 12, name: '影视' },
-]
+].map(item => ({ ...item, parentId: 0, sort: item.id })))
+
+export function replaceCategories(items: VideoCategory[]) {
+  if (items.length) categories.splice(0, categories.length, ...items)
+}
 
 export function formatCount(value = 0): string {
   if (value >= 10000) return `${(value / 10000).toFixed(value >= 100000 ? 0 : 1)}万`

@@ -1,5 +1,7 @@
 FROM amazoncorretto:21-alpine
 
+RUN apk add --no-cache ffmpeg
+
 WORKDIR /app
 
 ARG JAR_FILE=target/*.jar

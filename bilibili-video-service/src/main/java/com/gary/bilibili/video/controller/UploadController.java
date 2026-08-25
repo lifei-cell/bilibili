@@ -9,6 +9,7 @@ import com.gary.bilibili.video.vo.UploadCheckVO;
 import com.gary.bilibili.video.vo.UploadChunkVO;
 import com.gary.bilibili.video.vo.UploadMergeVO;
 import com.gary.bilibili.video.vo.UploadProgressVO;
+import com.gary.bilibili.video.vo.VideoTranscodeStatusVO;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -46,5 +47,10 @@ public class UploadController {
     @GetMapping("/progress/{uploadId}")
     public Result<UploadProgressVO> getProgress(@PathVariable String uploadId) {
         return Result.ok(uploadService.getProgress(uploadId));
+    }
+
+    @GetMapping("/transcode/{taskId}")
+    public Result<VideoTranscodeStatusVO> getTranscodeStatus(@PathVariable String taskId) {
+        return Result.ok(uploadService.getTranscodeStatus(taskId));
     }
 }
