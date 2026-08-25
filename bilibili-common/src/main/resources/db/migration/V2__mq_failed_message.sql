@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS mq_failed_message (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    fingerprint CHAR(64) NOT NULL COMMENT '业务消息失败指纹',
+    topic VARCHAR(128) NOT NULL COMMENT '原始 Topic',
+    consumer_group VARCHAR(128) NOT NULL COMMENT '消费组',
+    message_key VARCHAR(128) NULL COMMENT '业务消息键',
+    payload_type VARCHAR(255) NOT NULL COMMENT '载荷 Java 类型',
+    payload JSON NOT NULL COMMENT '原始消息载荷',
+    exception_type VARCHAR(255) NOT NULL COMMENT '异常类型',
+    error_message VARCHAR(1000) NOT NULL COMMENT '最近错误',
+    trace_id VARCHAR(64) NULL COMMENT '失败链路 TraceId',
+    attempt_count INT NOT NULL DEFAULT 0 COMMENT '累计消费尝试次数',
+    status VARCHAR(16) NOT NULL DEFAULT 'FAILED' COMMENT 'FAILED/REPLAYED',
+    replay_count INT NOT NULL DEFAULT 0 COMMENT '人工重放次数',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    last_replay_time DATETIME NULL COMMENT '最近重放时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_mq_failed_fingerprint (fingerprint),
+    KEY idx_mq_failed_status_time (status, update_time),
+    KEY idx_mq_failed_topic_status (topic, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='应用消息死信表';

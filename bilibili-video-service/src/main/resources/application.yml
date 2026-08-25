@@ -2,6 +2,8 @@
   port: ${SERVER_PORT:8082}
 
 spring:
+  config:
+    import: optional:classpath:observability.yml
   application:
     name: bilibili-video-service
   profiles:

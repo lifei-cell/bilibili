@@ -1,5 +1,6 @@
 package com.gary.bilibili.video.consumer;
 
+import com.gary.bilibili.common.reliability.ReliableMessageExecutor;
 import com.gary.bilibili.video.constant.VideoConstant;
 import com.gary.bilibili.video.message.VideoViewMessage;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 
 class VideoViewConsumerTest {
@@ -18,7 +20,12 @@ class VideoViewConsumerTest {
     @Test
     void shouldPassRequestIdAndDedupKeyToAtomicScript() {
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
-        VideoViewConsumer consumer = new VideoViewConsumer(redisTemplate);
+        ReliableMessageExecutor executor = mock(ReliableMessageExecutor.class);
+        doAnswer(invocation -> {
+            invocation.<Runnable>getArgument(4).run();
+            return null;
+        }).when(executor).execute(any(), any(), any(), any(), any());
+        VideoViewConsumer consumer = new VideoViewConsumer(redisTemplate, executor);
         VideoViewMessage message = new VideoViewMessage();
         message.setVideoId(10001L);
         message.setRequestId("view-request-001");

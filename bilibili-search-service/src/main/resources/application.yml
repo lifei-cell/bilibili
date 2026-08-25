@@ -2,12 +2,16 @@
   port: ${SERVER_PORT:8085}
 
 spring:
+  config:
+    import: optional:classpath:observability.yml
   application:
     name: bilibili-search-service
   profiles:
     default: dev
   elasticsearch:
     uris: ${SPRING_ELASTICSEARCH_URIS:http://elasticsearch:9200}
+    connection-timeout: ${ELASTICSEARCH_CONNECTION_TIMEOUT:3s}
+    socket-timeout: ${ELASTICSEARCH_SOCKET_TIMEOUT:5s}
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:redis}

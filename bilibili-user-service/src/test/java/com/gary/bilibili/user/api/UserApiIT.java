@@ -73,7 +73,20 @@ class UserApiIT {
     void shouldMigrateRegisterLoginAndReadCurrentUserThroughHttpApi() {
         Integer migrationCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1", Integer.class);
-        assertThat(migrationCount).isPositive();
+        assertThat(migrationCount).isEqualTo(2);
+
+        HttpHeaders operationsHeaders = jsonHeaders();
+        operationsHeaders.set("X-Admin-Token", "change-me-in-production");
+        ResponseEntity<JsonNode> failedMessages = restTemplate.exchange(
+                "/api/admin/mq/failures",
+                HttpMethod.GET,
+                new HttpEntity<>(operationsHeaders),
+                JsonNode.class);
+        assertThat(failedMessages.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(failedMessages.getBody()).isNotNull();
+        assertThat(failedMessages.getBody().at("/data/total").asLong()).isZero();
+        assertThat(failedMessages.getHeaders().getFirst("X-Request-Id")).isNotBlank();
+        assertThat(failedMessages.getHeaders().getFirst("X-Trace-Id")).matches("[0-9a-f]{16,32}");
 
         JsonNode sendCode = post("/api/user/code", Map.of("phone", PHONE));
         assertThat(sendCode.path("success").asBoolean()).isTrue();
@@ -109,6 +122,13 @@ class UserApiIT {
                 "terminal", "api-e2e"));
         assertThat(login.path("success").asBoolean()).isTrue();
         assertThat(login.at("/data/token").asText()).isNotBlank();
+
+        ResponseEntity<String> metrics = restTemplate.getForEntity("/actuator/prometheus", String.class);
+        assertThat(metrics.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(metrics.getBody())
+                .contains("bilibili_api_duration_seconds_count")
+                .contains("api=\"user_login\"")
+                .contains("api=\"user_register\"");
     }
 
     private JsonNode post(String path, Map<String, String> body) {

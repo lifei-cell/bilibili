@@ -1,0 +1,65 @@
+groups:
+  - name: bilibili-service-alerts
+    rules:
+      - alert: BilibiliServiceDown
+        expr: up{job="bilibili-services"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Bilibili service is unavailable"
+          description: "{{ $labels.instance }} has not exposed metrics for 2 minutes."
+
+      - alert: CriticalApiHighErrorRate
+        expr: |
+          sum by (application, api) (rate(bilibili_api_duration_seconds_count{status=~"5.."}[5m]))
+          /
+          clamp_min(sum by (application, api) (rate(bilibili_api_duration_seconds_count[5m])), 0.001)
+          > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Critical API 5xx ratio is above 5%"
+          description: "{{ $labels.application }}/{{ $labels.api }} error ratio remains high."
+
+      - alert: CriticalApiP95Slow
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, application, api) (rate(bilibili_api_duration_seconds_bucket[5m]))) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Critical API p95 latency is above 1 second"
+          description: "{{ $labels.application }}/{{ $labels.api }} is slow."
+
+      - alert: ApplicationDlqPending
+        expr: max by (application) (bilibili_mq_dlq_pending) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Application DLQ contains failed messages"
+          description: "{{ $labels.application }} has messages awaiting query and replay."
+
+      - alert: JvmHeapPressure
+        expr: |
+          sum by (application) (jvm_memory_used_bytes{area="heap"})
+          /
+          clamp_min(sum by (application) (jvm_memory_max_bytes{area="heap"}), 1) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "JVM heap usage is above 85%"
+          description: "{{ $labels.application }} is under sustained heap pressure."
+
+      - alert: RocketMqConsumerLagHigh
+        expr: rocketmq_group_diff > 10000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RocketMQ consumer backlog is high"
+          description: "Consumer group {{ $labels.group }} has a large message backlog."

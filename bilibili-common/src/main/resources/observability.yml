@@ -1,0 +1,53 @@
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        bilibili.api.duration: true
+  tracing:
+    sampling:
+      probability: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:1.0}
+  zipkin:
+    tracing:
+      endpoint: ${MANAGEMENT_ZIPKIN_TRACING_ENDPOINT:http://tempo:9411/api/v2/spans}
+
+spring:
+  data:
+    redis:
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${REDIS_COMMAND_TIMEOUT:2s}
+  datasource:
+    hikari:
+      connection-timeout: ${DATASOURCE_CONNECTION_TIMEOUT:3000}
+      validation-timeout: ${DATASOURCE_VALIDATION_TIMEOUT:1000}
+
+logging:
+  structured:
+    format:
+      console: ecs
+  level:
+    root: ${LOGGING_LEVEL_ROOT:INFO}
+
+rocketmq:
+  producer:
+    send-message-timeout: ${ROCKETMQ_SEND_MESSAGE_TIMEOUT:3000}
+    retry-times-when-send-failed: ${ROCKETMQ_SEND_RETRY_TIMES:2}
+
+reliability:
+  mq:
+    max-attempts: ${MQ_CONSUME_MAX_ATTEMPTS:3}
+    initial-backoff: ${MQ_CONSUME_INITIAL_BACKOFF:100ms}
+
+operations:
+  admin-token: ${OPERATIONS_ADMIN_TOKEN:change-me-in-production}

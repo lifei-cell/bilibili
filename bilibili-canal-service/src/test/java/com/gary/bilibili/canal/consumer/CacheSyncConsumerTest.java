@@ -1,5 +1,6 @@
 package com.gary.bilibili.canal.consumer;
 
+import com.gary.bilibili.common.reliability.ReliableMessageExecutor;
 import com.gary.bilibili.canal.document.VideoDocument;
 import com.gary.bilibili.canal.message.CacheSyncEvent;
 import com.gary.bilibili.canal.repository.VideoDocumentRepository;
@@ -16,6 +17,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,6 +28,7 @@ class CacheSyncConsumerTest {
     private StringRedisTemplate stringRedisTemplate;
     private SetOperations<String, String> setOperations;
     private VideoBloomFilter videoBloomFilter;
+    private ReliableMessageExecutor reliableMessageExecutor;
     private CacheSyncConsumer consumer;
 
     @BeforeEach
@@ -35,9 +38,18 @@ class CacheSyncConsumerTest {
         stringRedisTemplate = mock(StringRedisTemplate.class);
         setOperations = mock(SetOperations.class);
         videoBloomFilter = mock(VideoBloomFilter.class);
+        reliableMessageExecutor = mock(ReliableMessageExecutor.class);
+        doAnswer(invocation -> {
+            invocation.<Runnable>getArgument(4).run();
+            return null;
+        }).when(reliableMessageExecutor).execute(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any());
         when(stringRedisTemplate.opsForSet()).thenReturn(setOperations);
         consumer = new CacheSyncConsumer(
-                videoDocumentRepository, stringRedisTemplate, videoBloomFilter);
+                videoDocumentRepository, stringRedisTemplate, videoBloomFilter,
+                reliableMessageExecutor);
     }
 
     @Test

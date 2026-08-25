@@ -1,5 +1,6 @@
 package com.gary.bilibili.canal.consumer;
 
+import com.gary.bilibili.common.reliability.ReliableMessageExecutor;
 import com.gary.bilibili.canal.constant.CanalConstant;
 import com.gary.bilibili.canal.document.VideoDocument;
 import com.gary.bilibili.canal.message.CacheSyncEvent;
@@ -22,16 +23,21 @@ import java.util.Map;
         consumerGroup = CanalConstant.CACHE_SYNC_CONSUMER_GROUP)
 public class CacheSyncConsumer implements RocketMQListener<CacheSyncEvent> {
 
+    private static final String CONSUMER_GROUP = CanalConstant.CACHE_SYNC_CONSUMER_GROUP;
+
     private final VideoDocumentRepository videoDocumentRepository;
     private final StringRedisTemplate stringRedisTemplate;
     private final VideoBloomFilter videoBloomFilter;
+    private final ReliableMessageExecutor reliableMessageExecutor;
 
     public CacheSyncConsumer(VideoDocumentRepository videoDocumentRepository,
                              StringRedisTemplate stringRedisTemplate,
-                             VideoBloomFilter videoBloomFilter) {
+                             VideoBloomFilter videoBloomFilter,
+                             ReliableMessageExecutor reliableMessageExecutor) {
         this.videoDocumentRepository = videoDocumentRepository;
         this.stringRedisTemplate = stringRedisTemplate;
         this.videoBloomFilter = videoBloomFilter;
+        this.reliableMessageExecutor = reliableMessageExecutor;
     }
 
     @Override
@@ -39,6 +45,15 @@ public class CacheSyncConsumer implements RocketMQListener<CacheSyncEvent> {
         if (event == null || !StringUtils.hasText(event.getTable()) || event.getData() == null) {
             return;
         }
+        reliableMessageExecutor.execute(
+                CanalConstant.CACHE_SYNC_TOPIC,
+                CONSUMER_GROUP,
+                messageKey(event),
+                event,
+                () -> sync(event));
+    }
+
+    private void sync(CacheSyncEvent event) {
         switch (event.getTable()) {
             case CanalConstant.VIDEO_TABLE -> syncVideo(event);
             case CanalConstant.VIDEO_STATS_TABLE -> syncVideoStats(event.getData());
@@ -48,6 +63,12 @@ public class CacheSyncConsumer implements RocketMQListener<CacheSyncEvent> {
             default -> {
             }
         }
+    }
+
+    private String messageKey(CacheSyncEvent event) {
+        Object id = event.getData().getOrDefault("id",
+                event.getData().getOrDefault("video_id", "unknown"));
+        return event.getTable() + ":" + event.getEventType() + ":" + id;
     }
 
     private void syncVideo(CacheSyncEvent event) {

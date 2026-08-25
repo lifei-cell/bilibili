@@ -1,11 +1,23 @@
+x-java-resource: &java-resource
+  mem_limit: 768m
+  cpus: 1.00
+
+x-java-environment: &java-environment
+  JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70 -XX:InitialRAMPercentage=30 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError
+  MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://tempo:9411/api/v2/spans
+  MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:-1.0}
+  OPERATIONS_ADMIN_TOKEN: ${OPERATIONS_ADMIN_TOKEN:-change-me-in-production}
+
 services:
   bilibili-gateway:
+    <<: *java-resource
     image: bilibili-gateway:0.0.1
     build:
       context: ./bilibili-gateway
     container_name: bilibili-gateway
     restart: unless-stopped
     environment:
+      <<: *java-environment
       SERVER_PORT: 8080
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
@@ -22,12 +34,14 @@ services:
       - bilibili-net
 
   bilibili-user-service:
+    <<: *java-resource
     image: bilibili-user-service:0.0.1
     build:
       context: ./bilibili-user-service
     container_name: bilibili-user-service
     restart: unless-stopped
     environment:
+      <<: *java-environment
       SERVER_PORT: 8081
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
@@ -51,12 +65,14 @@ services:
       - bilibili-net
 
   bilibili-video-service:
+    <<: *java-resource
     image: bilibili-video-service:0.0.1
     build:
       context: ./bilibili-video-service
     container_name: bilibili-video-service
     restart: unless-stopped
     environment:
+      <<: *java-environment
       SERVER_PORT: 8082
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
@@ -84,12 +100,14 @@ services:
       - bilibili-net
 
   bilibili-danmu-service:
+    <<: *java-resource
     image: bilibili-danmu-service:0.0.1
     build:
       context: ./bilibili-danmu-service
     container_name: bilibili-danmu-service
     restart: unless-stopped
     environment:
+      <<: *java-environment
       SERVER_PORT: 8083
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
@@ -114,12 +132,14 @@ services:
       - bilibili-net
 
   bilibili-social-service:
+    <<: *java-resource
     image: bilibili-social-service:0.0.1
     build:
       context: ./bilibili-social-service
     container_name: bilibili-social-service
     restart: unless-stopped
     environment:
+      <<: *java-environment
       SERVER_PORT: 8084
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
@@ -142,12 +162,14 @@ services:
       - bilibili-net
 
   bilibili-search-service:
+    <<: *java-resource
     image: bilibili-search-service:0.0.1
     build:
       context: ./bilibili-search-service
     container_name: bilibili-search-service
     restart: unless-stopped
     environment:
+      <<: *java-environment
       SERVER_PORT: 8085
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
@@ -165,12 +187,14 @@ services:
       - bilibili-net
 
   bilibili-canal-service:
+    <<: *java-resource
     image: bilibili-canal-service:0.0.1
     build:
       context: ./bilibili-canal-service
     container_name: bilibili-canal-service
     restart: unless-stopped
     environment:
+      <<: *java-environment
       SERVER_PORT: 8086
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
@@ -178,6 +202,9 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: redis123
       SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bilibili?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
       ROCKETMQ_NAME_SERVER: rocketmq-namesrv:9876
       CANAL_SERVER_HOST: canal
       CANAL_SERVER_PORT: 11111
@@ -185,12 +212,20 @@ services:
     ports:
       - "8086:8086"
     depends_on:
-      - redis
-      - nacos
-      - elasticsearch
-      - rocketmq-namesrv
-      - rocketmq-broker
-      - canal
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nacos:
+        condition: service_started
+      elasticsearch:
+        condition: service_started
+      rocketmq-namesrv:
+        condition: service_started
+      rocketmq-broker:
+        condition: service_started
+      canal:
+        condition: service_started
     networks:
       - bilibili-net
 

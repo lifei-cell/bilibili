@@ -1,5 +1,6 @@
 package com.gary.bilibili.danmu.consumer;
 
+import com.gary.bilibili.common.reliability.ReliableMessageExecutor;
 import com.gary.bilibili.danmu.constant.DanmuConstant;
 import com.gary.bilibili.danmu.message.DanmuPersistMessage;
 import com.gary.bilibili.danmu.service.DanmuBatchPersistService;
@@ -14,14 +15,27 @@ import org.springframework.stereotype.Service;
         consumeThreadNumber = 20)
 public class DanmuPersistConsumer implements RocketMQListener<DanmuPersistMessage> {
 
-    private final DanmuBatchPersistService batchPersistService;
+    private static final String CONSUMER_GROUP = "danmu-persist-consumer";
 
-    public DanmuPersistConsumer(DanmuBatchPersistService batchPersistService) {
+    private final DanmuBatchPersistService batchPersistService;
+    private final ReliableMessageExecutor reliableMessageExecutor;
+
+    public DanmuPersistConsumer(DanmuBatchPersistService batchPersistService,
+                                ReliableMessageExecutor reliableMessageExecutor) {
         this.batchPersistService = batchPersistService;
+        this.reliableMessageExecutor = reliableMessageExecutor;
     }
 
     @Override
     public void onMessage(DanmuPersistMessage message) {
-        batchPersistService.persist(message);
+        if (message == null || message.getId() == null) {
+            return;
+        }
+        reliableMessageExecutor.execute(
+                DanmuConstant.PERSIST_TOPIC,
+                CONSUMER_GROUP,
+                message.getId().toString(),
+                message,
+                () -> batchPersistService.persist(message));
     }
 }

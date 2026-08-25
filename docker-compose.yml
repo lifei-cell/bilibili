@@ -1,5 +1,14 @@
+x-small-resource: &small-resource
+  mem_limit: 512m
+  cpus: 0.50
+
+x-medium-resource: &medium-resource
+  mem_limit: 1g
+  cpus: 1.00
+
 services:
   mysql:
+    <<: *medium-resource
     image: mysql:8.4
     container_name: bilibili-mysql
     restart: unless-stopped
@@ -29,6 +38,7 @@ services:
       - bilibili-net
 
   redis:
+    <<: *small-resource
     image: redis:7.4
     container_name: bilibili-redis
     restart: unless-stopped
@@ -46,6 +56,7 @@ services:
       - bilibili-net
 
   nacos:
+    <<: *medium-resource
     image: nacos/nacos-server:v3.1.1
     container_name: bilibili-nacos
     restart: unless-stopped
@@ -66,9 +77,12 @@ services:
       - bilibili-net
 
   rocketmq-namesrv:
+    <<: *small-resource
     image: apache/rocketmq:5.3.1
     container_name: bilibili-rocketmq-namesrv
     restart: unless-stopped
+    environment:
+      JAVA_OPT_EXT: -Xms128m -Xmx256m -XX:+UseG1GC
     command: sh mqnamesrv
     ports:
       - "9876:9876"
@@ -76,6 +90,7 @@ services:
       - bilibili-net
 
   rocketmq-broker:
+    <<: *medium-resource
     image: apache/rocketmq:5.3.1
     container_name: bilibili-rocketmq-broker
     restart: unless-stopped
@@ -83,6 +98,7 @@ services:
       - rocketmq-namesrv
     environment:
       NAMESRV_ADDR: rocketmq-namesrv:9876
+      JAVA_OPT_EXT: -Xms256m -Xmx768m -XX:+UseG1GC
     command: sh mqbroker
     ports:
       - "10909:10909"
@@ -92,6 +108,7 @@ services:
       - bilibili-net
 
   elasticsearch:
+    <<: *medium-resource
     image: docker.elastic.co/elasticsearch/elasticsearch:9.2.2
     container_name: bilibili-elasticsearch
     restart: unless-stopped
@@ -109,6 +126,7 @@ services:
       - bilibili-net
 
   minio:
+    <<: *small-resource
     image: minio/minio:RELEASE.2024-12-18T13-15-44Z
     container_name: bilibili-minio
     restart: unless-stopped
@@ -126,6 +144,7 @@ services:
       - bilibili-net
 
   canal:
+    <<: *small-resource
     image: canal/canal-server:v1.1.8
     container_name: bilibili-canal
     restart: unless-stopped
@@ -140,6 +159,7 @@ services:
       - bilibili-net
 
   nginx:
+    <<: *small-resource
     image: nginx:1.27
     container_name: bilibili-nginx
     restart: unless-stopped
@@ -147,6 +167,117 @@ services:
       - "80:80"
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - bilibili-net
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: bilibili-prometheus
+    restart: unless-stopped
+    <<: *small-resource
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/observability/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - bilibili-net
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    container_name: bilibili-alertmanager
+    restart: unless-stopped
+    <<: *small-resource
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./docker/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    networks:
+      - bilibili-net
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    container_name: bilibili-grafana
+    restart: unless-stopped
+    <<: *small-resource
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    networks:
+      - bilibili-net
+
+  tempo:
+    image: grafana/tempo:2.8.2
+    container_name: bilibili-tempo
+    restart: unless-stopped
+    <<: *small-resource
+    command: ["-config.file=/etc/tempo.yml"]
+    ports:
+      - "3200:3200"
+      - "9411:9411"
+    volumes:
+      - ./docker/observability/tempo.yml:/etc/tempo.yml:ro
+      - tempo_data:/var/tempo
+    networks:
+      - bilibili-net
+
+  loki:
+    image: grafana/loki:3.5.2
+    container_name: bilibili-loki
+    restart: unless-stopped
+    <<: *small-resource
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./docker/observability/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - bilibili-net
+
+  promtail:
+    image: grafana/promtail:3.5.2
+    container_name: bilibili-promtail
+    restart: unless-stopped
+    <<: *small-resource
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - ./docker/observability/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    networks:
+      - bilibili-net
+
+  rocketmq-exporter:
+    image: apache/rocketmq-exporter:0.0.2
+    container_name: bilibili-rocketmq-exporter
+    restart: unless-stopped
+    <<: *small-resource
+    environment:
+      JAVA_OPTS: -Xms64m -Xmx256m -XX:+UseG1GC
+    command:
+      - --rocketmq.config.namesrvAddr=rocketmq-namesrv:9876
+    ports:
+      - "5557:5557"
+    depends_on:
+      - rocketmq-namesrv
+      - rocketmq-broker
     networks:
       - bilibili-net
 
@@ -160,3 +291,7 @@ volumes:
   redis_data:
   es9_data:
   minio_data:
+  prometheus_data:
+  grafana_data:
+  tempo_data:
+  loki_data:

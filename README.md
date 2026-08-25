@@ -73,6 +73,7 @@ flowchart LR
 | 数据同步 | Canal 1.1.8 |
 | 反向代理 | Nginx 1.27 |
 | 构建与部署 | Maven、Flyway、Testcontainers、GitHub Actions、Docker Compose |
+| 可观测与可靠性 | Prometheus、Grafana、Alertmanager、Loki、Tempo、Micrometer Tracing |
 
 ## 模块说明
 
@@ -143,7 +144,28 @@ GitHub Actions 会对 Push 和 Pull Request 并行执行后端、前端与 Compo
 SPRING_PROFILES_ACTIVE=prod
 ```
 
-MySQL 表结构由 `bilibili-common/src/main/resources/db/migration/V1__baseline.sql` 统一管理。Flyway 在用户、视频、弹幕和社交服务启动时自动校验并迁移；对已有非空数据库使用 baseline 版本 `0` 接管。
+MySQL 表结构由 `bilibili-common/src/main/resources/db/migration` 统一管理。Flyway 在数据库服务启动时自动校验并迁移；对已有非空数据库使用 baseline 版本 `0` 接管。
+
+## 可观测与可靠性基线
+
+- 全服务开放 `/actuator/prometheus`，关键接口额外记录 `bilibili_api_duration_seconds`，统一携带 `application` 标签。
+- HTTP 请求透传或生成 `X-Request-Id`，响应返回 `X-Trace-Id`；日志以 ECS JSON 输出 `requestId`、`traceId`，并由 Promtail 建立 TraceId 检索标签。
+- Prometheus 告警覆盖服务存活、关键接口错误率与 P95、JVM 堆压力、RocketMQ 消费积压和应用 DLQ。
+- RocketMQ 消费执行统一采用有限重试和退避；最终失败写入 `mq_failed_message`，支持按 Topic/状态分页查询并安全重放。
+- Gateway 仅对幂等 GET 请求执行 502/503/504 退避重试，统一配置连接与响应超时，避免写接口重复执行。
+- Compose 对 Java 服务设置 CPU/内存限额，并通过 `JAVA_TOOL_OPTIONS` 按容器内存比例约束 JVM。
+
+故障消息接口通过 Gateway 暴露，必须携带 `X-Admin-Token`：
+
+```bash
+curl -H "X-Admin-Token: change-me-in-production" \
+  "http://localhost:8080/api/admin/mq/failures?status=FAILED&page=1&size=20"
+
+curl -X POST -H "X-Admin-Token: change-me-in-production" \
+  "http://localhost:8080/api/admin/mq/failures/1/replay"
+```
+
+生产环境必须设置高强度 `OPERATIONS_ADMIN_TOKEN`。告警处置、DLQ 重放边界和排障查询见 `docs/runbooks/observability-and-reliability.md`。
 
 ## 快速启动
 
@@ -218,6 +240,11 @@ curl http://localhost:8080/actuator/health
 | --- | --- | --- |
 | Web 前端 | <http://localhost:5173/> | Vite 开发服务器 |
 | Nginx | <http://localhost/> | 根路径仅返回环境运行提示 |
+| Prometheus | <http://localhost:9090/> | 指标与告警规则 |
+| Alertmanager | <http://localhost:9093/> | 告警聚合与通知路由 |
+| Grafana | <http://localhost:3000/> | 指标、日志与 Trace 联查（开发默认 admin/admin） |
+| Loki | <http://localhost:3100/ready> | ECS JSON 日志存储 |
+| Tempo | <http://localhost:3200/ready> | 分布式 Trace 存储 |
 | 统一 API | `http://localhost/api/**` | 推荐的业务接口入口 |
 | API 网关 | <http://localhost:8080/> | 本地调试可直接访问 |
 | Nacos | <http://localhost:8848/nacos/> | 当前开发配置关闭认证 |

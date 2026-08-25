@@ -2,6 +2,8 @@
   port: ${SERVER_PORT:8081}
 
 spring:
+  config:
+    import: optional:classpath:observability.yml
   application:
     name: bilibili-user-service
   profiles:

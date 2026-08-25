@@ -1,0 +1,50 @@
+{
+  "title": "Bilibili Service Overview",
+  "uid": "bilibili-overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "title": "Service availability",
+      "type": "stat",
+      "gridPos": {"x": 0, "y": 0, "w": 8, "h": 7},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "up{job=\"bilibili-services\"}", "legendFormat": "{{instance}}"}]
+    },
+    {
+      "id": 2,
+      "title": "Critical API p95 latency",
+      "type": "timeseries",
+      "gridPos": {"x": 8, "y": 0, "w": 8, "h": 7},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (le, application, api) (rate(bilibili_api_duration_seconds_bucket[5m])))", "legendFormat": "{{application}} / {{api}}"}]
+    },
+    {
+      "id": 3,
+      "title": "DLQ pending",
+      "type": "timeseries",
+      "gridPos": {"x": 16, "y": 0, "w": 8, "h": 7},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "bilibili_mq_dlq_pending", "legendFormat": "{{application}}"}]
+    },
+    {
+      "id": 4,
+      "title": "JVM heap usage",
+      "type": "timeseries",
+      "gridPos": {"x": 0, "y": 7, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum by (application) (jvm_memory_used_bytes{area=\"heap\"}) / sum by (application) (jvm_memory_max_bytes{area=\"heap\"})", "legendFormat": "{{application}}"}]
+    },
+    {
+      "id": 5,
+      "title": "RocketMQ backlog",
+      "type": "timeseries",
+      "gridPos": {"x": 12, "y": 7, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "rocketmq_group_diff", "legendFormat": "{{group}} / {{topic}}"}]
+    }
+  ]
+}
