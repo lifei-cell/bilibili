@@ -1,9 +1,9 @@
 package com.gary.bilibili.danmu.netty;
 
-import cn.dev33.satoken.stp.StpUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gary.bilibili.danmu.mapper.DanmuMapper;
+import com.gary.bilibili.danmu.service.DanmuWebSocketTicketService;
 import com.gary.bilibili.danmu.vo.DanmuAuthVO;
 import com.gary.bilibili.danmu.vo.WebSocketMessageVO;
 import io.netty.buffer.Unpooled;
@@ -32,8 +32,6 @@ import io.netty.util.CharsetUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
-
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -52,13 +50,16 @@ public class DanmuWebSocketHandler extends SimpleChannelInboundHandler<Object> {
     private final DanmuMapper danmuMapper;
     private final DanmuRoomManager roomManager;
     private final ObjectMapper objectMapper;
+    private final DanmuWebSocketTicketService webSocketTicketService;
 
     public DanmuWebSocketHandler(DanmuMapper danmuMapper,
                                  DanmuRoomManager roomManager,
-                                 ObjectMapper objectMapper) {
+                                 ObjectMapper objectMapper,
+                                 DanmuWebSocketTicketService webSocketTicketService) {
         this.danmuMapper = danmuMapper;
         this.roomManager = roomManager;
         this.objectMapper = objectMapper;
+        this.webSocketTicketService = webSocketTicketService;
     }
 
     @Override
@@ -85,7 +86,12 @@ public class DanmuWebSocketHandler extends SimpleChannelInboundHandler<Object> {
             return;
         }
         Long videoId = Long.valueOf(matcher.group(1));
-        Long userId = getUserId(decoder.parameters().get("token"));
+        String ticket = first(decoder.parameters().get("ticket"));
+        Long userId = webSocketTicketService.consume(ticket, videoId);
+        if (ticket != null && userId == null) {
+            sendHttpError(context, HttpResponseStatus.UNAUTHORIZED);
+            return;
+        }
         String location = "ws://" + request.headers().get(HttpHeaderNames.HOST) + request.uri();
         WebSocketServerHandshakerFactory factory =
                 new WebSocketServerHandshakerFactory(location, null, true, 65536);
@@ -183,16 +189,11 @@ public class DanmuWebSocketHandler extends SimpleChannelInboundHandler<Object> {
         }
     }
 
-    private Long getUserId(List<String> tokens) {
-        if (tokens == null || tokens.isEmpty() || !StringUtils.hasText(tokens.getFirst())) {
+    private String first(List<String> values) {
+        if (values == null || values.isEmpty() || values.getFirst().isBlank()) {
             return null;
         }
-        try {
-            Object loginId = StpUtil.getLoginIdByToken(tokens.getFirst());
-            return loginId == null ? null : Long.valueOf(loginId.toString());
-        } catch (Exception exception) {
-            return null;
-        }
+        return values.getFirst();
     }
 
     private boolean isPublishedVideo(Long videoId) {

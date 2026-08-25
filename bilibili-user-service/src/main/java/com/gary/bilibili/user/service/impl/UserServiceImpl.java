@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.gary.bilibili.common.exception.BusinessException;
 import com.gary.bilibili.user.constant.UserRedisConstant;
+import com.gary.bilibili.user.config.AuthSessionProperties;
 import com.gary.bilibili.user.dto.LoginDTO;
 import com.gary.bilibili.user.dto.PasswordUpdateDTO;
 import com.gary.bilibili.user.dto.ProfileUpdateDTO;
@@ -17,6 +18,7 @@ import com.gary.bilibili.user.entity.SysUserAuth;
 import com.gary.bilibili.user.mapper.SysUserAuthMapper;
 import com.gary.bilibili.user.mapper.SysUserMapper;
 import com.gary.bilibili.user.service.UserService;
+import com.gary.bilibili.user.service.RefreshSessionService;
 import com.gary.bilibili.user.vo.CurrentUserVO;
 import com.gary.bilibili.user.vo.LoginVO;
 import com.gary.bilibili.user.vo.UserInfoVO;
@@ -44,14 +46,20 @@ public class UserServiceImpl implements UserService {
     private final SysUserMapper userMapper;
     private final SysUserAuthMapper userAuthMapper;
     private final StringRedisTemplate stringRedisTemplate;
+    private final AuthSessionProperties authSessionProperties;
+    private final RefreshSessionService refreshSessionService;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public UserServiceImpl(SysUserMapper userMapper,
                            SysUserAuthMapper userAuthMapper,
-                           StringRedisTemplate stringRedisTemplate) {
+                           StringRedisTemplate stringRedisTemplate,
+                           AuthSessionProperties authSessionProperties,
+                           RefreshSessionService refreshSessionService) {
         this.userMapper = userMapper;
         this.userAuthMapper = userAuthMapper;
         this.stringRedisTemplate = stringRedisTemplate;
+        this.authSessionProperties = authSessionProperties;
+        this.refreshSessionService = refreshSessionService;
     }
 
     @Override
@@ -59,7 +67,8 @@ public class UserServiceImpl implements UserService {
         String code = String.format("%06d", RANDOM.nextInt(1_000_000));
         stringRedisTemplate.opsForValue().set(codeKey(request.getPhone()), code,
                 Duration.ofMinutes(UserRedisConstant.LOGIN_CODE_TTL_MINUTES));
-        log.info("Mock sms code, phone={}, code={}", request.getPhone(), code);
+        log.info("Verification code created, phoneSuffix={}",
+                request.getPhone().substring(request.getPhone().length() - 4));
     }
 
     @Override
@@ -115,9 +124,15 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public LoginVO refresh(Long userId, String terminal) {
+        return createLoginResult(loadEnabledUser(userId), terminal);
+    }
+
+    @Override
     public void logout() {
-        StpUtil.checkLogin();
-        StpUtil.logout();
+        if (StpUtil.isLogin()) {
+            StpUtil.logout();
+        }
     }
 
     @Override
@@ -171,6 +186,7 @@ public class UserServiceImpl implements UserService {
                 .set(SysUserAuth::getCredential, passwordEncoder.encode(request.getNewPassword())));
         stringRedisTemplate.delete(userInfoKey(userId));
         StpUtil.logout(userId);
+        refreshSessionService.revokeAll(userId);
     }
 
     @Override
@@ -258,12 +274,16 @@ public class UserServiceImpl implements UserService {
 
         SaLoginParameter loginModel = new SaLoginModel()
                 .setDevice(normalizeTerminal(terminal))
+                .setTimeout(authSessionProperties.getAccessTokenTtlSeconds())
+                .setIsShare(false)
+                .setIsLastingCookie(false)
                 .setExtra("username", user.getUsername())
                 .setExtra("role", user.getRole());
         StpUtil.login(user.getId(), loginModel);
 
         LoginVO loginVO = new LoginVO();
         loginVO.setToken(StpUtil.getTokenValue());
+        loginVO.setExpiresIn(authSessionProperties.getAccessTokenTtlSeconds());
         loginVO.setUser(toUserInfo(user));
         return loginVO;
     }

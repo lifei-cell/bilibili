@@ -73,7 +73,7 @@ class UserApiIT {
     void shouldMigrateRegisterLoginAndReadCurrentUserThroughHttpApi() {
         Integer migrationCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1", Integer.class);
-        assertThat(migrationCount).isEqualTo(2);
+        assertThat(migrationCount).isEqualTo(3);
 
         HttpHeaders operationsHeaders = jsonHeaders();
         operationsHeaders.set("X-Admin-Token", "change-me-in-production");
@@ -94,15 +94,26 @@ class UserApiIT {
         String code = redisTemplate.opsForValue().get(UserRedisConstant.LOGIN_CODE_PREFIX + PHONE);
         assertThat(code).matches("\\d{6}");
 
-        JsonNode register = post("/api/user/register", Map.of(
+        ResponseEntity<JsonNode> registerResponse = postResponse("/api/user/register", Map.of(
                 "phone", PHONE,
                 "code", code,
                 "username", USERNAME,
                 "password", PASSWORD,
                 "terminal", "api-e2e"));
+        JsonNode register = registerResponse.getBody();
+        assertThat(register).isNotNull();
         assertThat(register.path("success").asBoolean()).isTrue();
         String token = register.at("/data/token").asText();
         assertThat(token).isNotBlank();
+        assertThat(register.at("/data/expiresIn").asLong()).isEqualTo(900);
+        assertThat(register.toString()).doesNotContain("bili_refresh");
+        String originalRefreshCookie = refreshCookie(registerResponse);
+        assertThat(registerResponse.getHeaders().getFirst(HttpHeaders.SET_COOKIE))
+                .contains("HttpOnly")
+                .contains("SameSite=Strict")
+                .contains("Path=/api/user");
+        assertThat(registerResponse.getHeaders().get(HttpHeaders.SET_COOKIE))
+                .allSatisfy(cookie -> assertThat(cookie).doesNotStartWith("satoken="));
 
         HttpHeaders authenticatedHeaders = jsonHeaders();
         authenticatedHeaders.set("satoken", token);
@@ -115,6 +126,42 @@ class UserApiIT {
         assertThat(currentUserResponse.getBody()).isNotNull();
         assertThat(currentUserResponse.getBody().path("success").asBoolean()).isTrue();
         assertThat(currentUserResponse.getBody().at("/data/username").asText()).isEqualTo(USERNAME);
+
+        HttpHeaders refreshHeaders = jsonHeaders();
+        refreshHeaders.set(HttpHeaders.COOKIE, originalRefreshCookie);
+        ResponseEntity<JsonNode> refreshResponse = restTemplate.exchange(
+                "/api/user/refresh",
+                HttpMethod.POST,
+                new HttpEntity<>(Map.of(), refreshHeaders),
+                JsonNode.class);
+        assertThat(refreshResponse.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(refreshResponse.getBody()).isNotNull();
+        assertThat(refreshResponse.getBody().path("success").asBoolean()).isTrue();
+        assertThat(refreshResponse.getBody().at("/data/token").asText()).isNotEqualTo(token);
+        String rotatedRefreshCookie = refreshCookie(refreshResponse);
+        assertThat(rotatedRefreshCookie).isNotEqualTo(originalRefreshCookie);
+
+        ResponseEntity<JsonNode> replayResponse = restTemplate.exchange(
+                "/api/user/refresh",
+                HttpMethod.POST,
+                new HttpEntity<>(Map.of(), refreshHeaders),
+                JsonNode.class);
+        assertThat(replayResponse.getStatusCode().value()).isEqualTo(401);
+        assertThat(replayResponse.getBody()).isNotNull();
+        assertThat(replayResponse.getBody().path("success").asBoolean()).isFalse();
+
+        HttpHeaders rotatedHeaders = jsonHeaders();
+        rotatedHeaders.set(HttpHeaders.COOKIE, rotatedRefreshCookie);
+        ResponseEntity<JsonNode> logoutResponse = restTemplate.exchange(
+                "/api/user/logout",
+                HttpMethod.POST,
+                new HttpEntity<>(Map.of(), rotatedHeaders),
+                JsonNode.class);
+        assertThat(logoutResponse.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(logoutResponse.getHeaders().getFirst(HttpHeaders.SET_COOKIE))
+                .contains("bili_refresh=")
+                .contains("Max-Age=0")
+                .contains("HttpOnly");
 
         JsonNode login = post("/api/user/login", Map.of(
                 "username", USERNAME,
@@ -132,6 +179,10 @@ class UserApiIT {
     }
 
     private JsonNode post(String path, Map<String, String> body) {
+        return postResponse(path, body).getBody();
+    }
+
+    private ResponseEntity<JsonNode> postResponse(String path, Map<String, String> body) {
         ResponseEntity<JsonNode> response = restTemplate.exchange(
                 path,
                 HttpMethod.POST,
@@ -139,7 +190,13 @@ class UserApiIT {
                 JsonNode.class);
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(response.getBody()).isNotNull();
-        return response.getBody();
+        return response;
+    }
+
+    private String refreshCookie(ResponseEntity<?> response) {
+        String setCookie = response.getHeaders().getFirst(HttpHeaders.SET_COOKIE);
+        assertThat(setCookie).isNotBlank();
+        return setCookie.substring(0, setCookie.indexOf(';'));
     }
 
     private HttpHeaders jsonHeaders() {

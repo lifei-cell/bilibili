@@ -21,6 +21,7 @@ import com.gary.bilibili.video.model.VideoListRow;
 import com.gary.bilibili.video.model.VideoPage;
 import com.gary.bilibili.video.service.VideoBloomFilter;
 import com.gary.bilibili.video.service.VideoService;
+import com.gary.bilibili.video.service.VideoListCache;
 import com.gary.bilibili.video.vo.VideoAuthorVO;
 import com.gary.bilibili.video.vo.VideoDetailVO;
 import com.gary.bilibili.video.vo.VideoListVO;
@@ -58,6 +59,7 @@ public class VideoServiceImpl implements VideoService {
     private final RocketMQTemplate rocketMQTemplate;
     private final ObjectMapper objectMapper;
     private final VideoBloomFilter videoBloomFilter;
+    private final VideoListCache videoListCache;
 
     public VideoServiceImpl(VideoMapper videoMapper,
                             VideoStatsMapper videoStatsMapper,
@@ -65,7 +67,8 @@ public class VideoServiceImpl implements VideoService {
                             StringRedisTemplate stringRedisTemplate,
                             RocketMQTemplate rocketMQTemplate,
                             ObjectMapper objectMapper,
-                            VideoBloomFilter videoBloomFilter) {
+                            VideoBloomFilter videoBloomFilter,
+                            VideoListCache videoListCache) {
         this.videoMapper = videoMapper;
         this.videoStatsMapper = videoStatsMapper;
         this.videoTranscodeTaskMapper = videoTranscodeTaskMapper;
@@ -73,6 +76,7 @@ public class VideoServiceImpl implements VideoService {
         this.rocketMQTemplate = rocketMQTemplate;
         this.objectMapper = objectMapper;
         this.videoBloomFilter = videoBloomFilter;
+        this.videoListCache = videoListCache;
     }
 
     @Override
@@ -117,6 +121,7 @@ public class VideoServiceImpl implements VideoService {
         stats.setVideoId(video.getId());
         videoStatsMapper.insert(stats);
         videoBloomFilter.put(video.getId());
+        videoListCache.invalidate();
 
         VideoPublishVO result = new VideoPublishVO();
         result.setVideoId(video.getId());
@@ -215,6 +220,7 @@ public class VideoServiceImpl implements VideoService {
 
         videoMapper.updateById(update);
         deleteDetailCache(video.getId());
+        videoListCache.invalidate();
     }
 
     @Override
@@ -227,6 +233,7 @@ public class VideoServiceImpl implements VideoService {
                 .set(Video::getStatus, VideoConstant.STATUS_OFFLINE)
                 .set(Video::getDeleted, 1));
         deleteDetailCache(video.getId());
+        videoListCache.invalidate();
     }
 
     private VideoPage queryPage(Integer page,
@@ -234,6 +241,10 @@ public class VideoServiceImpl implements VideoService {
                                 Long categoryId,
                                 Long userId,
                                 String sort) {
+        VideoPage cached = videoListCache.get(page, size, categoryId, userId, sort);
+        if (cached != null) {
+            return cached;
+        }
         long offset = (long) (page - 1) * size;
         List<VideoListRow> rows = videoMapper.selectPublishedList(
                 categoryId, userId, sort, offset, size);
@@ -254,6 +265,7 @@ public class VideoServiceImpl implements VideoService {
         VideoPage result = new VideoPage();
         result.setRecords(records);
         result.setTotal(nullToZero(videoMapper.countPublishedList(categoryId, userId)));
+        videoListCache.put(page, size, categoryId, userId, sort, result);
         return result;
     }
 

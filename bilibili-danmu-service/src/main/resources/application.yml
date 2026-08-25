@@ -38,6 +38,8 @@ rocketmq:
     group: ${ROCKETMQ_PRODUCER_GROUP:bilibili-danmu-producer}
 
 danmu:
+  websocket-ticket:
+    ttl-seconds: ${DANMU_WEBSOCKET_TICKET_TTL_SECONDS:30}
   netty:
     port: ${DANMU_NETTY_PORT:8093}
   persist:

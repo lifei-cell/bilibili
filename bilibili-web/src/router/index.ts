@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -14,8 +15,11 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
-  if (to.meta.auth && !localStorage.getItem('bili_token')) {
+router.beforeEach(async (to) => {
+  if (!to.meta.auth) return
+  const auth = useAuthStore()
+  await auth.hydrate()
+  if (!auth.isLoggedIn) {
     return { name: 'auth', query: { redirect: to.fullPath } }
   }
 })

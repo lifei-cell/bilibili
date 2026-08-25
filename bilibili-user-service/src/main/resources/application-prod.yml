@@ -14,3 +14,9 @@ spring:
         server-addr: ${SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR}
         username: ${SPRING_CLOUD_NACOS_USERNAME}
         password: ${SPRING_CLOUD_NACOS_PASSWORD}
+
+auth:
+  session:
+    cookie:
+      secure: true
+      same-site: Strict

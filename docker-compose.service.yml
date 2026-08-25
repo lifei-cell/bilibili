@@ -5,7 +5,7 @@ x-java-resource: &java-resource
 x-java-environment: &java-environment
   JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70 -XX:InitialRAMPercentage=30 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError
   MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://tempo:9411/api/v2/spans
-  MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:-1.0}
+  MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:-0.1}
   OPERATIONS_ADMIN_TOKEN: ${OPERATIONS_ADMIN_TOKEN:-change-me-in-production}
 
 services:
@@ -25,6 +25,8 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: redis123
       DANMU_WEBSOCKET_URI: ws://bilibili-danmu-service:8093
+      # Enable only when the gateway is reachable exclusively through a trusted proxy.
+      GATEWAY_RATE_LIMIT_TRUST_FORWARDED_FOR: ${GATEWAY_RATE_LIMIT_TRUST_FORWARDED_FOR:-false}
     ports:
       - "8080:8080"
     depends_on:
@@ -180,9 +182,12 @@ services:
     ports:
       - "8085:8085"
     depends_on:
-      - redis
-      - nacos
-      - elasticsearch
+      redis:
+        condition: service_healthy
+      nacos:
+        condition: service_started
+      elasticsearch:
+        condition: service_healthy
     networks:
       - bilibili-net
 

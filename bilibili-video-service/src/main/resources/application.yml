@@ -47,6 +47,8 @@ minio:
   public-read-enabled: ${MINIO_PUBLIC_READ_ENABLED:true}
 
 video:
+  list-cache:
+    ttl-seconds: ${VIDEO_LIST_CACHE_TTL_SECONDS:5}
   stats:
     sync-interval: ${VIDEO_STATS_SYNC_INTERVAL:60000}
     sync-initial-delay: ${VIDEO_STATS_SYNC_INITIAL_DELAY:60000}

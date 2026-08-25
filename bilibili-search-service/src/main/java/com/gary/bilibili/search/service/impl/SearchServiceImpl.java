@@ -5,6 +5,7 @@ import com.gary.bilibili.search.constant.SearchConstant;
 import com.gary.bilibili.search.document.VideoDocument;
 import com.gary.bilibili.search.model.SearchPage;
 import com.gary.bilibili.search.service.SearchService;
+import com.gary.bilibili.search.service.SearchResultCache;
 import com.gary.bilibili.search.vo.VideoSearchVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,7 @@ import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.query.Criteria;
 import org.springframework.data.elasticsearch.core.query.CriteriaQuery;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -30,17 +32,27 @@ import java.util.Set;
 public class SearchServiceImpl implements SearchService {
 
     private static final Logger log = LoggerFactory.getLogger(SearchServiceImpl.class);
+    private static final DefaultRedisScript<Long> RECORD_HOT_SEARCH_SCRIPT = new DefaultRedisScript<>(
+            "redis.call('zincrby', KEYS[1], 1, ARGV[1]); "
+                    + "local size = redis.call('zcard', KEYS[1]); "
+                    + "if size > tonumber(ARGV[2]) then "
+                    + "redis.call('zremrangebyrank', KEYS[1], 0, size - tonumber(ARGV[2]) - 1); end; "
+                    + "return size;",
+            Long.class);
 
     private final ElasticsearchOperations elasticsearchOperations;
     private final StringRedisTemplate stringRedisTemplate;
     private final int hotMaxSize;
+    private final SearchResultCache searchResultCache;
 
     public SearchServiceImpl(ElasticsearchOperations elasticsearchOperations,
                              StringRedisTemplate stringRedisTemplate,
-                             @Value("${search.hot.max-size:100}") int hotMaxSize) {
+                             @Value("${search.hot.max-size:100}") int hotMaxSize,
+                             SearchResultCache searchResultCache) {
         this.elasticsearchOperations = elasticsearchOperations;
         this.stringRedisTemplate = stringRedisTemplate;
         this.hotMaxSize = hotMaxSize;
+        this.searchResultCache = searchResultCache;
     }
 
     @Override
@@ -51,6 +63,12 @@ public class SearchServiceImpl implements SearchService {
                                   Integer size) {
         String normalizedKeyword = normalizeKeyword(keyword);
         String normalizedSort = normalizeSort(sort);
+        recordHotSearch(normalizedKeyword);
+        SearchPage cached = searchResultCache.get(
+                normalizedKeyword, categoryId, normalizedSort, page, size);
+        if (cached != null) {
+            return cached;
+        }
         Criteria criteria = Criteria.where("status").is(SearchConstant.VIDEO_STATUS_PUBLISHED);
         Criteria keywordCriteria = Criteria.where("title").matches(normalizedKeyword)
                 .or("description").matches(normalizedKeyword)
@@ -70,11 +88,10 @@ public class SearchServiceImpl implements SearchService {
         for (SearchHit<VideoDocument> hit : hits.getSearchHits()) {
             records.add(toVO(hit.getContent()));
         }
-        recordHotSearch(normalizedKeyword);
-
         SearchPage result = new SearchPage();
         result.setRecords(records);
         result.setTotal(hits.getTotalHits());
+        searchResultCache.put(normalizedKeyword, categoryId, normalizedSort, page, size, result);
         return result;
     }
 
@@ -124,13 +141,8 @@ public class SearchServiceImpl implements SearchService {
 
     private void recordHotSearch(String keyword) {
         try {
-            stringRedisTemplate.opsForZSet().incrementScore(
-                    SearchConstant.HOT_SEARCH_KEY, keyword, 1D);
-            Long size = stringRedisTemplate.opsForZSet().size(SearchConstant.HOT_SEARCH_KEY);
-            if (size != null && size > hotMaxSize) {
-                stringRedisTemplate.opsForZSet().removeRange(
-                        SearchConstant.HOT_SEARCH_KEY, 0, size - hotMaxSize - 1);
-            }
+            stringRedisTemplate.execute(RECORD_HOT_SEARCH_SCRIPT,
+                    List.of(SearchConstant.HOT_SEARCH_KEY), keyword, Integer.toString(hotMaxSize));
         } catch (Exception exception) {
             log.warn("Record hot search failed, keyword={}", keyword, exception);
         }

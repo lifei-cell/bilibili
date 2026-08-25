@@ -17,6 +17,8 @@ public interface UserService {
 
     LoginVO login(LoginDTO request);
 
+    LoginVO refresh(Long userId, String terminal);
+
     void logout();
 
     CurrentUserVO getCurrentUser();

@@ -38,3 +38,13 @@ mybatis-plus:
       logic-delete-value: 1
       logic-not-delete-value: 0
 
+auth:
+  session:
+    access-token-ttl-seconds: ${AUTH_ACCESS_TOKEN_TTL_SECONDS:900}
+    refresh-token-ttl-seconds: ${AUTH_REFRESH_TOKEN_TTL_SECONDS:2592000}
+    cookie:
+      name: ${AUTH_REFRESH_COOKIE_NAME:bili_refresh}
+      path: ${AUTH_REFRESH_COOKIE_PATH:/api/user}
+      secure: ${AUTH_REFRESH_COOKIE_SECURE:false}
+      same-site: ${AUTH_REFRESH_COOKIE_SAME_SITE:Strict}
+

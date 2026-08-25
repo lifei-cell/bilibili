@@ -27,10 +27,39 @@ spring:
     redis:
       connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
       timeout: ${REDIS_COMMAND_TIMEOUT:2s}
+      lettuce:
+        pool:
+          max-active: ${REDIS_POOL_MAX_ACTIVE:32}
+          max-idle: ${REDIS_POOL_MAX_IDLE:16}
+          min-idle: ${REDIS_POOL_MIN_IDLE:4}
+          max-wait: ${REDIS_POOL_MAX_WAIT:1s}
   datasource:
     hikari:
       connection-timeout: ${DATASOURCE_CONNECTION_TIMEOUT:3000}
       validation-timeout: ${DATASOURCE_VALIDATION_TIMEOUT:1000}
+      maximum-pool-size: ${DATASOURCE_MAXIMUM_POOL_SIZE:30}
+      minimum-idle: ${DATASOURCE_MINIMUM_IDLE:5}
+      idle-timeout: ${DATASOURCE_IDLE_TIMEOUT:600000}
+      max-lifetime: ${DATASOURCE_MAX_LIFETIME:1800000}
+      keepalive-time: ${DATASOURCE_KEEPALIVE_TIME:120000}
+  task:
+    execution:
+      pool:
+        core-size: ${APPLICATION_TASK_CORE_SIZE:8}
+        max-size: ${APPLICATION_TASK_MAX_SIZE:32}
+        queue-capacity: ${APPLICATION_TASK_QUEUE_CAPACITY:500}
+      thread-name-prefix: bili-task-
+
+server:
+  tomcat:
+    threads:
+      max: ${SERVER_TOMCAT_THREADS_MAX:200}
+      min-spare: ${SERVER_TOMCAT_THREADS_MIN_SPARE:20}
+    accept-count: ${SERVER_TOMCAT_ACCEPT_COUNT:300}
+    max-connections: ${SERVER_TOMCAT_MAX_CONNECTIONS:8192}
+
+performance:
+  slow-sql-threshold: ${SLOW_SQL_THRESHOLD:300ms}
 
 logging:
   structured:
@@ -51,3 +80,10 @@ reliability:
 
 operations:
   admin-token: ${OPERATIONS_ADMIN_TOKEN:change-me-in-production}
+
+# Access tokens are accepted from the header only. Sa-Token must never mirror them
+# into a browser cookie; the only authentication cookie is the opaque refresh token.
+sa-token:
+  is-read-cookie: false
+  is-read-body: false
+  is-write-header: false

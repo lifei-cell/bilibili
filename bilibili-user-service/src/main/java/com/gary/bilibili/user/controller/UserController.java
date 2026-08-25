@@ -7,10 +7,14 @@ import com.gary.bilibili.user.dto.ProfileUpdateDTO;
 import com.gary.bilibili.user.dto.RegisterDTO;
 import com.gary.bilibili.user.dto.SendCodeDTO;
 import com.gary.bilibili.user.service.UserService;
+import com.gary.bilibili.user.service.RefreshCookieService;
+import com.gary.bilibili.user.service.RefreshSessionService;
 import com.gary.bilibili.user.vo.CurrentUserVO;
 import com.gary.bilibili.user.vo.LoginVO;
 import com.gary.bilibili.user.vo.UserProfileVO;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,9 +28,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
     private final UserService userService;
+    private final RefreshSessionService refreshSessionService;
+    private final RefreshCookieService refreshCookieService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService,
+                          RefreshSessionService refreshSessionService,
+                          RefreshCookieService refreshCookieService) {
         this.userService = userService;
+        this.refreshSessionService = refreshSessionService;
+        this.refreshCookieService = refreshCookieService;
     }
 
     @PostMapping({"/code", "/sendcode", "/sendCode"})
@@ -36,17 +46,36 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public Result<LoginVO> register(@Valid @RequestBody RegisterDTO request) {
-        return Result.ok(userService.register(request));
+    public Result<LoginVO> register(@Valid @RequestBody RegisterDTO request,
+                                    HttpServletResponse response) {
+        LoginVO result = userService.register(request);
+        issueRefreshCookie(result, request.getTerminal(), response);
+        return Result.ok(result);
     }
 
     @PostMapping("/login")
-    public Result<LoginVO> login(@Valid @RequestBody LoginDTO request) {
-        return Result.ok(userService.login(request));
+    public Result<LoginVO> login(@Valid @RequestBody LoginDTO request,
+                                 HttpServletResponse response) {
+        LoginVO result = userService.login(request);
+        issueRefreshCookie(result, request.getTerminal(), response);
+        return Result.ok(result);
+    }
+
+    @PostMapping("/refresh")
+    public Result<LoginVO> refresh(HttpServletRequest request,
+                                   HttpServletResponse response) {
+        RefreshSessionService.RefreshPrincipal principal = refreshSessionService.consume(
+                refreshCookieService.read(request));
+        LoginVO result = userService.refresh(principal.userId(), principal.terminal());
+        refreshCookieService.write(response,
+                refreshSessionService.issue(principal.userId(), principal.terminal()));
+        return Result.ok(result);
     }
 
     @PostMapping("/logout")
-    public Result<Void> logout() {
+    public Result<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        refreshSessionService.revoke(refreshCookieService.read(request));
+        refreshCookieService.clear(response);
         userService.logout();
         return Result.ok();
     }
@@ -71,5 +100,12 @@ public class UserController {
     @GetMapping("/profile/{userId}")
     public Result<UserProfileVO> getProfile(@PathVariable Long userId) {
         return Result.ok(userService.getProfile(userId));
+    }
+
+    private void issueRefreshCookie(LoginVO result,
+                                    String terminal,
+                                    HttpServletResponse response) {
+        refreshCookieService.write(response,
+                refreshSessionService.issue(result.getUser().getId(), terminal));
     }
 }

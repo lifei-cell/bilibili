@@ -24,5 +24,7 @@ spring:
         fail-fast: ${SPRING_CLOUD_NACOS_DISCOVERY_FAIL_FAST:false}
 
 search:
+  result-cache:
+    ttl-seconds: ${SEARCH_RESULT_CACHE_TTL_SECONDS:5}
   hot:
     max-size: ${SEARCH_HOT_MAX_SIZE:100}

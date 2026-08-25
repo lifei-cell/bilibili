@@ -9,11 +9,12 @@
 - 手机验证码、注册、登录、退出和用户资料管理
 - 视频分片上传、秒传、合并、发布、播放和列表查询
 - RocketMQ Outbox 异步投递与 FFmpeg/MinIO 视频转码
-- HTTP 弹幕接口与 Netty WebSocket 弹幕通道
+- HTTP 弹幕接口与 Netty WebSocket 弹幕通道（一次性 Ticket 鉴权）
 - 数据库驱动的视频分类接口与前端动态分区
 - 关注、点赞、评论、收藏和收藏夹管理
 - Elasticsearch 视频搜索、搜索建议和热搜
-- Redis 缓存、热点统计和 Sa-Token 会话共享
+- Redis 缓存、热点统计、短期 Access Token 与 HttpOnly Refresh Cookie
+- Gateway Redis 令牌桶限流、连接池/线程池基线和慢 SQL 指标
 - RocketMQ 异步持久化与事件处理
 - MySQL Binlog + Canal 驱动的缓存和搜索索引同步
 - Nacos 服务注册发现与 Spring Cloud Gateway 统一路由
@@ -311,11 +312,15 @@ curl --location 'http://localhost:8080/user/sendCode' \
 | 评论 | `POST /api/comment`、`GET /api/comment/list/{videoId}`、`DELETE /api/comment/{commentId}` |
 | 收藏 | `POST /api/collection`、`DELETE /api/collection`、`GET /api/collection/list`、`POST /api/collection/folder`、`PUT /api/collection/folder/{folderId}`、`GET /api/collection/folders` |
 
-登录和注册成功后，响应 `data.token` 为 Sa-Token 会话令牌。需要登录的接口可通过请求头携带：
+登录和注册成功后，响应 `data.token` 为 15 分钟有效的 Access Token；Refresh Token 只通过 `HttpOnly`、`SameSite=Strict` Cookie 下发，并在每次刷新时轮换。浏览器端 Access Token 仅保存在内存，不写入 `localStorage`。需要登录的接口通过请求头携带：
 
 ```text
 satoken: <token>
 ```
+
+Access Token 过期后调用 `POST /api/user/refresh`，浏览器自动携带 Refresh Cookie；注销调用 `POST /api/user/logout` 并清除 Cookie。
+
+网关默认按直连客户端 IP 限流；仅当网关不能被公网直连、且上游代理会覆盖 `X-Forwarded-For` 时，才启用 `GATEWAY_RATE_LIMIT_TRUST_FORWARDED_FOR=true`。
 
 详细字段、分页参数和业务约定请参阅 [开发手册](./开发手册.md) 和 [项目后端文档](./项目后端.md)。接口文档中若存在设计稿与当前代码差异，以各模块 Controller 为准。
 
@@ -324,16 +329,16 @@ satoken: <token>
 网关路由为：
 
 ```text
-ws://localhost:8080/api/danmu/ws/{videoId}?token=<token>
+ws://localhost:8080/api/danmu/ws/{videoId}?ticket=<one-time-ticket>
 ```
 
 通过 Nginx 访问时使用：
 
 ```text
-ws://localhost/api/danmu/ws/{videoId}?token=<token>
+ws://localhost/api/danmu/ws/{videoId}?ticket=<one-time-ticket>
 ```
 
-弹幕服务的直连端口为 `8093`。实际连接参数及消息格式以 `DanmuWebSocketHandler` 的实现为准。
+登录用户先通过 `POST /api/danmu/ws-ticket/{videoId}` 获取 30 秒有效的一次性 Ticket；Ticket 使用后立即失效，Access Token 不进入 URL。匿名用户可不带 Ticket 连接，但只能接收弹幕。弹幕服务直连端口为 `8093`。
 
 ## 数据与默认账号
 

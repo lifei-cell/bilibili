@@ -15,7 +15,9 @@ import com.gary.bilibili.video.mapper.VideoMapper;
 import com.gary.bilibili.video.mapper.VideoStatsMapper;
 import com.gary.bilibili.video.mapper.VideoTranscodeTaskMapper;
 import com.gary.bilibili.video.model.VideoDetailRow;
+import com.gary.bilibili.video.model.VideoPage;
 import com.gary.bilibili.video.service.VideoBloomFilter;
+import com.gary.bilibili.video.service.VideoListCache;
 import com.gary.bilibili.video.vo.VideoDetailVO;
 import com.gary.bilibili.video.vo.VideoPlayVO;
 import com.gary.bilibili.video.vo.VideoPublishVO;
@@ -38,6 +40,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class VideoServiceImplTest {
@@ -50,6 +53,7 @@ class VideoServiceImplTest {
     private HashOperations<String, Object, Object> hashOperations;
     private RocketMQTemplate rocketMQTemplate;
     private VideoBloomFilter videoBloomFilter;
+    private VideoListCache videoListCache;
     private VideoServiceImpl videoService;
 
     @BeforeEach
@@ -66,6 +70,7 @@ class VideoServiceImplTest {
         hashOperations = mock(HashOperations.class);
         rocketMQTemplate = mock(RocketMQTemplate.class);
         videoBloomFilter = mock(VideoBloomFilter.class);
+        videoListCache = mock(VideoListCache.class);
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
 
@@ -76,7 +81,8 @@ class VideoServiceImplTest {
                 stringRedisTemplate,
                 rocketMQTemplate,
                 new ObjectMapper(),
-                videoBloomFilter);
+                videoBloomFilter,
+                videoListCache);
     }
 
     @Test
@@ -99,6 +105,7 @@ class VideoServiceImplTest {
             assertThat(result.getStatus()).isZero();
             verify(videoStatsMapper).insert(any(VideoStats.class));
             verify(videoBloomFilter).put(10001L);
+            verify(videoListCache).invalidate();
         }
     }
 
@@ -128,6 +135,20 @@ class VideoServiceImplTest {
         assertThat(result.getTags()).containsExactly("SpringBoot", "Vue3");
         assertThat(result.getStats().getViewCount()).isEqualTo(103L);
         verify(valueOperations).set(eq("video:detail:10001"), any(String.class), any());
+    }
+
+    @Test
+    void shouldReturnListCacheWithoutDatabaseOrPerItemRedisReads() {
+        VideoPage cached = new VideoPage();
+        cached.setRecords(List.of());
+        cached.setTotal(12L);
+        when(videoListCache.get(1, 20, null, null, "default")).thenReturn(cached);
+
+        VideoPage result = videoService.getList(1, 20, null, "default");
+
+        assertThat(result).isSameAs(cached);
+        verifyNoInteractions(videoMapper);
+        verifyNoInteractions(hashOperations);
     }
 
     @Test

@@ -10,6 +10,7 @@ export const userApi = {
     apiRequest<LoginResult>({ method: 'POST', url: '/user/login', data }),
   register: (data: { phone: string; code: string; username: string; password: string; terminal: string }) =>
     apiRequest<LoginResult>({ method: 'POST', url: '/user/register', data }),
+  refresh: () => apiRequest<LoginResult>({ method: 'POST', url: '/user/refresh' }),
   logout: () => apiRequest<void>({ method: 'POST', url: '/user/logout' }),
   me: () => apiRequest<CurrentUser>({ method: 'GET', url: '/user/me' }),
   profile: (userId: number) => apiRequest<UserProfile>({ method: 'GET', url: `/user/profile/${userId}` }),
@@ -53,6 +54,8 @@ export const danmuApi = {
   list: (videoId: number) => apiRequest<DanmuItem[]>({ method: 'GET', url: `/danmu/list/${videoId}`, params: { page: 1, size: 500 } }),
   send: (data: { videoId: number; content: string; color: string; position: number; fontSize: number; videoTime: number; requestId: string }) =>
     apiRequest<{ danmuId: number }>({ method: 'POST', url: '/danmu/send', data }),
+  websocketTicket: (videoId: number) =>
+    apiRequest<{ ticket: string; expiresIn: number }>({ method: 'POST', url: `/danmu/ws-ticket/${videoId}` }),
 }
 
 export const uploadApi = {

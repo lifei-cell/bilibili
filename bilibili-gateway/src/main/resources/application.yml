@@ -23,6 +23,12 @@ spring:
           httpclient:
             connect-timeout: ${GATEWAY_CONNECT_TIMEOUT:3000}
             response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:5s}
+            pool:
+              type: fixed
+              max-connections: ${GATEWAY_MAX_CONNECTIONS:500}
+              acquire-timeout: ${GATEWAY_ACQUIRE_TIMEOUT:3000}
+              max-idle-time: ${GATEWAY_MAX_IDLE_TIME:30s}
+              max-life-time: ${GATEWAY_MAX_LIFE_TIME:5m}
           metrics:
             enabled: true
           default-filters:
@@ -41,32 +47,107 @@ spring:
               enabled: true
               lower-case-service-id: true
           routes:
+            - id: bilibili-auth-refresh
+              uri: lb://bilibili-user-service
+              predicates:
+                - Path=/api/user/refresh,/user/refresh
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@clientIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: ${GATEWAY_REFRESH_RATE:50}
+                    redis-rate-limiter.burstCapacity: ${GATEWAY_REFRESH_BURST:100}
+                    redis-rate-limiter.requestedTokens: 1
+            - id: bilibili-auth-sensitive
+              uri: lb://bilibili-user-service
+              predicates:
+                - Path=/api/user/code,/api/user/sendcode,/api/user/sendCode,/api/user/login,/api/user/register,/user/code,/user/sendcode,/user/sendCode,/user/login,/user/register
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@clientIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: ${GATEWAY_AUTH_RATE:5}
+                    redis-rate-limiter.burstCapacity: ${GATEWAY_AUTH_BURST:10}
+                    redis-rate-limiter.requestedTokens: 1
             - id: bilibili-user-service
               uri: lb://bilibili-user-service
               predicates:
                 - Path=/api/user/**,/user/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@clientIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: ${GATEWAY_USER_RATE:100}
+                    redis-rate-limiter.burstCapacity: ${GATEWAY_USER_BURST:200}
+                    redis-rate-limiter.requestedTokens: 1
             - id: bilibili-danmu-websocket
               uri: ${DANMU_WEBSOCKET_URI:ws://localhost:8093}
               predicates:
                 - Path=/api/danmu/ws/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@clientIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: ${GATEWAY_WEBSOCKET_RATE:20}
+                    redis-rate-limiter.burstCapacity: ${GATEWAY_WEBSOCKET_BURST:40}
+                    redis-rate-limiter.requestedTokens: 1
             - id: bilibili-video-service
               uri: lb://bilibili-video-service
               predicates:
                 - Path=/api/video/**,/api/upload/**,/api/file/**,/api/category/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@clientIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: ${GATEWAY_VIDEO_RATE:240}
+                    redis-rate-limiter.burstCapacity: ${GATEWAY_VIDEO_BURST:480}
+                    redis-rate-limiter.requestedTokens: 1
             - id: bilibili-danmu-service
               uri: lb://bilibili-danmu-service
               predicates:
                 - Path=/api/danmu/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@clientIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: ${GATEWAY_DANMU_RATE:120}
+                    redis-rate-limiter.burstCapacity: ${GATEWAY_DANMU_BURST:240}
+                    redis-rate-limiter.requestedTokens: 1
             - id: bilibili-social-service
               uri: lb://bilibili-social-service
               predicates:
                 - Path=/api/follow/**,/api/like/**,/api/comment/**,/api/collection/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@clientIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: ${GATEWAY_SOCIAL_RATE:120}
+                    redis-rate-limiter.burstCapacity: ${GATEWAY_SOCIAL_BURST:240}
+                    redis-rate-limiter.requestedTokens: 1
             - id: bilibili-search-service
               uri: lb://bilibili-search-service
               predicates:
                 - Path=/api/search/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@clientIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: ${GATEWAY_SEARCH_RATE:120}
+                    redis-rate-limiter.burstCapacity: ${GATEWAY_SEARCH_BURST:240}
+                    redis-rate-limiter.requestedTokens: 1
             - id: bilibili-operations
               uri: lb://bilibili-video-service
               predicates:
                 - Path=/api/admin/mq/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@clientIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: ${GATEWAY_OPERATIONS_RATE:10}
+                    redis-rate-limiter.burstCapacity: ${GATEWAY_OPERATIONS_BURST:20}
+                    redis-rate-limiter.requestedTokens: 1
+
+gateway:
+  rate-limit:
+    trust-forwarded-for: ${GATEWAY_RATE_LIMIT_TRUST_FORWARDED_FOR:false}
 

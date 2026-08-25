@@ -133,13 +133,21 @@ function closeDanmuSocket() {
   }
 }
 
-function connectDanmuSocket() {
+async function connectDanmuSocket() {
   const currentVideoId = videoId.value
   if (!Number.isInteger(currentVideoId) || currentVideoId <= 0) return
   const generation = socketGeneration
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const token = auth.token
-  const query = token ? `?token=${encodeURIComponent(token)}` : ''
+  let query = ''
+  if (auth.isLoggedIn) {
+    try {
+      const ticket = (await danmuApi.websocketTicket(currentVideoId)).data.ticket
+      query = `?ticket=${encodeURIComponent(ticket)}`
+    } catch {
+      // Public danmu viewing remains available when the authenticated ticket cannot be issued.
+    }
+  }
+  if (generation !== socketGeneration) return
   const socket = new WebSocket(`${protocol}//${location.host}/api/danmu/ws/${currentVideoId}${query}`)
   danmuSocket.value = socket
 

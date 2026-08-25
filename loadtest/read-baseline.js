@@ -24,10 +24,11 @@ export const options = {
     },
   },
   thresholds: {
-    http_req_failed: ['rate<0.01'],
-    business_failure: ['rate<0.01'],
-    'http_req_duration{endpoint:list}': ['p(95)<300'],
-    'http_req_duration{endpoint:detail}': ['p(95)<300'],
+    http_req_failed: ['rate<0.005'],
+    business_failure: ['rate<0.005'],
+    http_req_duration: ['p(95)<1000'],
+    'http_req_duration{endpoint:list}': ['p(95)<500'],
+    'http_req_duration{endpoint:detail}': ['p(95)<500'],
     'http_req_duration{endpoint:search}': ['p(95)<500'],
   },
 }

@@ -3,6 +3,7 @@ package com.gary.bilibili.search.service.impl;
 import com.gary.bilibili.common.exception.BusinessException;
 import com.gary.bilibili.search.document.VideoDocument;
 import com.gary.bilibili.search.model.SearchPage;
+import com.gary.bilibili.search.service.SearchResultCache;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
@@ -11,6 +12,7 @@ import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.redis.core.script.RedisScript;
 
 import java.util.List;
 import java.util.Set;
@@ -21,6 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class SearchServiceImplTest {
@@ -28,13 +31,16 @@ class SearchServiceImplTest {
     private ElasticsearchOperations elasticsearchOperations;
     private ZSetOperations<String, String> zSetOperations;
     private SearchHits<VideoDocument> searchHits;
+    private StringRedisTemplate stringRedisTemplate;
+    private SearchResultCache searchResultCache;
     private SearchServiceImpl searchService;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
     void setUp() {
         elasticsearchOperations = mock(ElasticsearchOperations.class);
-        StringRedisTemplate stringRedisTemplate = mock(StringRedisTemplate.class);
+        stringRedisTemplate = mock(StringRedisTemplate.class);
+        searchResultCache = mock(SearchResultCache.class);
         zSetOperations = mock(ZSetOperations.class);
         searchHits = mock(SearchHits.class);
         when(stringRedisTemplate.opsForZSet()).thenReturn(zSetOperations);
@@ -42,7 +48,7 @@ class SearchServiceImplTest {
                 .thenReturn(searchHits);
         when(searchHits.getSearchHits()).thenReturn(List.of());
         searchService = new SearchServiceImpl(
-                elasticsearchOperations, stringRedisTemplate, 100);
+                elasticsearchOperations, stringRedisTemplate, 100, searchResultCache);
     }
 
     @Test
@@ -65,7 +71,22 @@ class SearchServiceImplTest {
                     assertThat(item.getId()).isEqualTo(10001L);
                     assertThat(item.getViewCount()).isEqualTo(1000L);
                 });
-        verify(zSetOperations).incrementScore("search:hot", "SpringBoot", 1D);
+        verify(stringRedisTemplate).execute(any(RedisScript.class),
+                eq(List.of("search:hot")), eq("SpringBoot"), eq("100"));
+        verify(searchResultCache).put("SpringBoot", 1L, "hot", 1, 20, result);
+    }
+
+    @Test
+    void shouldReturnCachedSearchResultWithoutElasticsearchRoundTrip() {
+        SearchPage cached = new SearchPage();
+        cached.setRecords(List.of());
+        cached.setTotal(8L);
+        when(searchResultCache.get("SpringBoot", null, "default", 1, 20)).thenReturn(cached);
+
+        SearchPage result = searchService.searchVideo(" SpringBoot ", null, "default", 1, 20);
+
+        assertThat(result).isSameAs(cached);
+        verifyNoInteractions(elasticsearchOperations);
     }
 
     @Test

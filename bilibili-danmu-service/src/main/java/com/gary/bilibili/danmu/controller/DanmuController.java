@@ -4,9 +4,11 @@ import com.gary.bilibili.common.result.Result;
 import com.gary.bilibili.danmu.dto.DanmuSendDTO;
 import com.gary.bilibili.danmu.model.DanmuPage;
 import com.gary.bilibili.danmu.service.DanmuService;
+import com.gary.bilibili.danmu.service.DanmuWebSocketTicketService;
 import com.gary.bilibili.danmu.vo.DanmuCountVO;
 import com.gary.bilibili.danmu.vo.DanmuListVO;
 import com.gary.bilibili.danmu.vo.DanmuSendVO;
+import com.gary.bilibili.danmu.vo.DanmuWebSocketTicketVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -27,9 +29,12 @@ import java.util.List;
 public class DanmuController {
 
     private final DanmuService danmuService;
+    private final DanmuWebSocketTicketService webSocketTicketService;
 
-    public DanmuController(DanmuService danmuService) {
+    public DanmuController(DanmuService danmuService,
+                           DanmuWebSocketTicketService webSocketTicketService) {
         this.danmuService = danmuService;
+        this.webSocketTicketService = webSocketTicketService;
     }
 
     @GetMapping("/list/{videoId}")
@@ -52,5 +57,15 @@ public class DanmuController {
     @GetMapping("/count/{videoId}")
     public Result<DanmuCountVO> getCount(@PathVariable @Min(1) Long videoId) {
         return Result.ok(danmuService.getCount(videoId));
+    }
+
+    @PostMapping("/ws-ticket/{videoId}")
+    public Result<DanmuWebSocketTicketVO> issueWebSocketTicket(
+            @PathVariable @Min(1) Long videoId) {
+        DanmuWebSocketTicketService.IssuedTicket ticket = webSocketTicketService.issue(videoId);
+        DanmuWebSocketTicketVO result = new DanmuWebSocketTicketVO();
+        result.setTicket(ticket.value());
+        result.setExpiresIn(ticket.expiresIn());
+        return Result.ok(result);
     }
 }

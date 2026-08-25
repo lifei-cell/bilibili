@@ -32,7 +32,7 @@ export interface UserProfile {
   isFollowing: boolean
 }
 
-export interface LoginResult { token: string; user: UserInfo }
+export interface LoginResult { token: string; expiresIn: number; user: UserInfo }
 
 export interface VideoCategory {
   id: number
