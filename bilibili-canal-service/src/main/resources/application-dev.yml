@@ -1,0 +1,19 @@
+spring:
+  elasticsearch:
+    uris: ${SPRING_ELASTICSEARCH_URIS:http://localhost:9200}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6380}
+      password: ${SPRING_DATA_REDIS_PASSWORD:redis123}
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR:localhost:8848}
+
+rocketmq:
+  name-server: ${ROCKETMQ_NAME_SERVER:localhost:9876}
+
+canal:
+  server:
+    host: ${CANAL_SERVER_HOST:localhost}

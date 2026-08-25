@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3307/bilibili?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6380}
+      password: ${SPRING_DATA_REDIS_PASSWORD:redis123}
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR:localhost:8848}
+
+rocketmq:
+  name-server: ${ROCKETMQ_NAME_SERVER:localhost:9876}
+
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  public-endpoint: ${MINIO_PUBLIC_ENDPOINT:http://localhost:9000}

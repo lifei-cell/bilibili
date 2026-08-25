@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD}
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR}
+        username: ${SPRING_CLOUD_NACOS_USERNAME}
+        password: ${SPRING_CLOUD_NACOS_PASSWORD}

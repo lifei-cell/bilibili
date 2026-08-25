@@ -4,6 +4,8 @@
 spring:
   application:
     name: bilibili-social-service
+  profiles:
+    default: dev
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/bilibili?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
@@ -19,6 +21,11 @@ spring:
       discovery:
         server-addr: ${SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR:nacos:8848}
         fail-fast: ${SPRING_CLOUD_NACOS_DISCOVERY_FAIL_FAST:false}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
 
 rocketmq:
   name-server: ${ROCKETMQ_NAME_SERVER:rocketmq-namesrv:9876}

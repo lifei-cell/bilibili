@@ -14,6 +14,10 @@
     <packaging>jar</packaging>
     <name>bilibili-common</name>
 
+    <properties>
+        <jacoco.skip>true</jacoco.skip>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>

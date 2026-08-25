@@ -4,6 +4,8 @@
 spring:
   application:
     name: bilibili-gateway
+  profiles:
+    default: dev
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:redis}

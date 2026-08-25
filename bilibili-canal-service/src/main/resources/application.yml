@@ -4,6 +4,8 @@
 spring:
   application:
     name: bilibili-canal-service
+  profiles:
+    default: dev
   elasticsearch:
     uris: ${SPRING_ELASTICSEARCH_URIS:http://elasticsearch:9200}
   data:

@@ -5,6 +5,7 @@
 .eclipse/
 
 # === Maven ===
+.m2/
 target/
 *.class
 *.jar
@@ -13,6 +14,7 @@ target/
 # === Node / Frontend ===
 node_modules/
 dist/
+coverage/
 *.tsbuildinfo
 
 # === Environment ===

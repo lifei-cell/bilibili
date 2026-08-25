@@ -72,7 +72,7 @@ flowchart LR
 | 对象存储 | MinIO |
 | 数据同步 | Canal 1.1.8 |
 | 反向代理 | Nginx 1.27 |
-| 构建与部署 | Maven、Docker Compose |
+| 构建与部署 | Maven、Flyway、Testcontainers、GitHub Actions、Docker Compose |
 
 ## 模块说明
 
@@ -105,6 +105,45 @@ mvn -version
 docker version
 docker compose version
 ```
+
+## 工程质量基线
+
+后端统一以 `verify` 作为提交门禁，包含编译、单元测试、Failsafe 集成测试、Testcontainers API E2E 和 JaCoCo 覆盖率检查：
+
+```bash
+mvn --batch-mode --no-transfer-progress verify
+```
+
+API E2E 会临时启动 MySQL 8.4 与 Redis 7.4，验证 Flyway 建表、用户注册、令牌鉴权、当前用户查询和账号登录；本机需要 Docker 可用。业务模块 JaCoCo 行覆盖率下限为 20%，DTO、实体、配置和启动类等结构性代码不计入门禁。
+
+前端统一质量门禁包含 ESLint、Vitest 覆盖率、TypeScript 类型检查和生产构建：
+
+```bash
+cd bilibili-web
+npm ci
+npm run quality
+```
+
+GitHub Actions 会对 Push 和 Pull Request 并行执行后端、前端与 Compose 配置校验，工作流见 `.github/workflows/ci.yml`。
+
+## 分环境配置
+
+所有服务默认使用 `dev`，并提供以下配置：
+
+| Profile | 用途 | 配置特点 |
+| --- | --- | --- |
+| `dev` | 本机开发 | 连接宿主机端口，保留本地开发默认值 |
+| `docker` | Compose 部署 | 使用容器服务名和内部端口 |
+| `prod` | 生产部署 | 数据库、Redis、Nacos、MQ、对象存储等敏感项必须由环境变量注入 |
+| `test` | 自动化测试 | 仅测试资源使用，禁用服务发现并由 Testcontainers 注入依赖地址 |
+
+生产环境变量模板见 `.env.prod.example`，不要将真实密钥提交到仓库：
+
+```bash
+SPRING_PROFILES_ACTIVE=prod
+```
+
+MySQL 表结构由 `bilibili-common/src/main/resources/db/migration/V1__baseline.sql` 统一管理。Flyway 在用户、视频、弹幕和社交服务启动时自动校验并迁移；对已有非空数据库使用 baseline 版本 `0` 接管。
 
 ## 快速启动
 
@@ -171,7 +210,7 @@ curl http://localhost:8080/actuator/health
 {"groups":["liveness","readiness"],"status":"UP"}
 ```
 
-如果使用已有 MySQL 数据卷，需要手动执行一次 `docker/mysql/migration/001-p0-video-transcode.sql`，为上传转码 Outbox 创建任务表；全新数据卷会由 `docker/mysql/init/02-schema.sql` 自动创建。
+全新 MySQL 数据卷仍由 `docker/mysql/init/02-schema.sql` 完成容器初始化；服务启动后 Flyway 会登记并校验版本。已有数据卷也由 Flyway 基于版本 `0` 接管，无需手工重复执行基线脚本。
 
 ## 访问地址
 
@@ -377,10 +416,10 @@ docker compose -p bilibili -f docker-compose.yml -f docker-compose.service.yml d
 
 ## 测试
 
-运行全部测试：
+运行完整后端质量门禁：
 
 ```bash
-mvn test
+mvn verify
 ```
 
 仅测试单个模块，并同时构建其依赖模块：
@@ -389,7 +428,7 @@ mvn test
 mvn -pl bilibili-video-service -am test
 ```
 
-当前测试集包含 49 个测试，覆盖视频上传与业务逻辑、转码 Outbox 投递与状态反馈、播放量幂等、弹幕批量持久化、社交互动、搜索和 Canal 同步等核心场景。
+当前测试集包含 49 个单元测试和 1 个 Testcontainers API E2E，覆盖用户注册登录、Flyway 迁移、视频上传与业务逻辑、转码 Outbox 投递与状态反馈、播放量幂等、弹幕批量持久化、社交互动、搜索和 Canal 同步等核心场景。
 
 ## 项目结构
 
