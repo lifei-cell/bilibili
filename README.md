@@ -202,10 +202,10 @@ npm run dev
 首次启动或更换 RocketMQ 数据环境后执行：
 
 ```bash
-docker exec bilibili-rocketmq-broker sh mqadmin updateTopic -n rocketmq-namesrv:9876 -c DefaultCluster -t video-transcode
-docker exec bilibili-rocketmq-broker sh mqadmin updateTopic -n rocketmq-namesrv:9876 -c DefaultCluster -t video-view
-docker exec bilibili-rocketmq-broker sh mqadmin updateTopic -n rocketmq-namesrv:9876 -c DefaultCluster -t danmu-persist
-docker exec bilibili-rocketmq-broker sh mqadmin updateTopic -n rocketmq-namesrv:9876 -c DefaultCluster -t cache-sync
+docker exec bilibili-rocketmq-broker sh /home/rocketmq/rocketmq-5.3.1/bin/mqadmin updateTopic -n rocketmq-namesrv:9876 -c DefaultCluster -t video-transcode
+docker exec bilibili-rocketmq-broker sh /home/rocketmq/rocketmq-5.3.1/bin/mqadmin updateTopic -n rocketmq-namesrv:9876 -c DefaultCluster -t video-view
+docker exec bilibili-rocketmq-broker sh /home/rocketmq/rocketmq-5.3.1/bin/mqadmin updateTopic -n rocketmq-namesrv:9876 -c DefaultCluster -t danmu-persist
+docker exec bilibili-rocketmq-broker sh /home/rocketmq/rocketmq-5.3.1/bin/mqadmin updateTopic -n rocketmq-namesrv:9876 -c DefaultCluster -t cache-sync
 ```
 
 Topic 创建后，因 Topic 尚未就绪而重启的服务会在 `restart: unless-stopped` 策略下自动恢复。也可以主动执行：

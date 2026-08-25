@@ -82,7 +82,8 @@ services:
     container_name: bilibili-rocketmq-namesrv
     restart: unless-stopped
     environment:
-      JAVA_OPT_EXT: -Xms128m -Xmx256m -XX:+UseG1GC
+      # runserver.sh already selects CMS on the JDK 8 image; adding G1 causes a collector conflict.
+      JAVA_OPT_EXT: -Xms128m -Xmx256m
     command: sh mqnamesrv
     ports:
       - "9876:9876"
