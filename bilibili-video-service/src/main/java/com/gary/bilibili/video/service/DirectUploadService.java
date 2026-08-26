@@ -16,6 +16,8 @@ import io.minio.MinioClient;
 import io.minio.StatObjectArgs;
 import io.minio.StatObjectResponse;
 import io.minio.http.Method;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class DirectUploadService {
     private static final int EXPIRY_MINUTES = 15;
+    private static final Logger log = LoggerFactory.getLogger(DirectUploadService.class);
 
     private final MinioClient originClient;
     private final MinioClient publicClient;
@@ -78,6 +81,8 @@ public class DirectUploadService {
             result.setContentType(request.getContentType());
             return result;
         } catch (Exception exception) {
+            log.warn("Failed to create direct upload URL, uploadId={}, objectName={}",
+                    uploadId, objectName, exception);
             throw new BusinessException("创建直传凭证失败");
         }
     }

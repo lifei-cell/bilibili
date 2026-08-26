@@ -37,8 +37,12 @@ public class MinIOConfig {
     @Bean("publicMinioClient")
     public MinioClient publicMinioClient(@Value("${minio.public-endpoint}") String endpoint,
                                          @Value("${minio.access-key}") String accessKey,
-                                         @Value("${minio.secret-key}") String secretKey) {
-        return MinioClient.builder().endpoint(endpoint).credentials(accessKey, secretKey).build();
+                                         @Value("${minio.secret-key}") String secretKey,
+                                         @Value("${minio.region:us-east-1}") String region) {
+        // The public endpoint may only be reachable by the browser. Supplying the region
+        // prevents the SDK from contacting that endpoint while generating a signed URL.
+        return MinioClient.builder().endpoint(endpoint).credentials(accessKey, secretKey)
+                .region(region).build();
     }
 
     @Bean

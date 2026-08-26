@@ -64,7 +64,7 @@ function Wait-Until {
 
 function Get-MySqlScalar {
     param([Parameter(Mandatory)][string]$Sql)
-    $value = & docker exec bilibili-mysql mysql -N -B -uroot -proot bilibili -e $Sql 2>$null
+    $value = & docker exec -e MYSQL_PWD=root bilibili-mysql mysql -N -B -uroot bilibili -e $Sql
     if ($LASTEXITCODE -ne 0) { throw "MySQL query failed: $Sql" }
     return ($value | Select-Object -Last 1).Trim()
 }
