@@ -27,7 +27,8 @@ import java.util.UUID;
 @RocketMQMessageListener(
         topic = UploadConstant.TRANSCODE_TOPIC,
         consumerGroup = "video-transcode-consumer",
-        consumeThreadNumber = 4)
+        // One native encoder per one-CPU container; scale out with additional service replicas.
+        consumeThreadNumber = 1)
 public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMessage> {
 
     private static final Logger log = LoggerFactory.getLogger(VideoTranscodeConsumer.class);

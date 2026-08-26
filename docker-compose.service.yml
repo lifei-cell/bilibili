@@ -82,6 +82,9 @@ services:
 
   bilibili-video-service:
     <<: *java-resource
+    # FFmpeg runs beside the JVM; 1080P x264 encoding needs native-memory headroom.
+    mem_limit: 1536m
+    cpus: 2.00
     image: bilibili-video-service:0.0.1
     build:
       context: ./bilibili-video-service
@@ -89,6 +92,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *java-environment
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Shanghai -XX:MaxRAMPercentage=40 -XX:InitialRAMPercentage=15 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError
       SERVER_PORT: 8082
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
