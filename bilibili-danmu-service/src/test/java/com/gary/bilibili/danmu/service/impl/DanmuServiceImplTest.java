@@ -2,6 +2,7 @@ package com.gary.bilibili.danmu.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.gary.bilibili.common.exception.BusinessException;
+import com.gary.bilibili.common.reliability.OutboxEventService;
 import com.gary.bilibili.danmu.dto.DanmuSendDTO;
 import com.gary.bilibili.danmu.entity.Danmu;
 import com.gary.bilibili.danmu.mapper.DanmuMapper;
@@ -10,7 +11,6 @@ import com.gary.bilibili.danmu.model.DanmuPage;
 import com.gary.bilibili.danmu.model.UserBrief;
 import com.gary.bilibili.danmu.netty.DanmuBroadcastPublisher;
 import com.gary.bilibili.danmu.vo.DanmuSendVO;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -37,7 +37,7 @@ class DanmuServiceImplTest {
     private DanmuMapper danmuMapper;
     private StringRedisTemplate stringRedisTemplate;
     private ValueOperations<String, String> valueOperations;
-    private RocketMQTemplate rocketMQTemplate;
+    private OutboxEventService outboxEventService;
     private DanmuBroadcastPublisher broadcastPublisher;
     private DanmuServiceImpl danmuService;
 
@@ -47,7 +47,7 @@ class DanmuServiceImplTest {
         danmuMapper = mock(DanmuMapper.class);
         stringRedisTemplate = mock(StringRedisTemplate.class);
         valueOperations = mock(ValueOperations.class);
-        rocketMQTemplate = mock(RocketMQTemplate.class);
+        outboxEventService = mock(OutboxEventService.class);
         broadcastPublisher = mock(DanmuBroadcastPublisher.class);
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         when(stringRedisTemplate.execute(
@@ -56,7 +56,7 @@ class DanmuServiceImplTest {
         danmuService = new DanmuServiceImpl(
                 danmuMapper,
                 stringRedisTemplate,
-                rocketMQTemplate,
+                outboxEventService,
                 broadcastPublisher);
     }
 
@@ -78,7 +78,8 @@ class DanmuServiceImplTest {
 
             assertThat(result.getAccepted()).isTrue();
             assertThat(result.getDanmuId()).isNotNull();
-            verify(rocketMQTemplate).convertAndSend(
+            verify(outboxEventService).appendStandalone(
+                    eq("danmu"), any(String.class), eq("DANMU_ACCEPTED"),
                     eq("danmu-persist"), any(DanmuPersistMessage.class));
             verify(broadcastPublisher).publish(any());
         }
@@ -95,7 +96,9 @@ class DanmuServiceImplTest {
             DanmuSendVO result = danmuService.send(buildSendRequest());
 
             assertThat(result.getDanmuId()).isEqualTo(90001L);
-            verify(rocketMQTemplate, never()).convertAndSend(any(String.class), any(Object.class));
+            verify(outboxEventService, never()).appendStandalone(
+                    any(String.class), any(String.class), any(String.class),
+                    any(String.class), any(Object.class));
             verify(broadcastPublisher, never()).publish(any());
         }
     }

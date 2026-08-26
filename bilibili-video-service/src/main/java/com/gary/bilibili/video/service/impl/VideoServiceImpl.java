@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gary.bilibili.common.exception.BusinessException;
+import com.gary.bilibili.common.reliability.OutboxEventService;
 import com.gary.bilibili.video.constant.VideoConstant;
 import com.gary.bilibili.video.dto.VideoPublishDTO;
 import com.gary.bilibili.video.dto.VideoUpdateDTO;
@@ -29,7 +30,6 @@ import com.gary.bilibili.video.vo.VideoPlayVO;
 import com.gary.bilibili.video.vo.VideoPublishVO;
 import com.gary.bilibili.video.vo.VideoQualityVO;
 import com.gary.bilibili.video.vo.VideoStatsVO;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -56,7 +56,7 @@ public class VideoServiceImpl implements VideoService {
     private final VideoStatsMapper videoStatsMapper;
     private final VideoTranscodeTaskMapper videoTranscodeTaskMapper;
     private final StringRedisTemplate stringRedisTemplate;
-    private final RocketMQTemplate rocketMQTemplate;
+    private final OutboxEventService outboxEventService;
     private final ObjectMapper objectMapper;
     private final VideoBloomFilter videoBloomFilter;
     private final VideoListCache videoListCache;
@@ -65,7 +65,7 @@ public class VideoServiceImpl implements VideoService {
                             VideoStatsMapper videoStatsMapper,
                             VideoTranscodeTaskMapper videoTranscodeTaskMapper,
                             StringRedisTemplate stringRedisTemplate,
-                            RocketMQTemplate rocketMQTemplate,
+                            OutboxEventService outboxEventService,
                             ObjectMapper objectMapper,
                             VideoBloomFilter videoBloomFilter,
                             VideoListCache videoListCache) {
@@ -73,7 +73,7 @@ public class VideoServiceImpl implements VideoService {
         this.videoStatsMapper = videoStatsMapper;
         this.videoTranscodeTaskMapper = videoTranscodeTaskMapper;
         this.stringRedisTemplate = stringRedisTemplate;
-        this.rocketMQTemplate = rocketMQTemplate;
+        this.outboxEventService = outboxEventService;
         this.objectMapper = objectMapper;
         this.videoBloomFilter = videoBloomFilter;
         this.videoListCache = videoListCache;
@@ -423,9 +423,11 @@ public class VideoServiceImpl implements VideoService {
         message.setRequestId(UUID.randomUUID().toString());
         message.setCreateTime(LocalDateTime.now());
         try {
-            rocketMQTemplate.convertAndSend(VideoConstant.VIEW_TOPIC, message);
+            outboxEventService.appendStandalone(
+                    "video", videoId.toString(), "VIDEO_VIEWED",
+                    VideoConstant.VIEW_TOPIC, message);
         } catch (Exception exception) {
-            log.error("Send video view message failed, videoId={}", videoId, exception);
+            log.error("Append video view outbox event failed, videoId={}", videoId, exception);
         }
     }
 

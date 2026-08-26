@@ -86,6 +86,14 @@ public class FailedMessageRepository {
                 """, id) == 1;
     }
 
+    public void markResolved(String topic, String consumerGroup, String messageKey,
+                             String payload) {
+        jdbcTemplate.update("""
+                UPDATE mq_failed_message SET status = 'RESOLVED', update_time = CURRENT_TIMESTAMP
+                WHERE fingerprint = ? AND status = 'FAILED'
+                """, fingerprint(topic, consumerGroup, messageKey, payload));
+    }
+
     private static LocalDateTime toLocalDateTime(Timestamp timestamp) {
         return timestamp == null ? null : timestamp.toLocalDateTime();
     }

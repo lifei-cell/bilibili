@@ -4,6 +4,15 @@ on:
   push:
     branches: [master, "codex/**"]
   pull_request:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      run_fault_drill:
+        description: Run MQ, Redis and Elasticsearch fault recovery drills
+        required: false
+        default: true
+        type: boolean
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -66,4 +75,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate merged Compose model
-        run: docker compose -f docker-compose.yml -f docker-compose.service.yml config --quiet
+        run: docker compose -f docker-compose.yml -f docker-compose.service.yml -f docker-compose.e2e.yml config --quiet
+
+  reliability-e2e:
+    name: Reliability Compose E2E
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Run core journey and fault recovery
+        shell: pwsh
+        run: |
+          $faultArgs = @()
+          if ('${{ github.event_name }}' -eq 'schedule' -or '${{ inputs.run_fault_drill }}' -eq 'true') {
+            $faultArgs += '-RunFaultDrill'
+          }
+          ./scripts/e2e/reliability-e2e.ps1 @faultArgs
+      - name: Collect service logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.yml -f docker-compose.service.yml -f docker-compose.e2e.yml logs --no-color --tail 300 > reliability-e2e.log
+      - name: Upload E2E diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reliability-e2e-diagnostics
+          path: reliability-e2e.log

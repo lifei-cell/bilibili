@@ -8,7 +8,7 @@
 
 - 手机验证码、注册、登录、退出和用户资料管理
 - 视频分片上传、秒传、合并、发布、播放和列表查询
-- RocketMQ Outbox 异步投递与 FFmpeg/MinIO 视频转码
+- 通用事务 Outbox、消费 Inbox 幂等与 FFmpeg/MinIO 视频转码
 - HTTP 弹幕接口与 Netty WebSocket 弹幕通道（一次性 Ticket 鉴权）
 - 数据库驱动的视频分类接口与前端动态分区
 - 关注、点赞、评论、收藏和收藏夹管理
@@ -167,6 +167,15 @@ curl -X POST -H "X-Admin-Token: change-me-in-production" \
 ```
 
 生产环境必须设置高强度 `OPERATIONS_ADMIN_TOKEN`。告警处置、DLQ 重放边界和排障查询见 `docs/runbooks/observability-and-reliability.md`。
+
+CDC 对账和 Elasticsearch 全量重建同样使用管理员令牌：
+
+```bash
+curl -H "X-Admin-Token: change-me-in-production" \
+  "http://localhost:8080/api/admin/reliability/cdc/reconcile"
+curl -X POST -H "X-Admin-Token: change-me-in-production" \
+  "http://localhost:8080/api/admin/reliability/es/rebuild"
+```
 
 ## 快速启动
 
@@ -460,7 +469,17 @@ mvn verify
 mvn -pl bilibili-video-service -am test
 ```
 
-当前测试集包含 49 个单元测试和 1 个 Testcontainers API E2E，覆盖用户注册登录、Flyway 迁移、视频上传与业务逻辑、转码 Outbox 投递与状态反馈、播放量幂等、弹幕批量持久化、社交互动、搜索和 Canal 同步等核心场景。
+可靠性 Compose 回归覆盖“上传 → 转码 → 发布 → 播放 → 搜索 → 评论/点赞/弹幕”完整链路：
+
+```powershell
+# 核心链路
+./scripts/e2e/reliability-e2e.ps1
+
+# 同时执行 RocketMQ、Redis、Elasticsearch 短时故障演练
+./scripts/e2e/reliability-e2e.ps1 -RunFaultDrill
+```
+
+脚本会生成真实 MP4、验证 Outbox/Inbox 与 CDC 对账、清理业务测试数据并停止本次服务。详细恢复边界见 [可靠性闭环 Runbook](./docs/runbooks/reliability-closure.md)。
 
 ## 项目结构
 

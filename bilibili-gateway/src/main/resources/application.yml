@@ -47,6 +47,17 @@ spring:
               enabled: true
               lower-case-service-id: true
           routes:
+            - id: bilibili-reliability-operations
+              uri: lb://bilibili-canal-service
+              predicates:
+                - Path=/api/admin/reliability/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@clientIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: ${GATEWAY_OPERATIONS_RATE:10}
+                    redis-rate-limiter.burstCapacity: ${GATEWAY_OPERATIONS_BURST:20}
+                    redis-rate-limiter.requestedTokens: 1
             - id: bilibili-auth-refresh
               uri: lb://bilibili-user-service
               predicates:
@@ -138,7 +149,7 @@ spring:
             - id: bilibili-operations
               uri: lb://bilibili-video-service
               predicates:
-                - Path=/api/admin/mq/**
+                - Path=/api/admin/mq/**,/api/admin/video/**
               filters:
                 - name: RequestRateLimiter
                   args:

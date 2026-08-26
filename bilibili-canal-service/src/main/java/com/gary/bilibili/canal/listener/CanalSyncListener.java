@@ -6,8 +6,8 @@ import com.alibaba.otter.canal.protocol.Message;
 import com.gary.bilibili.canal.config.CanalProperties;
 import com.gary.bilibili.canal.constant.CanalConstant;
 import com.gary.bilibili.canal.message.CacheSyncEvent;
+import com.gary.bilibili.common.reliability.OutboxEventService;
 import jakarta.annotation.PreDestroy;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -24,15 +24,15 @@ public class CanalSyncListener {
 
     private final CanalConnector canalConnector;
     private final CanalProperties canalProperties;
-    private final RocketMQTemplate rocketMQTemplate;
+    private final OutboxEventService outboxEventService;
     private volatile boolean connected;
 
     public CanalSyncListener(CanalConnector canalConnector,
                              CanalProperties canalProperties,
-                             RocketMQTemplate rocketMQTemplate) {
+                             OutboxEventService outboxEventService) {
         this.canalConnector = canalConnector;
         this.canalProperties = canalProperties;
-        this.rocketMQTemplate = rocketMQTemplate;
+        this.outboxEventService = outboxEventService;
     }
 
     @Scheduled(
@@ -85,16 +85,28 @@ public class CanalSyncListener {
                 && eventType != CanalEntry.EventType.DELETE) {
             return;
         }
+        int rowIndex = 0;
         for (CanalEntry.RowData rowData : rowChange.getRowDatasList()) {
             List<CanalEntry.Column> columns = eventType == CanalEntry.EventType.DELETE
                     ? rowData.getBeforeColumnsList() : rowData.getAfterColumnsList();
             CacheSyncEvent event = new CacheSyncEvent();
+            event.setEventId(buildEventId(entry, rowIndex++));
             event.setDatabase(entry.getHeader().getSchemaName());
             event.setTable(entry.getHeader().getTableName());
             event.setEventType(eventType.name());
             event.setData(toMap(columns));
-            rocketMQTemplate.convertAndSend(CanalConstant.CACHE_SYNC_TOPIC, event);
+            String aggregateId = event.getData().getOrDefault("id",
+                    event.getData().getOrDefault("video_id", "unknown"));
+            outboxEventService.appendStandalone(
+                    event.getEventId(), event.getTable(), aggregateId,
+                    "CDC_" + event.getEventType(), CanalConstant.CACHE_SYNC_TOPIC, event);
         }
+    }
+
+    private String buildEventId(CanalEntry.Entry entry, int rowIndex) {
+        CanalEntry.Header header = entry.getHeader();
+        String file = header.getLogfileName() == null ? "unknown" : header.getLogfileName();
+        return "cdc:" + file + ":" + header.getLogfileOffset() + ":" + rowIndex;
     }
 
     private Map<String, String> toMap(List<CanalEntry.Column> columns) {

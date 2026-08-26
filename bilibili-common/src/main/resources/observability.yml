@@ -77,6 +77,15 @@ reliability:
   mq:
     max-attempts: ${MQ_CONSUME_MAX_ATTEMPTS:3}
     initial-backoff: ${MQ_CONSUME_INITIAL_BACKOFF:100ms}
+    inbox-lease-seconds: ${MQ_INBOX_LEASE_SECONDS:60}
+    rethrow-after-failure: ${MQ_RETHROW_AFTER_FAILURE:true}
+  outbox:
+    batch-size: ${OUTBOX_BATCH_SIZE:50}
+    max-attempts: ${OUTBOX_MAX_ATTEMPTS:100}
+    reclaim-seconds: ${OUTBOX_RECLAIM_SECONDS:60}
+    retry-seconds: ${OUTBOX_RETRY_SECONDS:2}
+    dispatch-interval: ${OUTBOX_DISPATCH_INTERVAL:500}
+    initial-delay: ${OUTBOX_INITIAL_DELAY:3000}
 
 operations:
   admin-token: ${OPERATIONS_ADMIN_TOKEN:change-me-in-production}

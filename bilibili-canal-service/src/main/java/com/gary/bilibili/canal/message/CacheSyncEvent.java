@@ -8,6 +8,7 @@ import java.util.Map;
 @Data
 public class CacheSyncEvent implements Serializable {
 
+    private String eventId;
     private String database;
     private String table;
     private String eventType;

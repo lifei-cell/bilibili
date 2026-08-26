@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gary.bilibili.common.exception.BusinessException;
+import com.gary.bilibili.common.reliability.OutboxEventService;
 import com.gary.bilibili.video.dto.VideoPublishDTO;
 import com.gary.bilibili.video.dto.VideoUpdateDTO;
 import com.gary.bilibili.video.entity.Video;
@@ -22,7 +23,6 @@ import com.gary.bilibili.video.vo.VideoDetailVO;
 import com.gary.bilibili.video.vo.VideoPlayVO;
 import com.gary.bilibili.video.vo.VideoPublishVO;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -51,7 +51,7 @@ class VideoServiceImplTest {
     private StringRedisTemplate stringRedisTemplate;
     private ValueOperations<String, String> valueOperations;
     private HashOperations<String, Object, Object> hashOperations;
-    private RocketMQTemplate rocketMQTemplate;
+    private OutboxEventService outboxEventService;
     private VideoBloomFilter videoBloomFilter;
     private VideoListCache videoListCache;
     private VideoServiceImpl videoService;
@@ -68,7 +68,7 @@ class VideoServiceImplTest {
         stringRedisTemplate = mock(StringRedisTemplate.class);
         valueOperations = mock(ValueOperations.class);
         hashOperations = mock(HashOperations.class);
-        rocketMQTemplate = mock(RocketMQTemplate.class);
+        outboxEventService = mock(OutboxEventService.class);
         videoBloomFilter = mock(VideoBloomFilter.class);
         videoListCache = mock(VideoListCache.class);
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
@@ -79,7 +79,7 @@ class VideoServiceImplTest {
                 videoStatsMapper,
                 videoTranscodeTaskMapper,
                 stringRedisTemplate,
-                rocketMQTemplate,
+                outboxEventService,
                 new ObjectMapper(),
                 videoBloomFilter,
                 videoListCache);
@@ -165,7 +165,9 @@ class VideoServiceImplTest {
         assertThat(result.getDefaultQuality()).isEqualTo("1080P");
         assertThat(result.getQualities()).singleElement()
                 .satisfies(item -> assertThat(item.getUrl()).isEqualTo(video.getPlayUrl()));
-        verify(rocketMQTemplate).convertAndSend(eq("video-view"), any(Object.class));
+        verify(outboxEventService).appendStandalone(
+                eq("video"), eq("10001"), eq("VIDEO_VIEWED"),
+                eq("video-view"), any(Object.class));
     }
 
     @Test

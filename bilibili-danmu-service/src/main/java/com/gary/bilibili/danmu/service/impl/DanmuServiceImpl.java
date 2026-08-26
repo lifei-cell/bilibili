@@ -3,6 +3,7 @@ package com.gary.bilibili.danmu.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.gary.bilibili.common.exception.BusinessException;
+import com.gary.bilibili.common.reliability.OutboxEventService;
 import com.gary.bilibili.danmu.constant.DanmuConstant;
 import com.gary.bilibili.danmu.dto.DanmuSendDTO;
 import com.gary.bilibili.danmu.entity.Danmu;
@@ -18,7 +19,6 @@ import com.gary.bilibili.danmu.vo.DanmuCountVO;
 import com.gary.bilibili.danmu.vo.DanmuListVO;
 import com.gary.bilibili.danmu.vo.DanmuSendVO;
 import com.gary.bilibili.danmu.vo.DanmuTimeCountVO;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -56,16 +56,16 @@ public class DanmuServiceImpl implements DanmuService {
 
     private final DanmuMapper danmuMapper;
     private final StringRedisTemplate stringRedisTemplate;
-    private final RocketMQTemplate rocketMQTemplate;
+    private final OutboxEventService outboxEventService;
     private final DanmuBroadcastPublisher broadcastPublisher;
 
     public DanmuServiceImpl(DanmuMapper danmuMapper,
                             StringRedisTemplate stringRedisTemplate,
-                            RocketMQTemplate rocketMQTemplate,
+                            OutboxEventService outboxEventService,
                             DanmuBroadcastPublisher broadcastPublisher) {
         this.danmuMapper = danmuMapper;
         this.stringRedisTemplate = stringRedisTemplate;
-        this.rocketMQTemplate = rocketMQTemplate;
+        this.outboxEventService = outboxEventService;
         this.broadcastPublisher = broadcastPublisher;
     }
 
@@ -124,10 +124,12 @@ public class DanmuServiceImpl implements DanmuService {
         DanmuPersistMessage message = buildPersistMessage(danmuId, userId, request, sendTime);
         DanmuBroadcastVO broadcast = buildBroadcast(message);
         try {
-            rocketMQTemplate.convertAndSend(DanmuConstant.PERSIST_TOPIC, message);
+            outboxEventService.appendStandalone(
+                    "danmu", danmuId.toString(), "DANMU_ACCEPTED",
+                    DanmuConstant.PERSIST_TOPIC, message);
         } catch (Exception exception) {
             releaseRequest(userId, requestId, danmuId);
-            log.error("Send danmu persist message failed, danmuId={}", danmuId, exception);
+            log.error("Append danmu persist outbox event failed, danmuId={}", danmuId, exception);
             throw new BusinessException("弹幕发送失败，请稍后重试");
         }
 

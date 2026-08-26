@@ -33,7 +33,11 @@ public class FailedMessageAdminService {
 
     public FailedMessagePage find(String topic, String status, int page, int size) {
         String safeTopic = topic == null ? "" : topic.trim();
-        String safeStatus = "REPLAYED".equalsIgnoreCase(status) ? "REPLAYED" : "FAILED";
+        String requestedStatus = status == null ? "" : status.trim().toUpperCase();
+        String safeStatus = switch (requestedStatus) {
+            case "REPLAYED", "RESOLVED" -> requestedStatus;
+            default -> "FAILED";
+        };
         int safePage = Math.max(1, page);
         int safeSize = Math.min(100, Math.max(1, size));
         List<FailedMessage> records = repository.findFailures(

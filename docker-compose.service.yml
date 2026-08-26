@@ -29,6 +29,12 @@ services:
       GATEWAY_RATE_LIMIT_TRUST_FORWARDED_FOR: ${GATEWAY_RATE_LIMIT_TRUST_FORWARDED_FOR:-false}
     ports:
       - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 20s
     depends_on:
       - nacos
       - redis
@@ -56,6 +62,12 @@ services:
       SPRING_DATA_REDIS_PASSWORD: redis123
     ports:
       - "8081:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8081/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 25s
     depends_on:
       mysql:
         condition: service_healthy
@@ -91,13 +103,25 @@ services:
       MINIO_SECRET_KEY: minioadmin
     ports:
       - "8082:8082"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8082/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 25s
     depends_on:
-      - mysql
-      - redis
-      - nacos
-      - rocketmq-namesrv
-      - rocketmq-broker
-      - minio
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nacos:
+        condition: service_started
+      rocketmq-namesrv:
+        condition: service_started
+      rocketmq-broker:
+        condition: service_healthy
+      minio:
+        condition: service_started
     networks:
       - bilibili-net
 
@@ -124,12 +148,23 @@ services:
     ports:
       - "8083:8083"
       - "8093:8093"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8083/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 25s
     depends_on:
-      - mysql
-      - redis
-      - nacos
-      - rocketmq-namesrv
-      - rocketmq-broker
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nacos:
+        condition: service_started
+      rocketmq-namesrv:
+        condition: service_started
+      rocketmq-broker:
+        condition: service_healthy
     networks:
       - bilibili-net
 
@@ -154,12 +189,23 @@ services:
       ROCKETMQ_NAME_SERVER: rocketmq-namesrv:9876
     ports:
       - "8084:8084"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8084/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 25s
     depends_on:
-      - mysql
-      - redis
-      - nacos
-      - rocketmq-namesrv
-      - rocketmq-broker
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nacos:
+        condition: service_started
+      rocketmq-namesrv:
+        condition: service_started
+      rocketmq-broker:
+        condition: service_healthy
     networks:
       - bilibili-net
 
@@ -181,6 +227,12 @@ services:
       SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
     ports:
       - "8085:8085"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8085/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 25s
     depends_on:
       redis:
         condition: service_healthy
@@ -216,6 +268,12 @@ services:
       CANAL_DESTINATION: example
     ports:
       - "8086:8086"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8086/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 30s
     depends_on:
       mysql:
         condition: service_healthy
@@ -224,11 +282,11 @@ services:
       nacos:
         condition: service_started
       elasticsearch:
-        condition: service_started
+        condition: service_healthy
       rocketmq-namesrv:
         condition: service_started
       rocketmq-broker:
-        condition: service_started
+        condition: service_healthy
       canal:
         condition: service_started
     networks:

@@ -5,7 +5,7 @@ import com.alibaba.otter.canal.protocol.CanalEntry;
 import com.alibaba.otter.canal.protocol.Message;
 import com.gary.bilibili.canal.config.CanalProperties;
 import com.gary.bilibili.canal.message.CacheSyncEvent;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
+import com.gary.bilibili.common.reliability.OutboxEventService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -13,6 +13,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -22,20 +23,23 @@ class CanalSyncListenerTest {
     @Test
     void shouldPublishRowChangesAndAckCanalBatch() {
         CanalConnector canalConnector = mock(CanalConnector.class);
-        RocketMQTemplate rocketMQTemplate = mock(RocketMQTemplate.class);
+        OutboxEventService outboxEventService = mock(OutboxEventService.class);
         CanalProperties properties = new CanalProperties();
         properties.setFilter("bilibili\\.(video|video_stats)");
         properties.setBatchSize(1000);
         when(canalConnector.getWithoutAck(1000))
                 .thenReturn(new Message(9L, List.of(buildVideoEntry())));
         CanalSyncListener listener = new CanalSyncListener(
-                canalConnector, properties, rocketMQTemplate);
+                canalConnector, properties, outboxEventService);
 
         listener.pullChanges();
 
         ArgumentCaptor<CacheSyncEvent> captor = ArgumentCaptor.forClass(CacheSyncEvent.class);
-        verify(rocketMQTemplate).convertAndSend(eq("cache-sync"), captor.capture());
+        verify(outboxEventService).appendStandalone(
+                anyString(), eq("video"), eq("10001"), eq("CDC_UPDATE"),
+                eq("cache-sync"), captor.capture());
         assertThat(captor.getValue()).satisfies(event -> {
+            assertThat(event.getEventId()).isEqualTo("cdc:mysql-bin.000001:42:0");
             assertThat(event.getTable()).isEqualTo("video");
             assertThat(event.getEventType()).isEqualTo("UPDATE");
             assertThat(event.getData().get("id")).isEqualTo("10001");
@@ -64,6 +68,8 @@ class CanalSyncListenerTest {
         CanalEntry.Header header = CanalEntry.Header.newBuilder()
                 .setSchemaName("bilibili")
                 .setTableName("video")
+                .setLogfileName("mysql-bin.000001")
+                .setLogfileOffset(42L)
                 .build();
         return CanalEntry.Entry.newBuilder()
                 .setHeader(header)

@@ -1,0 +1,40 @@
+CREATE TABLE IF NOT EXISTS reliable_event_outbox (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    event_id VARCHAR(64) NOT NULL,
+    owner VARCHAR(100) NOT NULL,
+    aggregate_type VARCHAR(100) NOT NULL,
+    aggregate_id VARCHAR(191) NOT NULL,
+    event_type VARCHAR(100) NOT NULL,
+    topic VARCHAR(100) NOT NULL,
+    payload_type VARCHAR(255) NOT NULL,
+    payload JSON NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    attempt_count INT NOT NULL DEFAULT 0,
+    available_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    locked_at DATETIME(3) NULL,
+    published_at DATETIME(3) NULL,
+    last_error VARCHAR(500) NULL,
+    create_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    update_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_outbox_event_id (event_id),
+    KEY idx_outbox_dispatch (owner, status, available_at, id),
+    KEY idx_outbox_aggregate (aggregate_type, aggregate_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通用事务 Outbox';
+
+CREATE TABLE IF NOT EXISTS mq_consumed_message (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    topic VARCHAR(100) NOT NULL,
+    consumer_group VARCHAR(100) NOT NULL,
+    message_key VARCHAR(191) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PROCESSING',
+    attempt_count INT NOT NULL DEFAULT 1,
+    locked_until DATETIME(3) NULL,
+    consumed_at DATETIME(3) NULL,
+    last_error VARCHAR(500) NULL,
+    create_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    update_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_mq_inbox (consumer_group, topic, message_key),
+    KEY idx_mq_inbox_status (status, locked_until)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='MQ 消费 Inbox';

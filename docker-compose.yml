@@ -108,6 +108,12 @@ services:
       - "10909:10909"
       - "10911:10911"
       - "10912:10912"
+    healthcheck:
+      test: ["CMD-SHELL", "sh /home/rocketmq/rocketmq-5.3.1/bin/mqadmin clusterList -n rocketmq-namesrv:9876 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 8s
+      retries: 18
+      start_period: 25s
     networks:
       - bilibili-net
 

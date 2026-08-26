@@ -66,6 +66,9 @@ public class CacheSyncConsumer implements RocketMQListener<CacheSyncEvent> {
     }
 
     private String messageKey(CacheSyncEvent event) {
+        if (StringUtils.hasText(event.getEventId())) {
+            return event.getEventId();
+        }
         Object id = event.getData().getOrDefault("id",
                 event.getData().getOrDefault("video_id", "unknown"));
         return event.getTable() + ":" + event.getEventType() + ":" + id;
