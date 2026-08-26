@@ -86,13 +86,14 @@ public class FfmpegVideoTranscodeWorker implements VideoTranscodeWorker {
             List<MediaTranscodeResult.Variant> variants = new ArrayList<>();
             String objectPrefix = outputPrefix + "/" + taskKey;
             for (Rendition rendition : renditions) {
-                int width = evenWidth(source, rendition.height());
+                VideoScaleGeometry geometry = VideoScaleGeometry.fit(
+                        source.width(), source.height(), rendition.height());
                 Path renditionDirectory = packageDirectory.resolve(rendition.name().toLowerCase());
                 Files.createDirectories(renditionDirectory);
-                transcodeRendition(input, renditionDirectory, rendition,
+                transcodeRendition(input, renditionDirectory, geometry,
                         workDirectory.resolve("ffmpeg-" + rendition.name() + ".log"));
                 variants.add(new MediaTranscodeResult.Variant(
-                        rendition.name(), width, rendition.height(), rendition.bandwidth(),
+                        rendition.name(), geometry.width(), geometry.height(), rendition.bandwidth(),
                         buildDeliveryUrl(objectPrefix + "/" + rendition.name().toLowerCase() + "/index.m3u8")));
             }
 
@@ -115,10 +116,10 @@ public class FfmpegVideoTranscodeWorker implements VideoTranscodeWorker {
         }
     }
 
-    private void transcodeRendition(Path input, Path outputDirectory, Rendition rendition, Path logFile)
+    private void transcodeRendition(Path input, Path outputDirectory, VideoScaleGeometry geometry, Path logFile)
             throws Exception {
         run(List.of(ffmpegPath, "-y", "-i", input.toString(),
-                "-vf", "scale=-2:" + rendition.height() + ":force_original_aspect_ratio=decrease",
+                "-vf", geometry.ffmpegFilter(),
                 "-c:v", "libx264", "-preset", "veryfast", "-profile:v", "main",
                 "-crf", "22", "-g", "48", "-keyint_min", "48", "-sc_threshold", "0",
                 "-c:a", "aac", "-b:a", "128k", "-ar", "48000",
@@ -171,11 +172,6 @@ public class FfmpegVideoTranscodeWorker implements VideoTranscodeWorker {
         if (!selected.isEmpty()) return selected;
         int height = Math.max(144, sourceHeight - sourceHeight % 2);
         return List.of(new Rendition(height + "P", height, 500_000));
-    }
-
-    private int evenWidth(Dimensions source, int height) {
-        int width = (int) Math.round(source.width() * (double) height / source.height());
-        return Math.max(2, width - width % 2);
     }
 
     private String buildMasterPlaylist(List<MediaTranscodeResult.Variant> variants) {
