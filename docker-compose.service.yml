@@ -36,8 +36,10 @@ services:
       retries: 18
       start_period: 20s
     depends_on:
-      - nacos
-      - redis
+      nacos:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - bilibili-net
 
@@ -74,7 +76,7 @@ services:
       redis:
         condition: service_healthy
       nacos:
-        condition: service_started
+        condition: service_healthy
     networks:
       - bilibili-net
 
@@ -115,7 +117,7 @@ services:
       redis:
         condition: service_healthy
       nacos:
-        condition: service_started
+        condition: service_healthy
       rocketmq-namesrv:
         condition: service_started
       rocketmq-broker:
@@ -160,7 +162,7 @@ services:
       redis:
         condition: service_healthy
       nacos:
-        condition: service_started
+        condition: service_healthy
       rocketmq-namesrv:
         condition: service_started
       rocketmq-broker:
@@ -201,7 +203,7 @@ services:
       redis:
         condition: service_healthy
       nacos:
-        condition: service_started
+        condition: service_healthy
       rocketmq-namesrv:
         condition: service_started
       rocketmq-broker:
@@ -237,7 +239,7 @@ services:
       redis:
         condition: service_healthy
       nacos:
-        condition: service_started
+        condition: service_healthy
       elasticsearch:
         condition: service_healthy
     networks:
@@ -280,7 +282,7 @@ services:
       redis:
         condition: service_healthy
       nacos:
-        condition: service_started
+        condition: service_healthy
       elasticsearch:
         condition: service_healthy
       rocketmq-namesrv:

@@ -76,6 +76,12 @@ services:
     ports:
       - "8848:8848"
       - "9848:9848"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS 'http://localhost:8848/nacos/v1/ns/service/list?pageNo=1&pageSize=1' >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 30s
     networks:
       - bilibili-net
 
