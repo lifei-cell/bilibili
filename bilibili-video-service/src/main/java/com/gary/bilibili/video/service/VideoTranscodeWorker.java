@@ -1,8 +1,9 @@
 package com.gary.bilibili.video.service;
 
 import com.gary.bilibili.video.entity.VideoTranscodeTask;
+import com.gary.bilibili.video.model.MediaTranscodeResult;
 
 public interface VideoTranscodeWorker {
 
-    String transcode(VideoTranscodeTask task);
+    MediaTranscodeResult transcode(VideoTranscodeTask task);
 }

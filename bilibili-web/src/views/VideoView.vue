@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Bookmark, Eye, Heart, MessageCircle, Send, Share2, UserPlus } from 'lucide-vue-next'
-import { danmuApi, socialApi, videoApi } from '@/api'
+import { Bookmark, CheckCircle2, Eye, Flag, Heart, MessageCircle, Send, Share2, UserPlus } from 'lucide-vue-next'
+import Hls from 'hls.js'
+import { danmuApi, governanceApi, socialApi, videoApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import type { CommentItem, CommentReply, DanmuItem, VideoDetail, VideoPlay } from '@/types/api'
 import { avatarFallback, formatCount, relativeTime } from '@/utils/format'
@@ -32,6 +33,11 @@ const error = ref('')
 const actionError = ref('')
 const actionLoading = ref('')
 const danmuSocket = ref<WebSocket>()
+const reportOpen = ref(false)
+const reportReason = ref('SPAM')
+const reportDescription = ref('')
+const reportSubmitted = ref(false)
+let hls: Hls | undefined
 let socketGeneration = 0
 let reconnectTimer: number | undefined
 let heartbeatTimer: number | undefined
@@ -344,8 +350,32 @@ async function share() {
   else await navigator.clipboard.writeText(location.href)
 }
 
+async function submitReport() {
+  if (!requireAuth()) return
+  actionLoading.value = 'report'
+  actionError.value = ''
+  try {
+    await governanceApi.report({ targetType: 'VIDEO', targetId: videoId.value, reasonCode: reportReason.value, description: reportDescription.value || undefined })
+    reportSubmitted.value = true
+  } catch (e) { actionError.value = e instanceof Error ? e.message : '举报提交失败' }
+  finally { actionLoading.value = '' }
+}
+
+function attachSource(source: string, element?: HTMLVideoElement) {
+  hls?.destroy(); hls = undefined
+  if (!source || !element) return
+  if (source.includes('.m3u8') && Hls.isSupported()) {
+    hls = new Hls({ enableWorker: true, lowLatencyMode: false })
+    hls.loadSource(source)
+    hls.attachMedia(element)
+  } else {
+    element.src = source
+  }
+}
+
 watch(() => route.params.id, load, { immediate: true })
-onBeforeUnmount(closeDanmuSocket)
+watch([currentSource, videoEl], ([source, element]) => attachSource(source, element), { flush: 'post' })
+onBeforeUnmount(() => { closeDanmuSocket(); hls?.destroy() })
 </script>
 
 <template>
@@ -360,7 +390,7 @@ onBeforeUnmount(closeDanmuSocket)
             <p><span><Eye :size="14" />{{ formatCount(detail.stats.viewCount) }} 播放</span><span><MessageCircle :size="14" />{{ formatCount(detail.stats.danmuCount) }} 弹幕</span></p>
           </div>
           <div class="player-wrap">
-            <video ref="videoEl" :key="currentSource" controls autoplay :poster="detail.coverUrl" :src="currentSource"></video>
+            <video ref="videoEl" controls autoplay :poster="detail.coverUrl"></video>
             <div class="danmu-layer" aria-hidden="true"><span v-for="(item, index) in danmus.slice(-8)" :key="item.id" :style="{ color: item.color || '#fff', top: `${12 + (index % 6) * 11}%`, animationDelay: `${index * .7}s` }">{{ item.content }}</span></div>
           </div>
           <div class="player-bar">
@@ -372,7 +402,13 @@ onBeforeUnmount(closeDanmuSocket)
             <button :class="{ active: liked }" :disabled="actionLoading === 'like'" @click="toggleLike"><Heart :size="22" :fill="liked ? 'currentColor' : 'none'" /><span>{{ formatCount(detail.stats.likeCount) }}</span></button>
             <button :class="{ active: collected }" :disabled="actionLoading === 'collect'" @click="toggleCollect"><Bookmark :size="22" :fill="collected ? 'currentColor' : 'none'" /><span>{{ collected ? '已收藏' : '收藏' }}</span></button>
             <button @click="share"><Share2 :size="22" /><span>分享</span></button>
+            <button @click="reportOpen = !reportOpen"><Flag :size="22" /><span>举报</span></button>
           </div>
+
+          <form v-if="reportOpen" class="report-form" @submit.prevent="submitReport">
+            <template v-if="!reportSubmitted"><strong>举报该视频</strong><select v-model="reportReason"><option value="SPAM">垃圾广告</option><option value="PORN">色情低俗</option><option value="VIOLENCE">暴力危险</option><option value="ABUSE">辱骂攻击</option><option value="COPYRIGHT">侵权</option><option value="OTHER">其他</option></select><input v-model.trim="reportDescription" maxlength="500" placeholder="补充说明（可选）" /><button class="primary-button" :disabled="actionLoading === 'report'">提交举报</button></template>
+            <p v-else><CheckCircle2 :size="16" />举报已进入治理队列，感谢你的反馈。</p>
+          </form>
 
           <article class="description-card">
             <p>{{ detail.description || '作者暂时没有填写视频简介。' }}</p>
@@ -442,6 +478,7 @@ onBeforeUnmount(closeDanmuSocket)
 </template>
 
 <style scoped>
+.report-form { display: flex; align-items: center; gap: 10px; padding: 12px; border-bottom: 1px solid var(--line); background: #fff8fa; }.report-form strong { font-size: 12px; }.report-form select,.report-form input { min-height: 34px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 7px; background: #fff; }.report-form input { flex: 1; }.report-form p { display: flex; align-items: center; gap: 6px; margin: 0; color: #18845f; font-size: 12px; }
 .video-page { padding-top: 30px; }.video-layout { display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 28px; }.title-block h1 { margin: 0 0 9px; font-size: 22px; line-height: 1.4; }.title-block p { display: flex; gap: 18px; margin: 0 0 16px; color: var(--muted); font-size: 12px; }.title-block p span { display: flex; align-items: center; gap: 5px; }
 .player-wrap { position: relative; aspect-ratio: 16/9; overflow: hidden; background: #101116; border-radius: 14px 14px 0 0; }.player-wrap video { width: 100%; height: 100%; }.danmu-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }.danmu-layer span { position: absolute; left: 100%; white-space: nowrap; font-weight: 600; text-shadow: 0 1px 3px #000; animation: fly 9s linear infinite; }@keyframes fly { to { transform: translateX(calc(-100vw - 100%)); } }
 .player-bar { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 14px 14px; }.player-bar form { flex: 1; display: flex; height: 36px; overflow: hidden; border-radius: 8px; background: #f2f3f5; }.player-bar input[type=color] { width: 38px; padding: 8px; border: 0; background: transparent; }.player-bar input[type=text], .player-bar input:not([type]) { flex: 1; border: 0; outline: 0; background: transparent; }.player-bar form button { border: 0; padding: 0 16px; color: #fff; background: var(--pink); }.player-bar select { border: 0; color: #5f6571; background: transparent; }

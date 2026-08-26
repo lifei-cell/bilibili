@@ -1,10 +1,13 @@
 package com.gary.bilibili.video.consumer;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gary.bilibili.video.constant.UploadConstant;
 import com.gary.bilibili.video.entity.VideoTranscodeTask;
 import com.gary.bilibili.video.mapper.VideoMapper;
 import com.gary.bilibili.video.mapper.VideoTranscodeTaskMapper;
 import com.gary.bilibili.video.message.VideoTranscodeMessage;
+import com.gary.bilibili.video.model.MediaTranscodeResult;
 import com.gary.bilibili.video.service.VideoTranscodeWorker;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
@@ -37,6 +40,7 @@ public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMe
     private final VideoMapper videoMapper;
     private final StringRedisTemplate stringRedisTemplate;
     private final VideoTranscodeWorker transcodeWorker;
+    private final ObjectMapper objectMapper;
     private final int maxRetries;
     private final int retryDelaySeconds;
     private final int processingLockSeconds;
@@ -45,6 +49,7 @@ public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMe
                                   VideoMapper videoMapper,
                                   StringRedisTemplate stringRedisTemplate,
                                   VideoTranscodeWorker transcodeWorker,
+                                  ObjectMapper objectMapper,
                                   @Value("${video.transcode.max-retries:3}") int maxRetries,
                                   @Value("${video.transcode.retry-delay-seconds:10}") int retryDelaySeconds,
                                   @Value("${video.transcode.processing-lock-seconds:1860}") int processingLockSeconds) {
@@ -52,6 +57,7 @@ public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMe
         this.videoMapper = videoMapper;
         this.stringRedisTemplate = stringRedisTemplate;
         this.transcodeWorker = transcodeWorker;
+        this.objectMapper = objectMapper;
         this.maxRetries = Math.max(1, maxRetries);
         this.retryDelaySeconds = Math.max(1, retryDelaySeconds);
         this.processingLockSeconds = Math.max(60, processingLockSeconds);
@@ -81,9 +87,9 @@ public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMe
             if (taskMapper.markProcessing(task.getTaskId()) == 0) {
                 return;
             }
-            String outputUrl = transcodeWorker.transcode(task);
-            taskMapper.markSuccess(task.getTaskId(), outputUrl);
-            videoMapper.updatePlayUrlByFileMd5(task.getFileMd5(), outputUrl);
+            MediaTranscodeResult result = transcodeWorker.transcode(task);
+            taskMapper.markSuccess(task.getTaskId(), result.masterUrl(), result.coverUrl(), serialize(result));
+            videoMapper.updateMediaByFileMd5(task.getFileMd5(), result.masterUrl(), result.coverUrl());
         } catch (Exception exception) {
             taskMapper.markPendingAfterFailure(task.getTaskId(), safeMessage(exception),
                     maxRetries, retryDelaySeconds);
@@ -98,6 +104,14 @@ public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMe
                 log.warn("Release video transcode processing lock failed, taskId={}",
                         task.getTaskId(), exception);
             }
+        }
+    }
+
+    private String serialize(MediaTranscodeResult result) {
+        try {
+            return objectMapper.writeValueAsString(result.variants());
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Serialize media variants failed", exception);
         }
     }
 

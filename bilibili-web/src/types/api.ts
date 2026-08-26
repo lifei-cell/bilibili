@@ -156,5 +156,23 @@ export interface UploadTranscodeTask {
   retryCount: number
   errorMessage: string | null
   outputUrl: string | null
+  coverUrl: string | null
   nextRetryTime: string | null
+}
+
+export interface DirectUploadInit {
+  uploadId: string
+  uploadUrl: string
+  expiresIn: number
+  contentType: string
+}
+
+export interface GovernancePage<T> { records: T[]; total: number }
+export interface AdminVideo {
+  id: number; userId: number; authorName: string; title: string; coverUrl: string; playUrl: string
+  status: number; auditRemark: string; riskLevel: 'LOW' | 'MEDIUM' | 'HIGH'; createTime: string
+}
+export interface ContentReport {
+  id: number; reporterId: number; reporterName: string; targetType: string; targetId: number
+  reasonCode: string; description: string; evidenceUrl: string; status: number; createTime: string
 }

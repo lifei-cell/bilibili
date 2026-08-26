@@ -17,5 +17,6 @@ public class VideoTranscodeStatusVO {
     private Integer retryCount;
     private String errorMessage;
     private String outputUrl;
+    private String coverUrl;
     private LocalDateTime nextRetryTime;
 }

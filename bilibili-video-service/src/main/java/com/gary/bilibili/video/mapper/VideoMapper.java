@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.gary.bilibili.video.entity.Video;
 import com.gary.bilibili.video.model.VideoDetailRow;
 import com.gary.bilibili.video.model.VideoListRow;
+import com.gary.bilibili.video.model.AdminVideoRow;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -89,4 +90,24 @@ public interface VideoMapper extends BaseMapper<Video> {
             + "and (play_url is null or play_url = '')")
     int updatePlayUrlByFileMd5(@Param("fileMd5") String fileMd5,
                                @Param("playUrl") String playUrl);
+
+    @Update("update video set play_url = #{playUrl}, cover_url = "
+            + "case when cover_url is null or cover_url = '' then #{coverUrl} else cover_url end "
+            + "where file_md5 = #{fileMd5} and deleted = 0")
+    int updateMediaByFileMd5(@Param("fileMd5") String fileMd5,
+                             @Param("playUrl") String playUrl,
+                             @Param("coverUrl") String coverUrl);
+
+    @Select("select count(*) from video where user_id = #{userId} and create_time >= date_sub(now(), interval 1 hour)")
+    long countRecentPublishes(@Param("userId") long userId);
+
+    @Select("select v.id, v.user_id, u.nickname as author_name, v.title, v.cover_url, v.play_url, "
+            + "v.status, v.audit_remark, v.risk_level, v.create_time from video v "
+            + "left join sys_user u on u.id = v.user_id where v.deleted = 0 "
+            + "and (#{status} is null or v.status = #{status}) order by v.id desc limit #{offset}, #{size}")
+    List<AdminVideoRow> selectAdminQueue(@Param("status") Integer status,
+                                         @Param("offset") long offset, @Param("size") int size);
+
+    @Select("select count(*) from video where deleted = 0 and (#{status} is null or status = #{status})")
+    long countAdminQueue(@Param("status") Integer status);
 }

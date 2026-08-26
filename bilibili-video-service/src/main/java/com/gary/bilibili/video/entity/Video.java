@@ -27,6 +27,9 @@ public class Video {
     private String tags;
     private Integer status;
     private String auditRemark;
+    private String riskLevel;
+    private Long auditBy;
+    private LocalDateTime auditTime;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     private Integer deleted;

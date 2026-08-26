@@ -1,5 +1,7 @@
 # Bilibili Cloud
 
+媒体处理与内容治理演示见 [docs/MEDIA_GOVERNANCE_RUNBOOK.md](docs/MEDIA_GOVERNANCE_RUNBOOK.md)。
+
 一个基于 Java 21、Spring Boot 4、Spring Cloud 和 Vue 3 的视频平台示例项目。项目采用微服务架构，覆盖用户登录、分片上传、视频管理、弹幕、社交互动、搜索以及基于 Canal 的数据同步。
 
 > 仓库同时包含后端微服务和 `bilibili-web` 前端。Nginx 当前只负责 API 反向代理，前端开发服务器默认运行在 `5173`，业务接口统一通过 `/api/**` 调用。

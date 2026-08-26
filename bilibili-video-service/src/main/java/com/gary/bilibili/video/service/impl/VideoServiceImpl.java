@@ -4,6 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gary.bilibili.common.exception.BusinessException;
 import com.gary.bilibili.common.reliability.OutboxEventService;
@@ -20,9 +21,11 @@ import com.gary.bilibili.video.message.VideoViewMessage;
 import com.gary.bilibili.video.model.VideoDetailRow;
 import com.gary.bilibili.video.model.VideoListRow;
 import com.gary.bilibili.video.model.VideoPage;
+import com.gary.bilibili.video.model.MediaTranscodeResult;
 import com.gary.bilibili.video.service.VideoBloomFilter;
 import com.gary.bilibili.video.service.VideoService;
 import com.gary.bilibili.video.service.VideoListCache;
+import com.gary.bilibili.video.service.ContentRiskService;
 import com.gary.bilibili.video.vo.VideoAuthorVO;
 import com.gary.bilibili.video.vo.VideoDetailVO;
 import com.gary.bilibili.video.vo.VideoListVO;
@@ -60,6 +63,7 @@ public class VideoServiceImpl implements VideoService {
     private final ObjectMapper objectMapper;
     private final VideoBloomFilter videoBloomFilter;
     private final VideoListCache videoListCache;
+    private final ContentRiskService contentRiskService;
 
     public VideoServiceImpl(VideoMapper videoMapper,
                             VideoStatsMapper videoStatsMapper,
@@ -68,7 +72,8 @@ public class VideoServiceImpl implements VideoService {
                             OutboxEventService outboxEventService,
                             ObjectMapper objectMapper,
                             VideoBloomFilter videoBloomFilter,
-                            VideoListCache videoListCache) {
+                            VideoListCache videoListCache,
+                            ContentRiskService contentRiskService) {
         this.videoMapper = videoMapper;
         this.videoStatsMapper = videoStatsMapper;
         this.videoTranscodeTaskMapper = videoTranscodeTaskMapper;
@@ -77,6 +82,7 @@ public class VideoServiceImpl implements VideoService {
         this.objectMapper = objectMapper;
         this.videoBloomFilter = videoBloomFilter;
         this.videoListCache = videoListCache;
+        this.contentRiskService = contentRiskService;
     }
 
     @Override
@@ -97,11 +103,13 @@ public class VideoServiceImpl implements VideoService {
             throw new BusinessException("视频仍在转码，请完成转码后再发布");
         }
 
+        ContentRiskService.RiskDecision risk = contentRiskService.evaluate(userId, request);
         Video video = new Video();
         video.setUserId(userId);
         video.setTitle(request.getTitle().trim());
         video.setDescription(request.getDescription());
-        video.setCoverUrl(request.getCoverUrl());
+        video.setCoverUrl(StringUtils.hasText(request.getCoverUrl())
+                ? request.getCoverUrl() : transcodeTask.getCoverUrl());
         // The original source address is only an API compatibility field. Use
         // the finished task as the source of truth so a client cannot publish
         // an arbitrary external URL as platform content.
@@ -113,9 +121,13 @@ public class VideoServiceImpl implements VideoService {
         video.setResolution(request.getResolution().trim().toUpperCase(Locale.ROOT));
         video.setCategoryId(request.getCategoryId());
         video.setTags(joinTags(request.getTags()));
-        video.setStatus(VideoConstant.STATUS_AUDITING);
+        video.setStatus("REJECT".equals(risk.decision())
+                ? VideoConstant.STATUS_REJECTED : VideoConstant.STATUS_AUDITING);
+        video.setRiskLevel(risk.level());
+        if ("REJECT".equals(risk.decision())) video.setAuditRemark("风控规则拒绝: " + String.join(",", risk.rules()));
         video.setDeleted(0);
         videoMapper.insert(video);
+        contentRiskService.record(userId, video.getId(), risk);
 
         VideoStats stats = new VideoStats();
         stats.setVideoId(video.getId());
@@ -125,7 +137,7 @@ public class VideoServiceImpl implements VideoService {
 
         VideoPublishVO result = new VideoPublishVO();
         result.setVideoId(video.getId());
-        result.setStatus(VideoConstant.STATUS_AUDITING);
+        result.setStatus(video.getStatus());
         return result;
     }
 
@@ -159,18 +171,39 @@ public class VideoServiceImpl implements VideoService {
             throw new BusinessException("视频转码未完成");
         }
 
-        String qualityName = StringUtils.hasText(video.getResolution())
-                ? video.getResolution() : "default";
-        VideoQualityVO quality = new VideoQualityVO();
-        quality.setQuality(qualityName);
-        quality.setUrl(video.getPlayUrl());
+        List<VideoQualityVO> qualities = loadQualities(video);
+        String qualityName = qualities.get(qualities.size() - 1).getQuality();
 
         VideoPlayVO result = new VideoPlayVO();
         result.setVideoId(videoId);
         result.setDefaultQuality(qualityName);
-        result.setQualities(Collections.singletonList(quality));
+        result.setQualities(qualities);
         sendViewMessage(videoId);
         return result;
+    }
+
+    private List<VideoQualityVO> loadQualities(Video video) {
+        VideoTranscodeTask task = videoTranscodeTaskMapper.selectSuccessByFileMd5(video.getFileMd5());
+        if (task != null && StringUtils.hasText(task.getVariantsJson())) {
+            try {
+                List<MediaTranscodeResult.Variant> variants = objectMapper.readValue(
+                        task.getVariantsJson(), new TypeReference<>() { });
+                if (!variants.isEmpty()) {
+                    return variants.stream().map(variant -> {
+                        VideoQualityVO quality = new VideoQualityVO();
+                        quality.setQuality(variant.quality());
+                        quality.setUrl(variant.url());
+                        return quality;
+                    }).toList();
+                }
+            } catch (JsonProcessingException exception) {
+                log.warn("Parse media variants failed, videoId={}", video.getId(), exception);
+            }
+        }
+        VideoQualityVO fallback = new VideoQualityVO();
+        fallback.setQuality(StringUtils.hasText(video.getResolution()) ? video.getResolution() : "AUTO");
+        fallback.setUrl(video.getPlayUrl());
+        return Collections.singletonList(fallback);
     }
 
     @Override

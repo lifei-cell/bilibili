@@ -8,25 +8,19 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("video_transcode_task")
-public class VideoTranscodeTask {
-
+@TableName("direct_upload_session")
+public class DirectUploadSession {
     @TableId(type = IdType.AUTO)
     private Long id;
-    private String taskId;
+    private String uploadId;
     private Long userId;
     private String fileMd5;
     private String fileName;
+    private String contentType;
     private Long fileSize;
-    private String sourceUrl;
-    private String sourceObjectName;
-    private String outputUrl;
-    private String coverUrl;
-    private String variantsJson;
+    private String objectName;
     private Integer status;
-    private Integer retryCount;
-    private String errorMessage;
-    private LocalDateTime nextRetryTime;
+    private LocalDateTime expireTime;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

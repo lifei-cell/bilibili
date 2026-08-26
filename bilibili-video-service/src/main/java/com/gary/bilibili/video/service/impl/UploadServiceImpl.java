@@ -223,6 +223,7 @@ public class UploadServiceImpl implements UploadService {
         result.setNextRetryTime(task.getNextRetryTime());
         if (Integer.valueOf(UploadConstant.TRANSCODE_STATUS_SUCCESS).equals(task.getStatus())) {
             result.setOutputUrl(task.getOutputUrl());
+            result.setCoverUrl(task.getCoverUrl());
         }
         if (Integer.valueOf(UploadConstant.TRANSCODE_STATUS_FAILED).equals(task.getStatus())) {
             result.setErrorMessage(StringUtils.hasText(task.getErrorMessage())

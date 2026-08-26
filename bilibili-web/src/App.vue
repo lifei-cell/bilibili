@@ -48,6 +48,7 @@ onMounted(async () => {
 
       <div class="header-actions">
         <template v-if="auth.isLoggedIn">
+          <RouterLink v-if="auth.user?.role === 'admin'" class="icon-button admin-entry" to="/admin">治理后台</RouterLink>
           <RouterLink class="avatar-link" :to="`/space/${auth.user?.id}`">
             <img :src="auth.user?.avatar || avatarFallback(auth.user?.nickname || auth.user?.username)" alt="头像" />
           </RouterLink>

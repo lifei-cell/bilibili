@@ -1,7 +1,8 @@
 import { apiRequest } from './http'
 import type {
   CollectionFolder, CommentItem, CurrentUser, DanmuItem, LoginResult, SearchVideo,
-  UploadCheck, UploadMerge, UploadTranscodeTask, UserProfile, VideoCategory, VideoDetail, VideoListItem, VideoPlay,
+  AdminVideo, ContentReport, DirectUploadInit, GovernancePage, UploadCheck, UploadMerge, UploadTranscodeTask,
+  UserProfile, VideoCategory, VideoDetail, VideoListItem, VideoPlay,
 } from '@/types/api'
 
 export const userApi = {
@@ -63,4 +64,20 @@ export const uploadApi = {
   chunk: (data: FormData) => apiRequest<{ chunkIndex: number; uploaded: boolean }>({ method: 'POST', url: '/upload/chunk', data }),
   merge: (data: { uploadId: string; fileMd5: string; fileName: string; totalChunks: number }) => apiRequest<UploadMerge>({ method: 'POST', url: '/upload/merge', data }),
   transcodeStatus: (taskId: string) => apiRequest<UploadTranscodeTask>({ method: 'GET', url: `/upload/transcode/${taskId}` }),
+  directInit: (data: { fileName: string; contentType: string; fileSize: number; fileMd5: string }) =>
+    apiRequest<DirectUploadInit>({ method: 'POST', url: '/upload/direct/init', data }),
+  directComplete: (uploadId: string) => apiRequest<UploadMerge>({ method: 'POST', url: '/upload/direct/complete', data: { uploadId } }),
+}
+
+export const governanceApi = {
+  report: (data: { targetType: string; targetId: number; reasonCode: string; description?: string }) =>
+    apiRequest<{ reportId: number }>({ method: 'POST', url: '/report', data }),
+  videos: (params: { status?: number; page?: number; size?: number }) =>
+    apiRequest<GovernancePage<AdminVideo>>({ method: 'GET', url: '/admin/content/videos', params }),
+  auditVideo: (videoId: number, action: string, remark?: string) =>
+    apiRequest<void>({ method: 'POST', url: `/admin/content/videos/${videoId}/audit`, data: { action, remark } }),
+  reports: (params: { status?: number; page?: number; size?: number }) =>
+    apiRequest<GovernancePage<ContentReport>>({ method: 'GET', url: '/admin/content/reports', params }),
+  resolveReport: (reportId: number, action: 'UPHOLD' | 'DISMISS', remark?: string) =>
+    apiRequest<void>({ method: 'POST', url: `/admin/content/reports/${reportId}/resolve`, data: { action, remark } }),
 }

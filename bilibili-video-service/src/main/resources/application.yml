@@ -45,6 +45,13 @@ minio:
   video-bucket: ${MINIO_VIDEO_BUCKET:videos}
   temp-bucket: ${MINIO_TEMP_BUCKET:tmp}
   public-read-enabled: ${MINIO_PUBLIC_READ_ENABLED:true}
+  lifecycle:
+    temp-days: ${MINIO_TEMP_LIFECYCLE_DAYS:1}
+    source-days: ${MINIO_SOURCE_LIFECYCLE_DAYS:30}
+
+cdn:
+  # Point this at the CDN distribution in production; MinIO remains the origin.
+  base-url: ${CDN_BASE_URL:${MINIO_PUBLIC_ENDPOINT:${MINIO_ENDPOINT:http://minio:9000}}}
 
 video:
   list-cache:
@@ -61,6 +68,7 @@ video:
     reclaim-after-seconds: ${VIDEO_TRANSCODE_RECLAIM_AFTER_SECONDS:1860}
     processing-lock-seconds: ${VIDEO_TRANSCODE_PROCESSING_LOCK_SECONDS:1860}
     ffmpeg-path: ${VIDEO_TRANSCODE_FFMPEG_PATH:ffmpeg}
+    ffprobe-path: ${VIDEO_TRANSCODE_FFPROBE_PATH:ffprobe}
     temp-dir: ${VIDEO_TRANSCODE_TEMP_DIR:/tmp/bilibili-transcode}
     timeout-seconds: ${VIDEO_TRANSCODE_TIMEOUT_SECONDS:1800}
     output-prefix: ${VIDEO_TRANSCODE_OUTPUT_PREFIX:play}

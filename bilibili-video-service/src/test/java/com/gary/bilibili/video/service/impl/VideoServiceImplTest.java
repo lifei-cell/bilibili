@@ -19,6 +19,7 @@ import com.gary.bilibili.video.model.VideoDetailRow;
 import com.gary.bilibili.video.model.VideoPage;
 import com.gary.bilibili.video.service.VideoBloomFilter;
 import com.gary.bilibili.video.service.VideoListCache;
+import com.gary.bilibili.video.service.ContentRiskService;
 import com.gary.bilibili.video.vo.VideoDetailVO;
 import com.gary.bilibili.video.vo.VideoPlayVO;
 import com.gary.bilibili.video.vo.VideoPublishVO;
@@ -35,6 +36,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -54,6 +56,7 @@ class VideoServiceImplTest {
     private OutboxEventService outboxEventService;
     private VideoBloomFilter videoBloomFilter;
     private VideoListCache videoListCache;
+    private ContentRiskService contentRiskService;
     private VideoServiceImpl videoService;
 
     @BeforeEach
@@ -71,6 +74,9 @@ class VideoServiceImplTest {
         outboxEventService = mock(OutboxEventService.class);
         videoBloomFilter = mock(VideoBloomFilter.class);
         videoListCache = mock(VideoListCache.class);
+        contentRiskService = mock(ContentRiskService.class);
+        when(contentRiskService.evaluate(anyLong(), any(VideoPublishDTO.class)))
+                .thenReturn(new ContentRiskService.RiskDecision("LOW", 0, List.of(), "PASS"));
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
 
@@ -82,7 +88,8 @@ class VideoServiceImplTest {
                 outboxEventService,
                 new ObjectMapper(),
                 videoBloomFilter,
-                videoListCache);
+                videoListCache,
+                contentRiskService);
     }
 
     @Test

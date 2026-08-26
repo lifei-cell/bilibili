@@ -48,13 +48,17 @@ public interface VideoTranscodeTaskMapper extends BaseMapper<VideoTranscodeTask>
     int markProcessing(@Param("taskId") String taskId);
 
     @Update("update video_transcode_task set status = 3, output_url = #{outputUrl}, "
+            + "cover_url = #{coverUrl}, variants_json = #{variantsJson}, "
             + "error_message = null, update_time = now() where task_id = #{taskId}")
     int markSuccess(@Param("taskId") String taskId,
-                    @Param("outputUrl") String outputUrl);
+                    @Param("outputUrl") String outputUrl,
+                    @Param("coverUrl") String coverUrl,
+                    @Param("variantsJson") String variantsJson);
 
     @Update("update video_transcode_task set source_url = #{sourceUrl}, source_object_name = #{sourceObjectName}, "
             + "file_name = #{fileName}, file_size = #{fileSize}, status = 0, retry_count = 0, "
-            + "output_url = null, error_message = null, next_retry_time = null, update_time = now() "
+            + "output_url = null, cover_url = null, variants_json = null, "
+            + "error_message = null, next_retry_time = null, update_time = now() "
             + "where task_id = #{taskId} and status <> 3")
     int resetPending(@Param("taskId") String taskId,
                      @Param("sourceUrl") String sourceUrl,

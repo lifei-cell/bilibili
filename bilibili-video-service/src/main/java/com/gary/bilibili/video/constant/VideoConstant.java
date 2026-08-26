@@ -4,6 +4,7 @@ public final class VideoConstant {
 
     public static final int STATUS_AUDITING = 0;
     public static final int STATUS_PUBLISHED = 1;
+    public static final int STATUS_REJECTED = 2;
     public static final int STATUS_OFFLINE = 3;
     public static final int DETAIL_CACHE_TTL_MINUTES = 30;
     public static final String DETAIL_CACHE_KEY_PREFIX = "video:detail:";

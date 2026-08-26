@@ -10,6 +10,7 @@ const router = createRouter({
     { path: '/video/:id', name: 'video', component: () => import('@/views/VideoView.vue') },
     { path: '/auth', name: 'auth', component: () => import('@/views/AuthView.vue') },
     { path: '/upload', name: 'upload', component: () => import('@/views/UploadView.vue'), meta: { auth: true } },
+    { path: '/admin', name: 'admin', component: () => import('@/views/AdminView.vue'), meta: { auth: true, admin: true } },
     { path: '/space/:id?', name: 'profile', component: () => import('@/views/ProfileView.vue') },
     { path: '/:pathMatch(.*)*', component: () => import('@/views/NotFoundView.vue') },
   ],
@@ -22,6 +23,7 @@ router.beforeEach(async (to) => {
   if (!auth.isLoggedIn) {
     return { name: 'auth', query: { redirect: to.fullPath } }
   }
+  if (to.meta.admin && auth.user?.role !== 'admin') return { name: 'home' }
 })
 
 export default router
