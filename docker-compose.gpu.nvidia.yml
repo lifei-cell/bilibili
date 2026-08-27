@@ -2,9 +2,11 @@ services:
   bilibili-video-service:
     gpus: all
     environment:
+      NVIDIA_DRIVER_CAPABILITIES: compute,video,utility
       VIDEO_TRANSCODE_ENCODER: nvenc
 
   bilibili-transcode-worker:
     gpus: all
     environment:
+      NVIDIA_DRIVER_CAPABILITIES: compute,video,utility
       VIDEO_TRANSCODE_ENCODER: nvenc

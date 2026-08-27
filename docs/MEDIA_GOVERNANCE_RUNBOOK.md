@@ -32,14 +32,14 @@ VIDEO_TRANSCODE_PROGRESSIVE_PUBLISH=true
 
 生产环境应将 MinIO 放在私网源站，通过 CDN 回源；预签名域名必须与浏览器实际访问域名一致，否则 AWS SigV4 Host 签名会失效。
 
-`VIDEO_TRANSCODE_ENCODER` 支持 `auto`、`software`、`nvenc`、`qsv`、`vaapi`。硬件编码失败时默认回退到 `libx264`，不会直接判定任务失败。NVIDIA 主机使用 `docker-compose.gpu.nvidia.yml`，Linux Intel 核显主机使用 `docker-compose.gpu.intel.yml`。
+`VIDEO_TRANSCODE_ENCODER` 支持 `auto`、`software`、`nvenc`、`qsv`、`vaapi`。硬件编码失败时默认回退到 `libx264`，不会直接判定任务失败。NVIDIA 主机使用 `docker-compose.gpu.nvidia.yml`，Linux Intel 核显主机使用 `docker-compose.gpu.intel.yml`。视频服务镜像基于 NVIDIA CUDA Runtime 构建，并在构建期校验 `h264_nvenc`，避免部署后静默回退 CPU。
 
 ```powershell
-# NVIDIA GPU
-docker compose -f docker-compose.yml -f docker-compose.service.yml -f docker-compose.gpu.nvidia.yml up -d --build bilibili-video-service
+# NVIDIA GPU：启动主服务和一个专用转码 Worker
+docker compose -f docker-compose.yml -f docker-compose.service.yml -f docker-compose.gpu.nvidia.yml --profile transcode-scale up -d --build bilibili-video-service bilibili-transcode-worker
 
 # 增加两个独立转码 Worker，降低队列等待时间
-docker compose -f docker-compose.yml -f docker-compose.service.yml --profile transcode-scale up -d --scale bilibili-transcode-worker=2
+docker compose -f docker-compose.yml -f docker-compose.service.yml -f docker-compose.gpu.nvidia.yml --profile transcode-scale up -d --scale bilibili-transcode-worker=2 bilibili-transcode-worker
 ```
 
 Worker 保持单任务并发，单视频使用容器内全部 CPU；队列吞吐量通过增加 Worker 副本横向扩展。
