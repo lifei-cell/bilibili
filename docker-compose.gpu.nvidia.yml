@@ -1,0 +1,10 @@
+services:
+  bilibili-video-service:
+    gpus: all
+    environment:
+      VIDEO_TRANSCODE_ENCODER: nvenc
+
+  bilibili-transcode-worker:
+    gpus: all
+    environment:
+      VIDEO_TRANSCODE_ENCODER: nvenc

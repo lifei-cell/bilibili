@@ -1,0 +1,12 @@
+services:
+  bilibili-video-service:
+    devices:
+      - /dev/dri:/dev/dri
+    environment:
+      VIDEO_TRANSCODE_ENCODER: auto
+
+  bilibili-transcode-worker:
+    devices:
+      - /dev/dri:/dev/dri
+    environment:
+      VIDEO_TRANSCODE_ENCODER: auto

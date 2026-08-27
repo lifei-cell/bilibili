@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Value;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 @RocketMQMessageListener(
@@ -84,17 +85,28 @@ public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMe
             return;
         }
 
+        AtomicBoolean playablePublished = new AtomicBoolean(false);
         try {
             if (taskMapper.markProcessing(task.getTaskId()) == 0) {
                 return;
             }
-            MediaTranscodeResult result = transcodeWorker.transcode(task);
-            taskMapper.markSuccess(task.getTaskId(), result.masterUrl(), result.coverUrl(), serialize(result));
-            videoMapper.updateMediaByFileMd5(task.getFileMd5(), result.masterUrl(), result.coverUrl());
+            MediaTranscodeResult result = transcodeWorker.transcode(task, playable -> {
+                publishResult(task, playable);
+                playablePublished.set(true);
+                log.info("Low rendition published, taskId={}, variants={}",
+                        task.getTaskId(), playable.variants().size());
+            });
+            publishResult(task, result);
         } catch (Exception exception) {
-            taskMapper.markPendingAfterFailure(task.getTaskId(), safeMessage(exception),
-                    maxRetries, retryDelaySeconds);
-            log.error("Process video transcode task failed, taskId={}", task.getTaskId(), exception);
+            if (playablePublished.get()) {
+                taskMapper.markDegradedSuccess(task.getTaskId(), safeMessage(exception));
+                log.warn("Adaptive renditions failed after playable rendition was published, taskId={}",
+                        task.getTaskId(), exception);
+            } else {
+                taskMapper.markPendingAfterFailure(task.getTaskId(), safeMessage(exception),
+                        maxRetries, retryDelaySeconds);
+                log.error("Process video transcode task failed, taskId={}", task.getTaskId(), exception);
+            }
         } finally {
             try {
                 stringRedisTemplate.execute(
@@ -106,6 +118,11 @@ public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMe
                         task.getTaskId(), exception);
             }
         }
+    }
+
+    private void publishResult(VideoTranscodeTask task, MediaTranscodeResult result) {
+        taskMapper.markSuccess(task.getTaskId(), result.masterUrl(), result.coverUrl(), serialize(result));
+        videoMapper.updateMediaByFileMd5(task.getFileMd5(), result.masterUrl(), result.coverUrl());
     }
 
     private String serialize(MediaTranscodeResult result) {

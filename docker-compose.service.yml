@@ -8,6 +8,24 @@ x-java-environment: &java-environment
   MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:-0.1}
   OPERATIONS_ADMIN_TOKEN: ${OPERATIONS_ADMIN_TOKEN:-change-me-in-production}
 
+x-video-environment: &video-environment
+  SPRING_PROFILES_ACTIVE: docker
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bilibili?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+  SPRING_DATASOURCE_USERNAME: root
+  SPRING_DATASOURCE_PASSWORD: root
+  SPRING_DATA_REDIS_HOST: redis
+  SPRING_DATA_REDIS_PORT: 6379
+  SPRING_DATA_REDIS_PASSWORD: redis123
+  ROCKETMQ_NAME_SERVER: rocketmq-namesrv:9876
+  MINIO_ENDPOINT: http://minio:9000
+  MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
+  MINIO_ACCESS_KEY: minioadmin
+  MINIO_SECRET_KEY: minioadmin
+  VIDEO_TRANSCODE_ENCODER: ${VIDEO_TRANSCODE_ENCODER:-auto}
+  VIDEO_TRANSCODE_HARDWARE_FALLBACK: ${VIDEO_TRANSCODE_HARDWARE_FALLBACK:-true}
+  VIDEO_TRANSCODE_SOFTWARE_PRESET: ${VIDEO_TRANSCODE_SOFTWARE_PRESET:-veryfast}
+  VIDEO_TRANSCODE_PROGRESSIVE_PUBLISH: ${VIDEO_TRANSCODE_PROGRESSIVE_PUBLISH:-true}
+
 services:
   bilibili-gateway:
     <<: *java-resource
@@ -82,31 +100,19 @@ services:
 
   bilibili-video-service:
     <<: *java-resource
-    # FFmpeg runs beside the JVM; 1080P x264 encoding needs native-memory headroom.
-    mem_limit: 1536m
-    cpus: 2.00
+    # A single x264 encoder uses four cores; queue throughput scales with worker replicas below.
+    mem_limit: 2g
+    cpus: 4.00
     image: bilibili-video-service:0.0.1
     build:
       context: ./bilibili-video-service
     container_name: bilibili-video-service
     restart: unless-stopped
     environment:
-      <<: *java-environment
+      <<: [*java-environment, *video-environment]
       JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Shanghai -XX:MaxRAMPercentage=40 -XX:InitialRAMPercentage=15 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError
       SERVER_PORT: 8082
-      SPRING_PROFILES_ACTIVE: docker
       SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bilibili?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_DATA_REDIS_PASSWORD: redis123
-      ROCKETMQ_NAME_SERVER: rocketmq-namesrv:9876
-      MINIO_ENDPOINT: http://minio:9000
-      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
     ports:
       - "8082:8082"
     healthcheck:
@@ -121,6 +127,43 @@ services:
       redis:
         condition: service_healthy
       nacos:
+        condition: service_healthy
+      rocketmq-namesrv:
+        condition: service_started
+      rocketmq-broker:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      - bilibili-net
+
+  # Optional queue-throughput workers: --profile transcode-scale --scale bilibili-transcode-worker=2
+  bilibili-transcode-worker:
+    image: bilibili-video-service:0.0.1
+    build:
+      context: ./bilibili-video-service
+    profiles: ["transcode-scale"]
+    restart: unless-stopped
+    mem_limit: 2g
+    cpus: 4.00
+    environment:
+      <<: [*java-environment, *video-environment]
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Shanghai -XX:MaxRAMPercentage=40 -XX:InitialRAMPercentage=15 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      SPRING_CLOUD_NACOS_DISCOVERY_ENABLED: "false"
+      VIDEO_TRANSCODE_PUBLISHER_ENABLED: "false"
+      VIDEO_VIEW_CONSUMER_ENABLED: "false"
+      VIDEO_STATS_SYNC_ENABLED: "false"
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       rocketmq-namesrv:
         condition: service_started

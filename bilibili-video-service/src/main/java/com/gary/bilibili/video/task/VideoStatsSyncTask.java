@@ -4,6 +4,7 @@ import com.gary.bilibili.video.constant.VideoConstant;
 import com.gary.bilibili.video.mapper.VideoStatsMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,6 +16,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Component
+@ConditionalOnProperty(name = "video.stats.sync-enabled", havingValue = "true", matchIfMissing = true)
 public class VideoStatsSyncTask {
 
     private static final Logger log = LoggerFactory.getLogger(VideoStatsSyncTask.class);

@@ -57,9 +57,11 @@ video:
   list-cache:
     ttl-seconds: ${VIDEO_LIST_CACHE_TTL_SECONDS:5}
   stats:
+    sync-enabled: ${VIDEO_STATS_SYNC_ENABLED:true}
     sync-interval: ${VIDEO_STATS_SYNC_INTERVAL:60000}
     sync-initial-delay: ${VIDEO_STATS_SYNC_INITIAL_DELAY:60000}
   transcode:
+    publisher-enabled: ${VIDEO_TRANSCODE_PUBLISHER_ENABLED:true}
     dispatch-interval: ${VIDEO_TRANSCODE_DISPATCH_INTERVAL:1000}
     dispatch-initial-delay: ${VIDEO_TRANSCODE_DISPATCH_INITIAL_DELAY:5000}
     max-retries: ${VIDEO_TRANSCODE_MAX_RETRIES:3}
@@ -72,4 +74,13 @@ video:
     temp-dir: ${VIDEO_TRANSCODE_TEMP_DIR:/tmp/bilibili-transcode}
     timeout-seconds: ${VIDEO_TRANSCODE_TIMEOUT_SECONDS:1800}
     output-prefix: ${VIDEO_TRANSCODE_OUTPUT_PREFIX:play}
+    # auto selects an exposed GPU device and falls back to libx264 when unavailable.
+    encoder: ${VIDEO_TRANSCODE_ENCODER:auto}
+    hardware-fallback: ${VIDEO_TRANSCODE_HARDWARE_FALLBACK:true}
+    software-preset: ${VIDEO_TRANSCODE_SOFTWARE_PRESET:veryfast}
+    crf: ${VIDEO_TRANSCODE_CRF:22}
+    hls-segment-seconds: ${VIDEO_TRANSCODE_HLS_SEGMENT_SECONDS:6}
+    progressive-publish: ${VIDEO_TRANSCODE_PROGRESSIVE_PUBLISH:true}
+  view:
+    consumer-enabled: ${VIDEO_VIEW_CONSUMER_ENABLED:true}
 

@@ -5,6 +5,7 @@ import com.gary.bilibili.video.constant.VideoConstant;
 import com.gary.bilibili.video.message.VideoViewMessage;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
+@ConditionalOnProperty(name = "video.view.consumer-enabled", havingValue = "true", matchIfMissing = true)
 @RocketMQMessageListener(
         topic = VideoConstant.VIEW_TOPIC,
         consumerGroup = "video-view-consumer")

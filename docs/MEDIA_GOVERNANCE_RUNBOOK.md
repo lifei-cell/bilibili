@@ -3,7 +3,7 @@
 ## 闭环
 
 1. 创作者上传：小文件保留 5 MB 分片与断点续传，20 MB 以上文件使用 15 分钟预签名 URL 直传 MinIO。
-2. 媒体处理：RocketMQ 异步任务调用 FFmpeg/FFprobe，按源分辨率生成 360P、720P、1080P HLS，输出 Master Playlist，并在第 1 秒自动截取封面。
+2. 媒体处理：RocketMQ 异步任务调用 FFmpeg/FFprobe；360P 优先生成并发布，720P/1080P 使用一次解码并行生成，完成后原子更新 Master Playlist，同时在第 1 秒自动截取封面。
 3. 分发：`CDN_BASE_URL` 作为播放地址前缀；Master、子清晰度 Playlist、TS 分片设置分层缓存策略。
 4. 生命周期：临时上传默认 1 天清理，源视频默认 30 天清理；HLS 播放产物长期保留。
 5. 内容治理：投稿先经过关键词、标签数量、发布频率风控，随后进入人工审核；高风险内容直接拒绝。
@@ -24,9 +24,25 @@ MINIO_CORS_ALLOW_ORIGIN=https://video.example.com
 CDN_BASE_URL=https://cdn.video.example.com
 MINIO_TEMP_LIFECYCLE_DAYS=1
 MINIO_SOURCE_LIFECYCLE_DAYS=30
+VIDEO_TRANSCODE_ENCODER=auto
+VIDEO_TRANSCODE_HARDWARE_FALLBACK=true
+VIDEO_TRANSCODE_SOFTWARE_PRESET=veryfast
+VIDEO_TRANSCODE_PROGRESSIVE_PUBLISH=true
 ```
 
 生产环境应将 MinIO 放在私网源站，通过 CDN 回源；预签名域名必须与浏览器实际访问域名一致，否则 AWS SigV4 Host 签名会失效。
+
+`VIDEO_TRANSCODE_ENCODER` 支持 `auto`、`software`、`nvenc`、`qsv`、`vaapi`。硬件编码失败时默认回退到 `libx264`，不会直接判定任务失败。NVIDIA 主机使用 `docker-compose.gpu.nvidia.yml`，Linux Intel 核显主机使用 `docker-compose.gpu.intel.yml`。
+
+```powershell
+# NVIDIA GPU
+docker compose -f docker-compose.yml -f docker-compose.service.yml -f docker-compose.gpu.nvidia.yml up -d --build bilibili-video-service
+
+# 增加两个独立转码 Worker，降低队列等待时间
+docker compose -f docker-compose.yml -f docker-compose.service.yml --profile transcode-scale up -d --scale bilibili-transcode-worker=2
+```
+
+Worker 保持单任务并发，单视频使用容器内全部 CPU；队列吞吐量通过增加 Worker 副本横向扩展。
 
 ## 自动回归
 
