@@ -2,7 +2,7 @@ package com.gary.bilibili.search.constant;
 
 public final class SearchConstant {
 
-    public static final String VIDEO_INDEX = "video_index";
+    public static final String VIDEO_INDEX = "video_search";
     public static final String HOT_SEARCH_KEY = "search:hot";
     public static final String SORT_DEFAULT = "default";
     public static final String SORT_HOT = "hot";

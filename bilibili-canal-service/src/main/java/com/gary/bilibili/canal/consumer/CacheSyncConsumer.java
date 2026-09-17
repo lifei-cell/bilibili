@@ -6,6 +6,7 @@ import com.gary.bilibili.canal.document.VideoDocument;
 import com.gary.bilibili.canal.message.CacheSyncEvent;
 import com.gary.bilibili.canal.repository.VideoDocumentRepository;
 import com.gary.bilibili.canal.service.VideoBloomFilter;
+import com.gary.bilibili.canal.service.VideoIndexWriteGate;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -29,15 +30,18 @@ public class CacheSyncConsumer implements RocketMQListener<CacheSyncEvent> {
     private final StringRedisTemplate stringRedisTemplate;
     private final VideoBloomFilter videoBloomFilter;
     private final ReliableMessageExecutor reliableMessageExecutor;
+    private final VideoIndexWriteGate videoIndexWriteGate;
 
     public CacheSyncConsumer(VideoDocumentRepository videoDocumentRepository,
                              StringRedisTemplate stringRedisTemplate,
                              VideoBloomFilter videoBloomFilter,
-                             ReliableMessageExecutor reliableMessageExecutor) {
+                             ReliableMessageExecutor reliableMessageExecutor,
+                             VideoIndexWriteGate videoIndexWriteGate) {
         this.videoDocumentRepository = videoDocumentRepository;
         this.stringRedisTemplate = stringRedisTemplate;
         this.videoBloomFilter = videoBloomFilter;
         this.reliableMessageExecutor = reliableMessageExecutor;
+        this.videoIndexWriteGate = videoIndexWriteGate;
     }
 
     @Override
@@ -50,7 +54,14 @@ public class CacheSyncConsumer implements RocketMQListener<CacheSyncEvent> {
                 CONSUMER_GROUP,
                 messageKey(event),
                 event,
-                () -> sync(event));
+                () -> {
+                    if (CanalConstant.VIDEO_TABLE.equals(event.getTable())
+                            || CanalConstant.VIDEO_STATS_TABLE.equals(event.getTable())) {
+                        videoIndexWriteGate.withCdcWrite(() -> sync(event));
+                    } else {
+                        sync(event);
+                    }
+                });
     }
 
     private void sync(CacheSyncEvent event) {

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -47,6 +48,14 @@ public class ReliabilityOperationsController {
             @RequestHeader(value = "X-Admin-Token", required = false) String token) {
         authorize(token);
         return Result.ok(maintenanceService.rebuild());
+    }
+
+    @PostMapping("/es/rollback")
+    public Result<SearchIndexMaintenanceService.RebuildResult> rollback(
+            @RequestHeader(value = "X-Admin-Token", required = false) String token,
+            @RequestParam String targetIndex) {
+        authorize(token);
+        return Result.ok(maintenanceService.rollback(targetIndex));
     }
 
     private void authorize(String token) {

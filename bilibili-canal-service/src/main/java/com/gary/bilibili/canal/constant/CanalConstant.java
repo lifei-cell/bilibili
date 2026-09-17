@@ -4,7 +4,9 @@ public final class CanalConstant {
 
     public static final String CACHE_SYNC_TOPIC = "cache-sync";
     public static final String CACHE_SYNC_CONSUMER_GROUP = "bilibili-canal-cache-sync";
-    public static final String VIDEO_INDEX = "video_index";
+    public static final String VIDEO_INDEX = "video_search";
+    public static final String LEGACY_VIDEO_INDEX = "video_index";
+    public static final String VIDEO_INDEX_PREFIX = "video_index_v";
     public static final String VIDEO_TABLE = "video";
     public static final String VIDEO_STATS_TABLE = "video_stats";
     public static final String USER_TABLE = "sys_user";

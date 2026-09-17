@@ -13,7 +13,7 @@ import org.springframework.data.elasticsearch.annotations.MultiField;
 import java.util.List;
 
 @Data
-@Document(indexName = SearchConstant.VIDEO_INDEX)
+@Document(indexName = SearchConstant.VIDEO_INDEX, createIndex = false)
 public class VideoDocument {
 
     @Id

@@ -5,6 +5,7 @@ import com.gary.bilibili.canal.document.VideoDocument;
 import com.gary.bilibili.canal.message.CacheSyncEvent;
 import com.gary.bilibili.canal.repository.VideoDocumentRepository;
 import com.gary.bilibili.canal.service.VideoBloomFilter;
+import com.gary.bilibili.canal.service.VideoIndexWriteGate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -49,7 +50,7 @@ class CacheSyncConsumerTest {
         when(stringRedisTemplate.opsForSet()).thenReturn(setOperations);
         consumer = new CacheSyncConsumer(
                 videoDocumentRepository, stringRedisTemplate, videoBloomFilter,
-                reliableMessageExecutor);
+                reliableMessageExecutor, new VideoIndexWriteGate());
     }
 
     @Test

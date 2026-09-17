@@ -37,7 +37,16 @@ curl -X POST -H "X-Admin-Token: $OPERATIONS_ADMIN_TOKEN" \
   http://localhost:8080/api/admin/reliability/es/rebuild
 ```
 
-对账以 MySQL 已发布且未删除的视频为源，核对 ES 的缺失、孤儿和字段不一致 ID，单类最多返回 100 个样本。全量重建会清空并分批写回 `video_index`，适合故障恢复或维护窗口；重建后自动执行一次对账，未收敛则接口失败。大规模生产索引应进一步升级为影子索引加 Alias 原子切换。
+搜索与 CDC 写入统一走 `video_search` Alias。首次启动时，若存在旧物理索引 `video_index`，Alias 指向旧索引；否则创建 `video_index_vinitial`。重建按视频 ID 每页 200 条读取 MySQL，写入独立 `video_index_v<UUID>`；旧 Alias 持续承接搜索。最终追平时暂缓本实例 CDC 索引写入，刷新影子索引、清理孤儿文档，并以 MySQL 已发布且未删除的视频为源对账；一致后使用 ES 单次 Alias 更新移除旧索引并加入新索引。失败不切换 Alias，旧索引不会自动删除。对账返回缺失、孤儿和字段不一致 ID，每类最多 100 个样本。
+
+回退时取上次重建响应的 `previousIndex`，调用下面接口。服务先按 MySQL 分页追平目标旧索引、复核后再切换 Alias，防止旧索引在切换后停止接收 CDC 导致数据回退。只接受保留的 `video_index`、`video_index_vinitial` 或 `video_index_v<UUID>`；旧索引由运维在回滚窗口结束后手工清理。
+
+```bash
+curl -X POST -H "X-Admin-Token: $OPERATIONS_ADMIN_TOKEN" \
+  "http://localhost:8080/api/admin/reliability/es/rollback?targetIndex=video_index"
+```
+
+当前暂缓 CDC 的锁仅覆盖单个 Canal 服务进程；多实例部署前须增加跨实例写入协调。搜索结果 Redis 缓存最长保留 30 秒，切换后可能短暂返回旧结果。容器内 ES 联调以发布验收报告为准。
 
 ## 人工处置
 
