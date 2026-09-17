@@ -9,6 +9,7 @@ import org.springframework.data.elasticsearch.core.MultiGetItem;
 import org.springframework.data.elasticsearch.core.SearchHitsIterator;
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
 import org.springframework.data.elasticsearch.core.query.Query;
+import org.mockito.ArgumentCaptor;
 
 import java.util.List;
 
@@ -18,6 +19,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -67,6 +69,12 @@ class SearchIndexMaintenanceServiceTest {
         verify(source, org.mockito.Mockito.times(3)).page(0, 200);
         verify(source, org.mockito.Mockito.times(3)).page(1001, 200);
         verify(alias).switchTo("video_index", result.activeIndex());
+
+        ArgumentCaptor<Query> idsQueries = ArgumentCaptor.forClass(Query.class);
+        verify(operations, times(2)).multiGet(idsQueries.capture(), eq(VideoDocument.class),
+                any(IndexCoordinates.class));
+        assertThat(idsQueries.getAllValues()).allSatisfy(query ->
+                assertThat(query.getIdsWithRouting()).isNotEmpty());
     }
 
     @Test

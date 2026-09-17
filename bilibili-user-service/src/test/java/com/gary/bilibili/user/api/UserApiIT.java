@@ -73,7 +73,7 @@ class UserApiIT {
     void shouldMigrateRegisterLoginAndReadCurrentUserThroughHttpApi() {
         Integer migrationCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1", Integer.class);
-        assertThat(migrationCount).isEqualTo(5);
+        assertThat(migrationCount).isEqualTo(6);
 
         HttpHeaders operationsHeaders = jsonHeaders();
         operationsHeaders.set("X-Admin-Token", "change-me-in-production");

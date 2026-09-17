@@ -101,6 +101,10 @@ services:
 
   rocketmq-broker:
     <<: *medium-resource
+    # RocketMQ uses a 768 MiB heap plus native/direct-buffer overhead. Keep
+    # that heap and give the broker enough container headroom for the 85%
+    # resource gate during fault recovery and backlog catch-up.
+    mem_limit: 1536m
     image: apache/rocketmq:5.3.1
     container_name: bilibili-rocketmq-broker
     restart: unless-stopped

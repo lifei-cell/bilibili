@@ -159,7 +159,9 @@ public class SearchIndexMaintenanceService {
             }
             mysqlCount += page.size();
             cursor = page.getLast().getId();
-            Query ids = operations.idsQuery(page.stream().map(d -> d.getId().toString()).toList());
+            // multiGet reads ids with optional routing; use its dedicated factory
+            // so Spring Data Elasticsearch populates getIdsWithRouting().
+            Query ids = Query.multiGetQuery(page.stream().map(d -> d.getId().toString()).toList());
             List<MultiGetItem<VideoDocument>> found = operations.multiGet(ids, VideoDocument.class, coordinates);
             Map<Long, VideoDocument> indexed = new HashMap<>();
             for (MultiGetItem<VideoDocument> item : found) {
