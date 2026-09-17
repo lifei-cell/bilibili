@@ -1,14 +1,12 @@
 package com.gary.bilibili.video.consumer;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gary.bilibili.video.constant.UploadConstant;
 import com.gary.bilibili.video.entity.VideoTranscodeTask;
-import com.gary.bilibili.video.mapper.VideoMapper;
 import com.gary.bilibili.video.mapper.VideoTranscodeTaskMapper;
 import com.gary.bilibili.video.message.VideoTranscodeMessage;
 import com.gary.bilibili.video.model.MediaTranscodeResult;
 import com.gary.bilibili.video.service.VideoTranscodeWorker;
+import com.gary.bilibili.video.service.VideoTranscodeResultService;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.slf4j.Logger;
@@ -39,27 +37,24 @@ public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMe
             Long.class);
 
     private final VideoTranscodeTaskMapper taskMapper;
-    private final VideoMapper videoMapper;
     private final StringRedisTemplate stringRedisTemplate;
     private final VideoTranscodeWorker transcodeWorker;
-    private final ObjectMapper objectMapper;
+    private final VideoTranscodeResultService resultService;
     private final int maxRetries;
     private final int retryDelaySeconds;
     private final int processingLockSeconds;
 
     public VideoTranscodeConsumer(VideoTranscodeTaskMapper taskMapper,
-                                  VideoMapper videoMapper,
                                   StringRedisTemplate stringRedisTemplate,
                                   VideoTranscodeWorker transcodeWorker,
-                                  ObjectMapper objectMapper,
+                                  VideoTranscodeResultService resultService,
                                   @Value("${video.transcode.max-retries:3}") int maxRetries,
                                   @Value("${video.transcode.retry-delay-seconds:10}") int retryDelaySeconds,
                                   @Value("${video.transcode.processing-lock-seconds:1860}") int processingLockSeconds) {
         this.taskMapper = taskMapper;
-        this.videoMapper = videoMapper;
         this.stringRedisTemplate = stringRedisTemplate;
         this.transcodeWorker = transcodeWorker;
-        this.objectMapper = objectMapper;
+        this.resultService = resultService;
         this.maxRetries = Math.max(1, maxRetries);
         this.retryDelaySeconds = Math.max(1, retryDelaySeconds);
         this.processingLockSeconds = Math.max(60, processingLockSeconds);
@@ -91,12 +86,12 @@ public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMe
                 return;
             }
             MediaTranscodeResult result = transcodeWorker.transcode(task, playable -> {
-                publishResult(task, playable);
+                resultService.publish(task, playable);
                 playablePublished.set(true);
                 log.info("Low rendition published, taskId={}, variants={}",
                         task.getTaskId(), playable.variants().size());
             });
-            publishResult(task, result);
+            resultService.publish(task, result);
         } catch (Exception exception) {
             if (playablePublished.get()) {
                 taskMapper.markDegradedSuccess(task.getTaskId(), safeMessage(exception));
@@ -117,19 +112,6 @@ public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMe
                 log.warn("Release video transcode processing lock failed, taskId={}",
                         task.getTaskId(), exception);
             }
-        }
-    }
-
-    private void publishResult(VideoTranscodeTask task, MediaTranscodeResult result) {
-        taskMapper.markSuccess(task.getTaskId(), result.masterUrl(), result.coverUrl(), serialize(result));
-        videoMapper.updateMediaByFileMd5(task.getFileMd5(), result.masterUrl(), result.coverUrl());
-    }
-
-    private String serialize(MediaTranscodeResult result) {
-        try {
-            return objectMapper.writeValueAsString(result.variants());
-        } catch (JsonProcessingException exception) {
-            throw new IllegalStateException("Serialize media variants failed", exception);
         }
     }
 

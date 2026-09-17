@@ -37,6 +37,8 @@
 
 ### 2. 修复转码完成时的双写窗口（P0）
 
+**状态：** 已于 2026-09-17 完成事务化修复与故障注入验证，记录见 `docs/reports/2026-09-17-transcode-result-transaction.md`。
+
 - **现状：** `VideoTranscodeConsumer.publishResult` 先调用 `VideoTranscodeTaskMapper.markSuccess`，再调用 `VideoMapper.updateMediaByFileMd5`，中间没有事务。如果第二步抛错，任务可能已是成功状态，后续消息在入口直接跳过，视频播放地址无法靠重试修复。
 - **改动：** 将两次 MySQL 更新移入独立 Spring Service 的事务方法，由消费端调用；先验证任务当前代次，再一次事务提交任务状态与所有关联视频的播放地址。MinIO 产物与数据库仍是最终一致，需要保留失败后对账修复入口。保留低清晰度先发布的阶段语义，不让后续档位失败清空已可播放结果。
 - **验收：** 注入第二次数据库写入异常，验证任务状态回滚且可重试；重复消息和后续档位失败时，视频仍可播放且结果不倒退。

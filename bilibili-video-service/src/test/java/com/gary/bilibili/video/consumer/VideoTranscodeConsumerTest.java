@@ -1,11 +1,10 @@
 package com.gary.bilibili.video.consumer;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gary.bilibili.video.entity.VideoTranscodeTask;
-import com.gary.bilibili.video.mapper.VideoMapper;
 import com.gary.bilibili.video.mapper.VideoTranscodeTaskMapper;
 import com.gary.bilibili.video.message.VideoTranscodeMessage;
 import com.gary.bilibili.video.model.MediaTranscodeResult;
+import com.gary.bilibili.video.service.VideoTranscodeResultService;
 import com.gary.bilibili.video.service.VideoTranscodeWorker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,14 +20,14 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class VideoTranscodeConsumerTest {
 
     private VideoTranscodeTaskMapper taskMapper;
-    private VideoMapper videoMapper;
+    private VideoTranscodeResultService resultService;
     private VideoTranscodeWorker worker;
     private VideoTranscodeConsumer consumer;
     private VideoTranscodeTask task;
@@ -37,7 +36,7 @@ class VideoTranscodeConsumerTest {
     @BeforeEach
     void setUp() {
         taskMapper = mock(VideoTranscodeTaskMapper.class);
-        videoMapper = mock(VideoMapper.class);
+        resultService = mock(VideoTranscodeResultService.class);
         worker = mock(VideoTranscodeWorker.class);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
@@ -52,7 +51,7 @@ class VideoTranscodeConsumerTest {
         when(taskMapper.markProcessing("task-1")).thenReturn(1);
 
         consumer = new VideoTranscodeConsumer(
-                taskMapper, videoMapper, redisTemplate, worker, new ObjectMapper(), 3, 10, 1860);
+                taskMapper, redisTemplate, worker, resultService, 3, 10, 1860);
     }
 
     @Test
@@ -67,8 +66,8 @@ class VideoTranscodeConsumerTest {
 
         consumer.onMessage(message());
 
-        verify(taskMapper, times(2)).markSuccess(eq("task-1"), anyString(), anyString(), anyString());
-        verify(videoMapper, times(2)).updateMediaByFileMd5(eq("md5-1"), anyString(), anyString());
+        verify(resultService).publish(task, playable);
+        verify(resultService).publish(task, adaptive);
     }
 
     @Test
@@ -84,7 +83,43 @@ class VideoTranscodeConsumerTest {
 
         verify(taskMapper).markDegradedSuccess(eq("task-1"), anyString());
         verify(taskMapper, never()).markPendingAfterFailure(anyString(), anyString(), any(Integer.class), any(Integer.class));
-        verify(videoMapper).updateMediaByFileMd5(eq("md5-1"), anyString(), anyString());
+        verify(resultService).publish(task, playable);
+    }
+
+    @Test
+    void shouldRetryWhenPublishingPlayableResultFails() {
+        MediaTranscodeResult playable = result("360P");
+        when(worker.transcode(eq(task), any())).thenAnswer(invocation -> {
+            Consumer<MediaTranscodeResult> listener = invocation.getArgument(1);
+            listener.accept(playable);
+            return playable;
+        });
+        doThrow(new IllegalStateException("video update failed"))
+                .when(resultService).publish(task, playable);
+
+        consumer.onMessage(message());
+
+        verify(taskMapper).markPendingAfterFailure(eq("task-1"), anyString(), eq(3), eq(10));
+        verify(taskMapper, never()).markDegradedSuccess(anyString(), anyString());
+    }
+
+    @Test
+    void shouldKeepPlayableResultWhenFinalDatabaseWriteFails() {
+        MediaTranscodeResult playable = result("360P");
+        MediaTranscodeResult adaptive = result("360P", "720P");
+        when(worker.transcode(eq(task), any())).thenAnswer(invocation -> {
+            Consumer<MediaTranscodeResult> listener = invocation.getArgument(1);
+            listener.accept(playable);
+            return adaptive;
+        });
+        doThrow(new IllegalStateException("adaptive video update failed"))
+                .when(resultService).publish(task, adaptive);
+
+        consumer.onMessage(message());
+
+        verify(resultService).publish(task, playable);
+        verify(taskMapper).markDegradedSuccess(eq("task-1"), anyString());
+        verify(taskMapper, never()).markPendingAfterFailure(anyString(), anyString(), any(Integer.class), any(Integer.class));
     }
 
     private VideoTranscodeMessage message() {
