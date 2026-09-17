@@ -49,8 +49,11 @@ class HlsPackageStorage {
         this.outputPrefix = normalized.isBlank() ? "play" : normalized;
     }
 
-    String objectPrefix(String taskKey) {
-        return outputPrefix + "/" + taskKey;
+    String objectPrefix(String taskKey, Long generation, String token) {
+        if (generation == null || generation < 1 || !StringUtils.hasText(token)) {
+            throw new IllegalArgumentException("Transcode attempt identity is required for HLS publication");
+        }
+        return outputPrefix + "/" + taskKey + "/attempt-" + generation + "-" + token;
     }
 
     MediaTranscodeResult.Variant variant(String quality,
@@ -64,10 +67,12 @@ class HlsPackageStorage {
 
     MediaTranscodeResult publish(Path packageDirectory,
                                  String objectPrefix,
-                                 List<MediaTranscodeResult.Variant> variants) throws Exception {
+                                 List<MediaTranscodeResult.Variant> variants,
+                                 Runnable assertLease) throws Exception {
+        assertLease.run();
         Files.writeString(packageDirectory.resolve("master.m3u8"),
                 masterPlaylist(variants), StandardCharsets.UTF_8);
-        uploadPackage(packageDirectory, objectPrefix);
+        uploadPackage(packageDirectory, objectPrefix, assertLease);
         return new MediaTranscodeResult(
                 deliveryUrl(objectPrefix + "/master.m3u8"),
                 deliveryUrl(objectPrefix + "/cover.jpg"),
@@ -110,12 +115,13 @@ class HlsPackageStorage {
         }
     }
 
-    private void uploadPackage(Path packageDirectory, String objectPrefix) throws Exception {
+    private void uploadPackage(Path packageDirectory, String objectPrefix, Runnable assertLease) throws Exception {
         try (Stream<Path> paths = Files.walk(packageDirectory)) {
             List<Path> files = paths.filter(Files::isRegularFile)
                     .sorted(Comparator.comparingInt(this::publicationOrder))
                     .toList();
             for (Path path : files) {
+                assertLease.run();
                 String relative = packageDirectory.relativize(path).toString().replace('\\', '/');
                 try (InputStream stream = Files.newInputStream(path)) {
                     minioClient.putObject(PutObjectArgs.builder().bucket(videoBucket)

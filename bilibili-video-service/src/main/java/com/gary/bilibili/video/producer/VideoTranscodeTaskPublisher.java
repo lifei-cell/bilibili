@@ -35,27 +35,27 @@ public class VideoTranscodeTaskPublisher {
     private final StringRedisTemplate stringRedisTemplate;
     private final int maxRetries;
     private final int retryDelaySeconds;
-    private final int reclaimAfterSeconds;
+    private final int leaseSeconds;
 
     public VideoTranscodeTaskPublisher(VideoTranscodeTaskMapper taskMapper,
                                        RocketMQTemplate rocketMQTemplate,
                                        StringRedisTemplate stringRedisTemplate,
                                        @Value("${video.transcode.max-retries:3}") int maxRetries,
                                        @Value("${video.transcode.retry-delay-seconds:10}") int retryDelaySeconds,
-                                       @Value("${video.transcode.reclaim-after-seconds:1860}") int reclaimAfterSeconds) {
+                                       @Value("${video.transcode.lease-seconds:120}") int leaseSeconds) {
         this.taskMapper = taskMapper;
         this.rocketMQTemplate = rocketMQTemplate;
         this.stringRedisTemplate = stringRedisTemplate;
         this.maxRetries = Math.max(1, maxRetries);
         this.retryDelaySeconds = Math.max(1, retryDelaySeconds);
-        this.reclaimAfterSeconds = Math.max(60, reclaimAfterSeconds);
+        this.leaseSeconds = Math.max(30, leaseSeconds);
     }
 
     @Scheduled(
             fixedDelayString = "${video.transcode.dispatch-interval:1000}",
             initialDelayString = "${video.transcode.dispatch-initial-delay:5000}")
     public void dispatchPendingTasks() {
-        List<VideoTranscodeTask> tasks = taskMapper.selectDispatchable(BATCH_SIZE, reclaimAfterSeconds);
+        List<VideoTranscodeTask> tasks = taskMapper.selectDispatchable(BATCH_SIZE);
         for (VideoTranscodeTask task : tasks) {
             dispatch(task);
         }
@@ -70,12 +70,16 @@ public class VideoTranscodeTaskPublisher {
             return;
         }
 
+        long generation = task.getClaimGeneration() == null ? 0 : task.getClaimGeneration();
+        String claimToken = UUID.randomUUID().toString();
         try {
-            if (taskMapper.markDispatched(task.getTaskId(), reclaimAfterSeconds) == 0) {
+            if (taskMapper.markDispatched(task.getTaskId(), generation, claimToken, leaseSeconds) == 0) {
                 return;
             }
             VideoTranscodeMessage message = new VideoTranscodeMessage();
             message.setTaskId(task.getTaskId());
+            message.setClaimGeneration(generation + 1);
+            message.setClaimToken(claimToken);
             message.setUserId(task.getUserId());
             message.setFileMd5(task.getFileMd5());
             message.setFileName(task.getFileName());
@@ -85,8 +89,9 @@ public class VideoTranscodeTaskPublisher {
             message.setCreateTime(java.time.LocalDateTime.now());
             rocketMQTemplate.convertAndSend(UploadConstant.TRANSCODE_TOPIC, message);
         } catch (Exception exception) {
-            taskMapper.markPendingAfterFailure(task.getTaskId(), safeMessage(exception),
-                    maxRetries, retryDelaySeconds);
+            // Only the generation installed by this dispatch may reset it.
+            taskMapper.markPendingAfterFailure(task.getTaskId(), generation + 1, claimToken,
+                    UploadConstant.TRANSCODE_STATUS_DISPATCHED, safeMessage(exception), maxRetries, retryDelaySeconds);
             log.error("Dispatch video transcode task failed, taskId={}", task.getTaskId(), exception);
         } finally {
             try {

@@ -66,9 +66,8 @@ video:
     dispatch-initial-delay: ${VIDEO_TRANSCODE_DISPATCH_INITIAL_DELAY:5000}
     max-retries: ${VIDEO_TRANSCODE_MAX_RETRIES:3}
     retry-delay-seconds: ${VIDEO_TRANSCODE_RETRY_DELAY_SECONDS:10}
-    # Must cover the FFmpeg timeout and allow the worker to release its lock.
-    reclaim-after-seconds: ${VIDEO_TRANSCODE_RECLAIM_AFTER_SECONDS:1860}
-    processing-lock-seconds: ${VIDEO_TRANSCODE_PROCESSING_LOCK_SECONDS:1860}
+    # Heartbeat renews the database lease while FFmpeg is running.
+    lease-seconds: ${VIDEO_TRANSCODE_LEASE_SECONDS:120}
     ffmpeg-path: ${VIDEO_TRANSCODE_FFMPEG_PATH:ffmpeg}
     ffprobe-path: ${VIDEO_TRANSCODE_FFPROBE_PATH:ffprobe}
     temp-dir: ${VIDEO_TRANSCODE_TEMP_DIR:/tmp/bilibili-transcode}

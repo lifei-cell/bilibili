@@ -45,9 +45,10 @@
 
 ### 3. 给转码 Worker 增加代次保护（P1）
 
-- **现状：** `VideoTranscodeTaskMapper.markProcessing` 接受状态 1 或 2；`markSuccess` 仅凭 `task_id` 更新。Redis 处理锁有固定 TTL，超时重派或旧 Worker 迟到时缺少数据库级持有者校验。
-- **改动：** Flyway 新增 `claim_token`/`lease_until` 或单调递增代次；领取、续租、失败、完成均以任务 ID 加当前代次作条件更新，并检查受影响行数。Worker 失去租约时停止发布；每次尝试使用独立 MinIO 产物前缀，避免旧进程覆盖新进程的 HLS 文件。Redis 锁只作为减压手段。
-- **验收：** 两个 Worker 并发处理同一任务，模拟旧 Worker 超时后再完成；只有新持有者能提交状态和播放地址，产物互不覆盖。再验证进程崩溃、MQ 重投和租约到期回收。
+**状态：** 数据库租约、代次写入条件、心跳续租和独立 HLS 产物前缀已实现；旧 Worker 超时后的数据库竞争与对象隔离测试通过。记录见 `docs/reports/2026-09-17-transcode-lease-fencing.md`。真实容器双 Worker 演练仍受 Docker Engine 环境阻塞。
+
+- **机制：** Flyway V6 增加 `claim_generation`、`claim_token` 和 `lease_until`。领取、续租、失败和完成均由数据库条件更新保护；低清晰度与最终结果写库仍保持同一事务。每次尝试使用独立 MinIO 产物前缀。
+- **后续验收：** 恢复 Docker 后运行真实 MySQL、RocketMQ、MinIO、FFmpeg 双 Worker 演练，覆盖进程崩溃、MQ 重投、旧 Worker 迟到及租约到期回收；补孤立尝试对象清理与高档位超时补偿。
 
 ### 4. 扩大前端回归范围（P1）
 

@@ -25,6 +25,9 @@ public class VideoTranscodeTask {
     private String variantsJson;
     private Integer status;
     private Integer retryCount;
+    private Long claimGeneration;
+    private String claimToken;
+    private LocalDateTime leaseUntil;
     private String errorMessage;
     private LocalDateTime nextRetryTime;
     private LocalDateTime createTime;

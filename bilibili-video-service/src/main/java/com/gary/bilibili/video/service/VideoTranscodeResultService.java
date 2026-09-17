@@ -26,11 +26,11 @@ public class VideoTranscodeResultService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void publish(VideoTranscodeTask task, MediaTranscodeResult result) {
+    public void publish(VideoTranscodeTask task, MediaTranscodeResult result, boolean finalResult) {
         String variantsJson = serialize(result);
-        if (taskMapper.markSuccess(task.getTaskId(), result.masterUrl(),
-                result.coverUrl(), variantsJson) != 1) {
-            throw new IllegalStateException("Video transcode task was not found: " + task.getTaskId());
+        if (taskMapper.markSuccess(task.getTaskId(), task.getClaimGeneration(), task.getClaimToken(),
+                result.masterUrl(), result.coverUrl(), variantsJson, finalResult) != 1) {
+            throw new VideoTranscodeLeaseService.LeaseLostException(task.getTaskId());
         }
         // Zero rows is valid when the user has not published a video yet.
         videoMapper.updateMediaByFileMd5(task.getFileMd5(), result.masterUrl(), result.coverUrl());

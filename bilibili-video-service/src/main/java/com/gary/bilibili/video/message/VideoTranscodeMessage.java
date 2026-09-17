@@ -8,6 +8,8 @@ import java.time.LocalDateTime;
 public class VideoTranscodeMessage {
 
     private String taskId;
+    private Long claimGeneration;
+    private String claimToken;
     private Long userId;
     private String fileMd5;
     private String fileName;

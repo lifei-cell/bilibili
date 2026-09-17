@@ -66,7 +66,8 @@ public class FfmpegVideoTranscodeWorker implements VideoTranscodeWorker {
 
     @Override
     public MediaTranscodeResult transcode(VideoTranscodeTask task,
-                                          Consumer<MediaTranscodeResult> playableListener) {
+                                          Consumer<MediaTranscodeResult> playableListener,
+                                          Runnable assertLease) {
         validateTask(task);
         String taskKey = StringUtils.hasText(task.getFileMd5()) ? task.getFileMd5() : task.getTaskId();
         Path workDirectory = null;
@@ -82,7 +83,8 @@ public class FfmpegVideoTranscodeWorker implements VideoTranscodeWorker {
             boolean hasAudio = probeHasAudio(input, workDirectory.resolve("ffprobe-audio.log"));
             List<Rendition> renditions = selectRenditions(source.height());
             List<MediaTranscodeResult.Variant> variants = new ArrayList<>();
-            String objectPrefix = packageStorage.objectPrefix(taskKey);
+            String objectPrefix = packageStorage.objectPrefix(taskKey,
+                    task.getClaimGeneration(), task.getClaimToken());
             VideoEncoder encoder = encoderSelector.select(workDirectory.resolve("ffmpeg-encoders.log"));
 
             extractCover(input, packageDirectory.resolve("cover.jpg"), workDirectory.resolve("ffmpeg-cover.log"));
@@ -93,7 +95,8 @@ public class FfmpegVideoTranscodeWorker implements VideoTranscodeWorker {
             variants.addAll(buildVariants(firstBatch, source, objectPrefix));
 
             if (firstBatchSize < renditions.size()) {
-                MediaTranscodeResult playable = packageStorage.publish(packageDirectory, objectPrefix, variants);
+                MediaTranscodeResult playable = packageStorage.publish(packageDirectory, objectPrefix,
+                        variants, assertLease);
                 playableListener.accept(playable);
 
                 List<Rendition> remaining = renditions.subList(firstBatchSize, renditions.size());
@@ -102,8 +105,10 @@ public class FfmpegVideoTranscodeWorker implements VideoTranscodeWorker {
                 variants.addAll(buildVariants(remaining, source, objectPrefix));
             }
 
-            return packageStorage.publish(packageDirectory, objectPrefix, variants);
+            return packageStorage.publish(packageDirectory, objectPrefix, variants, assertLease);
         } catch (BusinessException exception) {
+            throw exception;
+        } catch (VideoTranscodeLeaseService.LeaseLostException exception) {
             throw exception;
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
@@ -211,13 +216,17 @@ public class FfmpegVideoTranscodeWorker implements VideoTranscodeWorker {
 
     private void run(List<String> command, Path logFile, String errorPrefix) throws Exception {
         Process process = new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(logFile.toFile()).start();
-        boolean completed = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-        if (!completed) {
-            process.destroy();
-            if (!process.waitFor(5, TimeUnit.SECONDS)) process.destroyForcibly();
-            throw new BusinessException("FFmpeg 转码超时");
+        try {
+            boolean completed = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+            if (!completed) {
+                throw new BusinessException("FFmpeg 转码超时");
+            }
+            if (process.exitValue() != 0) throw new BusinessException(errorPrefix + ": " + summarizeLog(logFile));
+        } finally {
+            if (process.isAlive()) {
+                process.destroyForcibly();
+            }
         }
-        if (process.exitValue() != 0) throw new BusinessException(errorPrefix + ": " + summarizeLog(logFile));
     }
 
     private List<Rendition> selectRenditions(int sourceHeight) {

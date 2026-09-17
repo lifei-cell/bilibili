@@ -8,8 +8,10 @@ import java.util.function.Consumer;
 public interface VideoTranscodeWorker {
 
     default MediaTranscodeResult transcode(VideoTranscodeTask task) {
-        return transcode(task, ignored -> { });
+        return transcode(task, ignored -> { }, () -> { });
     }
 
-    MediaTranscodeResult transcode(VideoTranscodeTask task, Consumer<MediaTranscodeResult> playableListener);
+    MediaTranscodeResult transcode(VideoTranscodeTask task,
+                                  Consumer<MediaTranscodeResult> playableListener,
+                                  Runnable assertLease);
 }

@@ -35,11 +35,12 @@ class VideoTranscodeTaskPublisherTest {
         task.setFileName("demo.mp4");
         task.setFileSize(1024L);
         task.setSourceUrl("http://minio/videos/source/demo.mp4");
-        when(taskMapper.selectDispatchable(20, 1860)).thenReturn(List.of(task));
-        when(taskMapper.markDispatched("upload-task-001", 1860)).thenReturn(1);
+        task.setClaimGeneration(0L);
+        when(taskMapper.selectDispatchable(20)).thenReturn(List.of(task));
+        when(taskMapper.markDispatched(eq("upload-task-001"), eq(0L), anyString(), eq(120))).thenReturn(1);
 
         VideoTranscodeTaskPublisher publisher = new VideoTranscodeTaskPublisher(
-                taskMapper, rocketMQTemplate, redisTemplate, 3, 10, 1860);
+                taskMapper, rocketMQTemplate, redisTemplate, 3, 10, 120);
         publisher.dispatchPendingTasks();
 
         verify(rocketMQTemplate).convertAndSend(
@@ -47,6 +48,9 @@ class VideoTranscodeTaskPublisherTest {
                 (Object) org.mockito.ArgumentMatchers.argThat(message ->
                         message instanceof com.gary.bilibili.video.message.VideoTranscodeMessage
                                 && "upload-task-001".equals(
-                                ((com.gary.bilibili.video.message.VideoTranscodeMessage) message).getTaskId())));
+                                ((com.gary.bilibili.video.message.VideoTranscodeMessage) message).getTaskId())
+                                && Long.valueOf(1).equals(
+                                ((com.gary.bilibili.video.message.VideoTranscodeMessage) message).getClaimGeneration())
+                                && ((com.gary.bilibili.video.message.VideoTranscodeMessage) message).getClaimToken() != null));
     }
 }

@@ -5,64 +5,53 @@ import com.gary.bilibili.video.entity.VideoTranscodeTask;
 import com.gary.bilibili.video.mapper.VideoTranscodeTaskMapper;
 import com.gary.bilibili.video.message.VideoTranscodeMessage;
 import com.gary.bilibili.video.model.MediaTranscodeResult;
+import com.gary.bilibili.video.service.VideoTranscodeLeaseService;
 import com.gary.bilibili.video.service.VideoTranscodeWorker;
 import com.gary.bilibili.video.service.VideoTranscodeResultService;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 
-import java.time.Duration;
-import java.util.Collections;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 @RocketMQMessageListener(
         topic = UploadConstant.TRANSCODE_TOPIC,
         consumerGroup = "video-transcode-consumer",
-        // One native encoder per one-CPU container; scale out with additional service replicas.
+        // Keep one FFmpeg job per service instance; scale queue throughput with Worker replicas.
         consumeThreadNumber = 1)
 public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMessage> {
 
     private static final Logger log = LoggerFactory.getLogger(VideoTranscodeConsumer.class);
-    private static final DefaultRedisScript<Long> RELEASE_LOCK_SCRIPT = new DefaultRedisScript<>(
-            "if redis.call('get', KEYS[1]) == ARGV[1] then "
-                    + "return redis.call('del', KEYS[1]) else return 0 end",
-            Long.class);
-
     private final VideoTranscodeTaskMapper taskMapper;
-    private final StringRedisTemplate stringRedisTemplate;
     private final VideoTranscodeWorker transcodeWorker;
     private final VideoTranscodeResultService resultService;
+    private final VideoTranscodeLeaseService leaseService;
     private final int maxRetries;
     private final int retryDelaySeconds;
-    private final int processingLockSeconds;
 
     public VideoTranscodeConsumer(VideoTranscodeTaskMapper taskMapper,
-                                  StringRedisTemplate stringRedisTemplate,
                                   VideoTranscodeWorker transcodeWorker,
                                   VideoTranscodeResultService resultService,
+                                  VideoTranscodeLeaseService leaseService,
                                   @Value("${video.transcode.max-retries:3}") int maxRetries,
-                                  @Value("${video.transcode.retry-delay-seconds:10}") int retryDelaySeconds,
-                                  @Value("${video.transcode.processing-lock-seconds:1860}") int processingLockSeconds) {
+                                  @Value("${video.transcode.retry-delay-seconds:10}") int retryDelaySeconds) {
         this.taskMapper = taskMapper;
-        this.stringRedisTemplate = stringRedisTemplate;
         this.transcodeWorker = transcodeWorker;
         this.resultService = resultService;
+        this.leaseService = leaseService;
         this.maxRetries = Math.max(1, maxRetries);
         this.retryDelaySeconds = Math.max(1, retryDelaySeconds);
-        this.processingLockSeconds = Math.max(60, processingLockSeconds);
     }
 
     @Override
     public void onMessage(VideoTranscodeMessage message) {
-        if (message == null || !StringUtils.hasText(message.getTaskId())) {
+        if (message == null || !StringUtils.hasText(message.getTaskId())
+                || message.getClaimGeneration() == null || !StringUtils.hasText(message.getClaimToken())) {
             return;
         }
 
@@ -72,45 +61,37 @@ public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMe
             return;
         }
 
-        String lockKey = UploadConstant.TRANSCODE_DISPATCH_LOCK_KEY_PREFIX + "processing:" + task.getTaskId();
-        String lockValue = UUID.randomUUID().toString();
-        Boolean locked = stringRedisTemplate.opsForValue()
-                .setIfAbsent(lockKey, lockValue, Duration.ofSeconds(processingLockSeconds));
-        if (!Boolean.TRUE.equals(locked)) {
+        long generation = message.getClaimGeneration();
+        String token = message.getClaimToken();
+        if (taskMapper.markProcessing(task.getTaskId(), generation, token) != 1) {
             return;
         }
+        task.setClaimGeneration(generation);
+        task.setClaimToken(token);
 
         AtomicBoolean playablePublished = new AtomicBoolean(false);
-        try {
-            if (taskMapper.markProcessing(task.getTaskId()) == 0) {
-                return;
-            }
+        try (VideoTranscodeLeaseService.Lease lease = leaseService.start(task.getTaskId(), generation, token)) {
             MediaTranscodeResult result = transcodeWorker.transcode(task, playable -> {
-                resultService.publish(task, playable);
+                lease.assertHeld();
+                resultService.publish(task, playable, false);
                 playablePublished.set(true);
                 log.info("Low rendition published, taskId={}, variants={}",
                         task.getTaskId(), playable.variants().size());
-            });
-            resultService.publish(task, result);
+            }, lease::assertHeld);
+            lease.assertHeld();
+            resultService.publish(task, result, true);
+        } catch (VideoTranscodeLeaseService.LeaseLostException exception) {
+            log.info("Ignore result from expired transcode attempt, taskId={}, generation={}",
+                    task.getTaskId(), generation);
         } catch (Exception exception) {
             if (playablePublished.get()) {
-                taskMapper.markDegradedSuccess(task.getTaskId(), safeMessage(exception));
+                taskMapper.markDegradedSuccess(task.getTaskId(), generation, token, safeMessage(exception));
                 log.warn("Adaptive renditions failed after playable rendition was published, taskId={}",
                         task.getTaskId(), exception);
             } else {
-                taskMapper.markPendingAfterFailure(task.getTaskId(), safeMessage(exception),
-                        maxRetries, retryDelaySeconds);
+                taskMapper.markPendingAfterFailure(task.getTaskId(), generation, token,
+                        UploadConstant.TRANSCODE_STATUS_PROCESSING, safeMessage(exception), maxRetries, retryDelaySeconds);
                 log.error("Process video transcode task failed, taskId={}", task.getTaskId(), exception);
-            }
-        } finally {
-            try {
-                stringRedisTemplate.execute(
-                        RELEASE_LOCK_SCRIPT,
-                        Collections.singletonList(lockKey),
-                        lockValue);
-            } catch (Exception exception) {
-                log.warn("Release video transcode processing lock failed, taskId={}",
-                        task.getTaskId(), exception);
             }
         }
     }
