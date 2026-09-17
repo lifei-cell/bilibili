@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 2,
+  "workload": {
+    "duration": "2m",
+    "playbackRate": 10,
+    "danmuRate": 1,
+    "interactionRate": 1,
+    "sampleIntervalSeconds": 5
+  },
+  "slo": {
+    "upload": {
+      "maxDurationMs": 30000
+    },
+    "transcode": {
+      "maxDurationMs": 180000
+    },
+    "playback": {
+      "p95Ms": 500,
+      "maxErrorRate": 0.005
+    },
+    "danmu": {
+      "p95Ms": 1000,
+      "maxErrorRate": 0.005
+    },
+    "interaction": {
+      "p95Ms": 1500,
+      "maxErrorRate": 0.005
+    },
+    "resources": {
+      "maxCpuQuotaPercent": 85,
+      "maxMemoryPercent": 85,
+      "containerLimits": {
+        "bilibili-rocketmq-broker": {
+          "maxCpuQuotaPercent": 120
+        }
+      }
+    },
+    "mqBacklog": {
+      "maxMessages": 1000
+    }
+  }
+}

@@ -20,7 +20,7 @@
 
 | 优先级 | 方向 | 具体动作与完成标准 |
 | --- | --- | --- |
-| P0 | 关闭发布门禁 | 固定工作区版本和测试环境，核对视频服务 4 CPU 配额下 `424.39%` 的采集口径、转码并发与历史任务；按容器配额归一化指标，必要时限制 FFmpeg/Worker 并发。完整复跑后要求报告 `passed=true`，并保留相同提交 SHA 的 CI 和构建产物。不要只调大阈值。 |
+| P0 | 关闭发布门禁 | CPU 采集已按容器配额归一化，并分别记录视频服务与运行中的转码 Worker；待 Docker Engine 可访问后，在固定工作区版本上完整复跑，要求报告 `passed=true`，并保留相同提交 SHA 的 CI 和构建产物。不要只调大阈值。 |
 | P1 | 转码状态机正确性 | 为 Worker 增加数据库租约/代次或 fencing token、续租及带条件的完成写入；验证超时回收与旧 Worker 并发时只有当前持有者能更新任务和视频结果，并补覆盖崩溃、重复消息和降级成功的集成测试。当前 Redis 锁有 TTL，但任务完成更新未携带代次条件。 |
 | P1 | 前端业务回归 | 补上传续传、发布播放、弹幕和互动的组件/页面测试，以及浏览器 E2E；将关键旅程并入 CI，失败时保留截图、日志和请求证据。 |
 | P2 | 容量与编码矩阵 | 将读、写、转码负载分开测，记录 P95/P99、CPU 配额、内存、MQ 积压和任务完成时间；分别验证 CPU、Intel QSV、NVIDIA NVENC 与软件回退，明确各环境吞吐和成本边界。 |
@@ -31,9 +31,9 @@
 
 ### 1. 校正资源门禁并复跑发布验证（P0）
 
-- **现状：** `scripts/loadtest/run-write-slo.ps1` 直接读取 `docker stats` 的 `CPUPerc`，与 `loadtest/write-slo.json` 中通用的 `85%` 比较；`docker-compose.service.yml` 则给视频服务和可选转码 Worker 各配置了 `4.00` CPU。原始百分比与单核百分比的口径需要先统一，历史报告的 424.39% 不能直接解释为单核资源超限。
-- **改动：** 在资源采集结果中同时记录原始 CPU 百分比、容器实际 CPU 配额和 `raw / quotaCores` 得到的配额使用率；不能读取配额时门禁失败并说明原因。将 Web 视频服务和专用 Worker 分开统计，补 FFmpeg 子进程数量、任务队列深度及每档转码耗时。仅在统一口径后设置合理阈值。
-- **验收：** 用 1 核、4 核的可控负载验证计算；固定版本运行 `scripts/verification/release-validation.ps1 -RunFaultDrill`，要求 `passed=true`、资源和 MQ 积压均合格，保存原始采样及同一提交 SHA 的远端 CI 产物。
+- **现状：** `docker-compose.service.yml` 给视频服务和可选转码 Worker 各配置了 `4.00` CPU。历史报告的 424.39% 是 Docker 原始 CPU 百分比，不能直接解释为单核资源超限。
+- **改动：** `scripts/loadtest/resource-normalization.ps1` 读取容器 CPU 配额，用 `raw / quotaCores` 计算配额使用率；不能读取配额时门禁失败。写链路分别采集视频服务和运行中的专用 Worker，并在报告中保留原始值、配额核数、归一化峰值和角色汇总。1 核、4 核样本校验已通过。FFmpeg 子进程、任务队列深度和每档转码耗时仍是后续观测项。
+- **验收：** 代码级归一化校验通过；完整发布复跑受 Docker 命名管道权限阻塞，最新报告为 `passed=false`，恢复 Docker 后仍需在固定版本上完成 E2E、Worker 采样、资源与 MQ 门禁并取得 `passed=true`，再保存同一提交 SHA 的远端 CI 产物。
 
 ### 2. 修复转码完成时的双写窗口（P0）
 
