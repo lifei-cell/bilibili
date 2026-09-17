@@ -14,7 +14,7 @@ const http = axios.create({
   withCredentials: true,
 })
 
-const refreshClient = axios.create({
+export const refreshClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 10000,
   withCredentials: true,

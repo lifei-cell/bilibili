@@ -19,6 +19,16 @@ npm run dev
 npm run build
 ```
 
+## 回归测试
+
+```bash
+npm run quality
+npx playwright install chromium
+npm run test:e2e
+```
+
+Vitest 覆盖分片续传与弹幕 WebSocket 重连；Playwright 使用本地 Vite 页面和确定性网关桩，覆盖登录、上传、发布、播放、弹幕与 401 刷新、分片中断恢复。浏览器测试不依赖已启动的后端。CI 在 push 和 PR 时运行，并在失败时上传截图、trace 和接口日志。
+
 生产环境可复制 `.env.example` 为 `.env.production`，通过 `VITE_API_BASE_URL` 指定 API 地址。若前端与网关同域部署，保持 `/api` 即可。
 
 ## 已接入功能

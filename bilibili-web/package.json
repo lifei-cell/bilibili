@@ -9,6 +9,7 @@
     "typecheck": "vue-tsc --noEmit -p tsconfig.app.json",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
     "build": "vue-tsc --noEmit -p tsconfig.app.json && vite build",
     "quality": "npm run lint && npm run test:coverage && npm run build",
     "preview": "vite preview"
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@types/spark-md5": "^3.0.5",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.11",

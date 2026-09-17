@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Bookmark, CheckCircle2, Eye, Flag, Heart, MessageCircle, Send, Share2, UserPlus } from 'lucide-vue-next'
 import Hls from 'hls.js'
 import { danmuApi, governanceApi, socialApi, videoApi } from '@/api'
+import { DanmuConnection } from '@/services/danmuConnection'
 import { useAuthStore } from '@/stores/auth'
 import type { CommentItem, CommentReply, DanmuItem, VideoDetail, VideoPlay } from '@/types/api'
 import { avatarFallback, formatCount, relativeTime } from '@/utils/format'
@@ -32,15 +33,12 @@ const loading = ref(true)
 const error = ref('')
 const actionError = ref('')
 const actionLoading = ref('')
-const danmuSocket = ref<WebSocket>()
 const reportOpen = ref(false)
 const reportReason = ref('SPAM')
 const reportDescription = ref('')
 const reportSubmitted = ref(false)
 let hls: Hls | undefined
-let socketGeneration = 0
-let reconnectTimer: number | undefined
-let heartbeatTimer: number | undefined
+let danmuConnection: DanmuConnection | undefined
 let loadGeneration = 0
 
 const videoId = computed(() => Number(route.params.id))
@@ -114,84 +112,10 @@ function appendDanmu(item?: Partial<DanmuItem>) {
   }].sort((left, right) => left.videoTime - right.videoTime)
 }
 
-function clearSocketTimers() {
-  if (reconnectTimer !== undefined) {
-    window.clearTimeout(reconnectTimer)
-    reconnectTimer = undefined
-  }
-  if (heartbeatTimer !== undefined) {
-    window.clearInterval(heartbeatTimer)
-    heartbeatTimer = undefined
-  }
-}
-
-function closeDanmuSocket() {
-  socketGeneration += 1
-  clearSocketTimers()
-  const socket = danmuSocket.value
-  danmuSocket.value = undefined
-  if (socket) {
-    socket.onopen = null
-    socket.onmessage = null
-    socket.onerror = null
-    socket.onclose = null
-    socket.close()
-  }
-}
-
-async function connectDanmuSocket() {
-  const currentVideoId = videoId.value
-  if (!Number.isInteger(currentVideoId) || currentVideoId <= 0) return
-  const generation = socketGeneration
-  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  let query = ''
-  if (auth.isLoggedIn) {
-    try {
-      const ticket = (await danmuApi.websocketTicket(currentVideoId)).data.ticket
-      query = `?ticket=${encodeURIComponent(ticket)}`
-    } catch {
-      // Public danmu viewing remains available when the authenticated ticket cannot be issued.
-    }
-  }
-  if (generation !== socketGeneration) return
-  const socket = new WebSocket(`${protocol}//${location.host}/api/danmu/ws/${currentVideoId}${query}`)
-  danmuSocket.value = socket
-
-  socket.onopen = () => {
-    if (generation !== socketGeneration) {
-      socket.close()
-      return
-    }
-    const heartbeat = () => {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'heartbeat' }))
-      }
-    }
-    heartbeat()
-    heartbeatTimer = window.setInterval(heartbeat, 25000)
-  }
-  socket.onmessage = event => {
-    if (generation !== socketGeneration) return
-    try {
-      const message = JSON.parse(event.data) as { type?: string; data?: DanmuItem }
-      if (message.type === 'danmu') appendDanmu(message.data)
-    } catch {
-      // Ignore malformed broadcast frames and keep the connection alive.
-    }
-  }
-  socket.onerror = () => socket.close()
-  socket.onclose = () => {
-    if (generation !== socketGeneration) return
-    clearSocketTimers()
-    danmuSocket.value = undefined
-    reconnectTimer = window.setTimeout(connectDanmuSocket, 1500)
-  }
-}
-
 async function load() {
   if (!Number.isFinite(videoId.value)) return
   const currentLoad = ++loadGeneration
-  closeDanmuSocket()
+  danmuConnection?.dispose()
   loading.value = true
   error.value = ''
   try {
@@ -205,7 +129,12 @@ async function load() {
     comments.value = commentResult.data || []
     commentLikes.value = {}
     danmus.value = danmuResult.data || []
-    connectDanmuSocket()
+    danmuConnection = new DanmuConnection({
+      videoId: videoId.value,
+      ticket: auth.isLoggedIn ? async () => (await danmuApi.websocketTicket(videoId.value)).data.ticket : undefined,
+      onDanmu: appendDanmu,
+    })
+    void danmuConnection.connect()
     if (auth.isLoggedIn) {
       const [likeResult, followResult] = await Promise.allSettled([
         socialApi.likeStatus(videoId.value), socialApi.followStatus(detailResult.data.author.id), loadCommentLikeStatuses(),
@@ -375,7 +304,7 @@ function attachSource(source: string, element?: HTMLVideoElement) {
 
 watch(() => route.params.id, load, { immediate: true })
 watch([currentSource, videoEl], ([source, element]) => attachSource(source, element), { flush: 'post' })
-onBeforeUnmount(() => { closeDanmuSocket(); hls?.destroy() })
+onBeforeUnmount(() => { danmuConnection?.dispose(); hls?.destroy() })
 </script>
 
 <template>

@@ -9,10 +9,11 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    exclude: ['e2e/**', '**/node_modules/**', '**/dist/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
-      include: ['src/utils/format.ts', 'src/components/EmptyState.vue'],
+      include: ['src/utils/format.ts', 'src/components/EmptyState.vue', 'src/services/*.ts', 'src/api/http.ts'],
       thresholds: {
         lines: 90,
         functions: 90,

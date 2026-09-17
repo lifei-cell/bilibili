@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { Check, CloudUpload, FileVideo, LoaderCircle, Sparkles, X } from 'lucide-vue-next'
 import SparkMD5 from 'spark-md5'
 import { uploadApi, videoApi } from '@/api'
+import { uploadSmallVideo } from '@/services/chunkUpload'
 import { categories } from '@/utils/format'
 
 const file = ref<File>()
@@ -45,10 +46,6 @@ function readVideoMeta(value: File) {
   el.src = url
 }
 
-async function hashBlob(blob: Blob): Promise<string> {
-  return SparkMD5.ArrayBuffer.hash(await blob.arrayBuffer())
-}
-
 async function startUpload() {
   if (!file.value) return
   const currentFile = file.value
@@ -77,32 +74,10 @@ async function startUpload() {
       phase.value = 'ready'
       return
     }
-    const checked = (await uploadApi.check({ fileMd5: fileMd5.value, fileName: currentFile.name, fileSize: currentFile.size, totalChunks })).data
-    if (checked.instant && checked.sourceUrl) {
-      sourceUrl.value = checked.sourceUrl
-      progress.value = 100
-      phase.value = 'ready'
-      return
-    }
     phase.value = 'uploading'
-    const uploaded = new Set(checked.uploadedChunks || [])
-    for (let index = 0; index < totalChunks; index++) {
-      if (!uploaded.has(index)) {
-        const blob = currentFile.slice(index * chunkSize, Math.min((index + 1) * chunkSize, currentFile.size))
-        const data = new FormData()
-        data.append('uploadId', checked.uploadId)
-        data.append('fileMd5', fileMd5.value)
-        data.append('chunkMd5', await hashBlob(blob))
-        data.append('chunkIndex', String(index))
-        data.append('chunkSize', String(blob.size))
-        data.append('totalChunks', String(totalChunks))
-        data.append('file', blob, `${currentFile.name}.part${index}`)
-        await uploadApi.chunk(data)
-      }
-      progress.value = 15 + Math.round(((index + 1) / totalChunks) * 80)
-    }
-    const merged = (await uploadApi.merge({ uploadId: checked.uploadId, fileMd5: fileMd5.value, fileName: currentFile.name, totalChunks })).data
+    const merged = await uploadSmallVideo(currentFile, fileMd5.value, value => { progress.value = value })
     sourceUrl.value = merged.sourceUrl
+    if ('instant' in merged) { phase.value = 'ready'; return }
     progress.value = 96
     phase.value = 'transcoding'
     const transcode = await waitForTranscode(merged.transcodeTaskId)
