@@ -29,16 +29,19 @@ public class SearchIndexMaintenanceService {
     private final ElasticsearchOperations operations;
     private final VideoIndexAlias alias;
     private final VideoIndexWriteGate writeGate;
+    private final MySqlNamedLock distributedLock;
     private final ReentrantLock maintenanceLock = new ReentrantLock();
 
     public SearchIndexMaintenanceService(PublishedVideoSource source,
                                          ElasticsearchOperations operations,
                                          VideoIndexAlias alias,
-                                         VideoIndexWriteGate writeGate) {
+                                         VideoIndexWriteGate writeGate,
+                                         MySqlNamedLock distributedLock) {
         this.source = source;
         this.operations = operations;
         this.alias = alias;
         this.writeGate = writeGate;
+        this.distributedLock = distributedLock;
     }
 
     public RebuildResult rebuild() {
@@ -62,22 +65,30 @@ public class SearchIndexMaintenanceService {
             throw new IllegalStateException("Elasticsearch rebuild is already running");
         }
         try {
-            String previous = alias.activeIndex();
-            if (previous == null) {
-                alias.initialize();
-                previous = alias.activeIndex();
-            }
-            if (previous.equals(retainedIndex)) {
-                throw new IllegalArgumentException("Target index is already active");
-            }
-            String target = retainedIndex == null ? alias.newIndexName() : retainedIndex;
-            if (retainedIndex == null) {
-                alias.createIndex(target);
-            }
-            // Queries keep using the old alias while the shadow index is populated.
-            writePages(target);
-            String oldIndex = previous;
-            ReconciliationReport[] verified = new ReconciliationReport[1];
+            return rebuildWithLocks(retainedIndex);
+        } finally {
+            maintenanceLock.unlock();
+        }
+    }
+
+    private RebuildResult rebuildWithLocks(String retainedIndex) {
+        String previous = alias.activeIndex();
+        if (previous == null) {
+            alias.initialize();
+            previous = alias.activeIndex();
+        }
+        if (previous.equals(retainedIndex)) {
+            throw new IllegalArgumentException("Target index is already active");
+        }
+        String target = retainedIndex == null ? alias.newIndexName() : retainedIndex;
+        if (retainedIndex == null) {
+            alias.createIndex(target);
+        }
+        // Queries keep using the old alias while the shadow index is populated.
+        writePages(target);
+        String oldIndex = previous;
+        ReconciliationReport[] verified = new ReconciliationReport[1];
+        distributedLock.execute(VideoIndexWriteGate.DISTRIBUTED_LOCK_NAME, () -> {
             writeGate.withCutover(() -> {
                 if (!oldIndex.equals(alias.activeIndex())) {
                     throw new IllegalStateException("Search alias changed during rebuild");
@@ -93,11 +104,10 @@ public class SearchIndexMaintenanceService {
                 }
                 alias.switchTo(oldIndex, target);
             });
-            return new RebuildResult(verified[0].mysqlCount(), verified[0].elasticsearchCount(),
-                    verified[0].checkedAt(), true, oldIndex, target);
-        } finally {
-            maintenanceLock.unlock();
-        }
+            return null;
+        });
+        return new RebuildResult(verified[0].mysqlCount(), verified[0].elasticsearchCount(),
+                verified[0].checkedAt(), true, oldIndex, target);
     }
 
     public ReconciliationReport reconcile() {

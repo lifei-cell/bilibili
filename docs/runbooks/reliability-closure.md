@@ -46,7 +46,7 @@ curl -X POST -H "X-Admin-Token: $OPERATIONS_ADMIN_TOKEN" \
   "http://localhost:8080/api/admin/reliability/es/rollback?targetIndex=video_index"
 ```
 
-当前暂缓 CDC 的锁仅覆盖单个 Canal 服务进程；多实例部署前须增加跨实例写入协调。搜索结果 Redis 缓存最长保留 30 秒，切换后可能短暂返回旧结果。容器内 ES 联调以发布验收报告为准。
+当前暂缓 CDC 的进程内读写锁由 MySQL 命名锁扩展到跨 Canal 实例；重建最终追平、Alias 切换和视频 CDC 写入共用同一命名锁。多实例的锁等待、CDC 积压和容量 SLO 仍需按目标规模单独验收。搜索结果 Redis 缓存最长保留 30 秒，切换后可能短暂返回旧结果。容器内 ES 联调以发布验收报告为准。
 
 ## 人工处置
 

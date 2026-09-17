@@ -15,10 +15,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
+@ConditionalOnProperty(name = "video.transcode.consumer-enabled", havingValue = "true", matchIfMissing = true)
 @RocketMQMessageListener(
         topic = UploadConstant.TRANSCODE_TOPIC,
         consumerGroup = "video-transcode-consumer",
@@ -66,6 +68,7 @@ public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMe
         if (taskMapper.markProcessing(task.getTaskId(), generation, token) != 1) {
             return;
         }
+        log.info("Transcode task claimed, taskId={}, generation={}", task.getTaskId(), generation);
         task.setClaimGeneration(generation);
         task.setClaimToken(token);
 

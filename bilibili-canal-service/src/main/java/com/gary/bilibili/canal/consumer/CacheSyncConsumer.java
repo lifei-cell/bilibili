@@ -7,6 +7,7 @@ import com.gary.bilibili.canal.message.CacheSyncEvent;
 import com.gary.bilibili.canal.repository.VideoDocumentRepository;
 import com.gary.bilibili.canal.service.VideoBloomFilter;
 import com.gary.bilibili.canal.service.VideoIndexWriteGate;
+import com.gary.bilibili.canal.service.MySqlNamedLock;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -25,23 +26,27 @@ import java.util.Map;
 public class CacheSyncConsumer implements RocketMQListener<CacheSyncEvent> {
 
     private static final String CONSUMER_GROUP = CanalConstant.CACHE_SYNC_CONSUMER_GROUP;
+    private static final int CDC_LOCK_TIMEOUT_SECONDS = 30;
 
     private final VideoDocumentRepository videoDocumentRepository;
     private final StringRedisTemplate stringRedisTemplate;
     private final VideoBloomFilter videoBloomFilter;
     private final ReliableMessageExecutor reliableMessageExecutor;
     private final VideoIndexWriteGate videoIndexWriteGate;
+    private final MySqlNamedLock distributedLock;
 
     public CacheSyncConsumer(VideoDocumentRepository videoDocumentRepository,
                              StringRedisTemplate stringRedisTemplate,
                              VideoBloomFilter videoBloomFilter,
                              ReliableMessageExecutor reliableMessageExecutor,
-                             VideoIndexWriteGate videoIndexWriteGate) {
+                             VideoIndexWriteGate videoIndexWriteGate,
+                             MySqlNamedLock distributedLock) {
         this.videoDocumentRepository = videoDocumentRepository;
         this.stringRedisTemplate = stringRedisTemplate;
         this.videoBloomFilter = videoBloomFilter;
         this.reliableMessageExecutor = reliableMessageExecutor;
         this.videoIndexWriteGate = videoIndexWriteGate;
+        this.distributedLock = distributedLock;
     }
 
     @Override
@@ -57,7 +62,11 @@ public class CacheSyncConsumer implements RocketMQListener<CacheSyncEvent> {
                 () -> {
                     if (CanalConstant.VIDEO_TABLE.equals(event.getTable())
                             || CanalConstant.VIDEO_STATS_TABLE.equals(event.getTable())) {
-                        videoIndexWriteGate.withCdcWrite(() -> sync(event));
+                        distributedLock.execute(VideoIndexWriteGate.DISTRIBUTED_LOCK_NAME,
+                                CDC_LOCK_TIMEOUT_SECONDS, () -> {
+                                    videoIndexWriteGate.withCdcWrite(() -> sync(event));
+                                    return null;
+                                });
                     } else {
                         sync(event);
                     }

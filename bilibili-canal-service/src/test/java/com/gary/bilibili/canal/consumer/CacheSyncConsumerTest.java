@@ -6,6 +6,7 @@ import com.gary.bilibili.canal.message.CacheSyncEvent;
 import com.gary.bilibili.canal.repository.VideoDocumentRepository;
 import com.gary.bilibili.canal.service.VideoBloomFilter;
 import com.gary.bilibili.canal.service.VideoIndexWriteGate;
+import com.gary.bilibili.canal.service.MySqlNamedLock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -22,6 +23,8 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 class CacheSyncConsumerTest {
 
@@ -30,6 +33,7 @@ class CacheSyncConsumerTest {
     private SetOperations<String, String> setOperations;
     private VideoBloomFilter videoBloomFilter;
     private ReliableMessageExecutor reliableMessageExecutor;
+    private MySqlNamedLock distributedLock;
     private CacheSyncConsumer consumer;
 
     @BeforeEach
@@ -40,6 +44,7 @@ class CacheSyncConsumerTest {
         setOperations = mock(SetOperations.class);
         videoBloomFilter = mock(VideoBloomFilter.class);
         reliableMessageExecutor = mock(ReliableMessageExecutor.class);
+        distributedLock = mock(MySqlNamedLock.class);
         doAnswer(invocation -> {
             invocation.<Runnable>getArgument(4).run();
             return null;
@@ -47,10 +52,16 @@ class CacheSyncConsumerTest {
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any());
+        doAnswer(invocation -> {
+            invocation.<java.util.function.Supplier<?>>getArgument(2).get();
+            return null;
+        }).when(distributedLock).execute(
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.any(java.util.function.Supplier.class));
         when(stringRedisTemplate.opsForSet()).thenReturn(setOperations);
         consumer = new CacheSyncConsumer(
                 videoDocumentRepository, stringRedisTemplate, videoBloomFilter,
-                reliableMessageExecutor, new VideoIndexWriteGate());
+                reliableMessageExecutor, new VideoIndexWriteGate(), distributedLock);
     }
 
     @Test
@@ -78,6 +89,8 @@ class CacheSyncConsumerTest {
         });
         verify(stringRedisTemplate).delete("video:detail:10001");
         verify(videoBloomFilter).put(10001L);
+        verify(distributedLock).execute(eq(VideoIndexWriteGate.DISTRIBUTED_LOCK_NAME), eq(30),
+                any(java.util.function.Supplier.class));
     }
 
     @Test

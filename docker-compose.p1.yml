@@ -1,0 +1,23 @@
+services:
+  # Keep the HTTP/API instance as the dispatcher while the dedicated Worker
+  # replicas are the only transcode consumers in this drill.
+  bilibili-video-service:
+    environment:
+      VIDEO_TRANSCODE_CONSUMER_ENABLED: "false"
+      VIDEO_TRANSCODE_LEASE_SECONDS: "30"
+
+  bilibili-transcode-worker:
+    environment:
+      VIDEO_TRANSCODE_CONSUMER_ENABLED: "true"
+      VIDEO_TRANSCODE_LEASE_SECONDS: "30"
+      VIDEO_TRANSCODE_SOFTWARE_PRESET: slow
+
+  # A second Canal application instance shares the same Canal destination,
+  # MySQL, RocketMQ and Elasticsearch while exposing its admin port separately.
+  bilibili-canal-service-2:
+    extends:
+      file: docker-compose.service.yml
+      service: bilibili-canal-service
+    container_name: bilibili-canal-service-2
+    ports: !override
+      - "8087:8086"

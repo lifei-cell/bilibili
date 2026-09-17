@@ -7,6 +7,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 @Component
 public class VideoIndexWriteGate {
 
+    public static final String DISTRIBUTED_LOCK_NAME = "bilibili:video-index-operations";
+
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
     public void withCdcWrite(Runnable action) {

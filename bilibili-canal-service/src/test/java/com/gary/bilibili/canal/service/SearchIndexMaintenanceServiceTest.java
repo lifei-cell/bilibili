@@ -12,6 +12,7 @@ import org.springframework.data.elasticsearch.core.query.Query;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,6 +29,7 @@ class SearchIndexMaintenanceServiceTest {
     private PublishedVideoSource source;
     private ElasticsearchOperations operations;
     private VideoIndexAlias alias;
+    private MySqlNamedLock distributedLock;
     private SearchIndexMaintenanceService service;
 
     @BeforeEach
@@ -36,8 +38,11 @@ class SearchIndexMaintenanceServiceTest {
         source = mock(PublishedVideoSource.class);
         operations = mock(ElasticsearchOperations.class);
         alias = mock(VideoIndexAlias.class);
+        distributedLock = mock(MySqlNamedLock.class);
         service = new SearchIndexMaintenanceService(source, operations, alias,
-                new VideoIndexWriteGate());
+                new VideoIndexWriteGate(), distributedLock);
+        when(distributedLock.execute(any(String.class), any(Supplier.class)))
+                .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(1)).get());
         when(alias.activeIndex()).thenReturn("video_index");
         when(alias.newIndexName()).thenReturn("video_index_v1234567890abcdef1234567890abcdef");
         when(operations.indexOps(any(IndexCoordinates.class))).thenReturn(mock(IndexOperations.class));

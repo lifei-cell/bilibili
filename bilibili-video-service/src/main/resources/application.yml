@@ -62,6 +62,7 @@ video:
     sync-initial-delay: ${VIDEO_STATS_SYNC_INITIAL_DELAY:60000}
   transcode:
     publisher-enabled: ${VIDEO_TRANSCODE_PUBLISHER_ENABLED:true}
+    consumer-enabled: ${VIDEO_TRANSCODE_CONSUMER_ENABLED:true}
     dispatch-interval: ${VIDEO_TRANSCODE_DISPATCH_INTERVAL:1000}
     dispatch-initial-delay: ${VIDEO_TRANSCODE_DISPATCH_INITIAL_DELAY:5000}
     max-retries: ${VIDEO_TRANSCODE_MAX_RETRIES:3}
