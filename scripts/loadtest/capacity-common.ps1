@@ -117,6 +117,9 @@ function Get-CapacityMetricValue {
         $metricValue
     }
     $valueProperty = $values.PSObject.Properties[$ValueName]
+    if ($null -eq $valueProperty -and $ValueName -eq 'rate') {
+        $valueProperty = $values.PSObject.Properties['value']
+    }
     if ($null -eq $valueProperty) { return $null }
     return [double]$valueProperty.Value
 }
