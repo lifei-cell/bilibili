@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "workload": {
+    "warmupDuration": "20s",
+    "duration": "60s",
+    "sampleIntervalSeconds": 5,
+    "read": {
+      "rate": 100,
+      "requestsPerIteration": 3,
+      "description": "视频列表、详情、搜索各 1 次；约 300 HTTP RPS"
+    },
+    "write": {
+      "rate": 2,
+      "description": "评论创建后立即删除；每次迭代 2 个写请求"
+    },
+    "danmu": {
+      "rate": 2,
+      "description": "已登录用户向隔离视频发送 1 条弹幕"
+    },
+    "transcode": {
+      "rate": 1,
+      "maxVus": 8,
+      "timeoutSeconds": 180,
+      "description": "直传同一固定 MP4，等待每个任务完成 HLS 转码"
+    }
+  },
+  "thresholds": {
+    "read": {
+      "p95Ms": 1000,
+      "p99Ms": 2000,
+      "maxErrorRate": 0.005
+    },
+    "write": {
+      "p95Ms": 1500,
+      "p99Ms": 3000,
+      "maxErrorRate": 0.005
+    },
+    "danmu": {
+      "p95Ms": 1000,
+      "p99Ms": 3000,
+      "maxErrorRate": 0.005
+    },
+    "transcode": {
+      "p95Ms": 180000,
+      "p99Ms": 240000,
+      "maxErrorRate": 0.05
+    },
+    "resources": {
+      "maxCpuQuotaPercent": 85,
+      "maxMemoryPercent": 85,
+      "maxMqBacklog": 1000,
+      "containerLimits": {
+        "bilibili-rocketmq-broker": {
+          "maxCpuQuotaPercent": 120
+        }
+      }
+    }
+  }
+}

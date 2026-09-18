@@ -1,0 +1,13 @@
+services:
+  # Keep HTTP/API as the dispatcher while dedicated Worker replicas own all
+  # FFmpeg work. This overlay is applied only during the transcode baseline.
+  bilibili-video-service:
+    environment:
+      VIDEO_TRANSCODE_CONSUMER_ENABLED: "false"
+      VIDEO_TRANSCODE_LEASE_SECONDS: "120"
+
+  bilibili-transcode-worker:
+    environment:
+      VIDEO_TRANSCODE_CONSUMER_ENABLED: "true"
+      VIDEO_TRANSCODE_LEASE_SECONDS: "120"
+      VIDEO_TRANSCODE_SOFTWARE_PRESET: ${VIDEO_TRANSCODE_SOFTWARE_PRESET:-veryfast}

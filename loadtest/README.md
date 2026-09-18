@@ -69,3 +69,22 @@ docker run --rm -i --add-host=host.docker.internal:host-gateway `
 观察 Redis 内存和慢日志、MySQL 慢查询/锁等待、RocketMQ 消费滞后、Elasticsearch
 查询延迟，以及 `video_transcode_task` 的任务积压。上传和转码应使用独立数据集单独
 执行，避免 FFmpeg 资源争用污染 HTTP 与 WebSocket 基线。
+
+## P2 分场景容量基线
+
+`scripts/loadtest/p2-capacity-baseline.ps1` 会先用 Compose E2E 创建隔离视频，随后按
+读、写、转码、弹幕四个场景顺序运行，场景之间不共享并发窗口。每个场景包含固定时长
+预热和测量，运行期间按容器 CPU 配额归一化采集 CPU/内存，并保存 RocketMQ
+`rocketmq_group_diff`、k6 summary、stdout/stderr、Compose 配置和 Git SHA。转码阶段会
+关闭 API 进程内的消费者，单独启动指定数量的 `bilibili-transcode-worker`。
+
+```powershell
+./scripts/loadtest/p2-capacity-baseline.ps1 -SkipBuild
+```
+
+负载、P95/P99、错误率、资源和积压阈值统一维护在
+[`capacity-baseline.json`](./capacity-baseline.json)。默认基线为：读 100 iterations/s
+（每次 3 个请求，约 300 HTTP RPS）、写 2 operations/s、弹幕 2 messages/s、转码
+1 task/s、2 个 Worker，预热 20 秒、测量 60 秒。结果和原始报告写入
+`loadtest/results/p2-capacity-baseline-*/`，该目录不提交版本库；报告只代表当前
+Docker Desktop、固定数据集和固定负载，不是生产容量承诺。
