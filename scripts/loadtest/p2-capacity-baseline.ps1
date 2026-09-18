@@ -377,11 +377,14 @@ function Invoke-E2eFixture {
         [Parameter(Mandatory)][string]$LogPath
     )
     $e2eScript = Join-Path $repositoryRoot 'scripts/e2e/reliability-e2e.ps1'
-    $arguments = @('-KeepRunning', '-KeepTestData', '-TestContextPath', $ContextPath,
-        '-SloReportPath', $ReportPath, '-AdminToken', $AdminToken)
-    if ($SkipBuild) { $arguments += '-SkipBuild' }
     try {
-        & $e2eScript @arguments *> $LogPath
+        if ($SkipBuild) {
+            & $e2eScript -SkipBuild -KeepRunning -KeepTestData -TestContextPath $ContextPath `
+                -SloReportPath $ReportPath -AdminToken $AdminToken *> $LogPath
+        } else {
+            & $e2eScript -KeepRunning -KeepTestData -TestContextPath $ContextPath `
+                -SloReportPath $ReportPath -AdminToken $AdminToken *> $LogPath
+        }
         if ($LASTEXITCODE -ne 0) { throw "Compose E2E exited with code $LASTEXITCODE" }
     } catch {
         if (!(Test-Path -LiteralPath $LogPath)) { $_.Exception.Message | Set-Content -Encoding utf8 -Path $LogPath }
