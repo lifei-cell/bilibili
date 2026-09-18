@@ -103,8 +103,7 @@ export default function (context) {
   }
 
   const uploadId = init.json('data.uploadId')
-  const upload = http.put(toAccessibleUrl(init.json('data.uploadUrl')), http.file(
-    fixture.bytes, fixture.name, fixture.contentType || 'video/mp4'), {
+  const upload = http.put(toAccessibleUrl(init.json('data.uploadUrl')), fixture.bytes, {
     headers: { 'Content-Type': fixture.contentType || 'video/mp4' },
     tags: { endpoint: 'transcode-upload' },
   })

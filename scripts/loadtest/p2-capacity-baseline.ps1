@@ -224,7 +224,8 @@ function Invoke-K6CapacityPhase {
     if ($MountFixtures) {
         $arguments += @('-v', "$(Join-Path $ResultsDirectory 'fixtures')`:/fixtures:ro")
     }
-    $arguments += @('grafana/k6', 'run', "--summary-export=$containerSummaryPath", "/scripts/$ScriptName")
+    $arguments += @('grafana/k6', 'run', '--summary-trend-stats=avg,min,med,max,p(90),p(95),p(99)',
+        "--summary-export=$containerSummaryPath", "/scripts/$ScriptName")
 
     $samples = [System.Collections.Generic.List[object]]::new()
     function Add-PhaseSample {
