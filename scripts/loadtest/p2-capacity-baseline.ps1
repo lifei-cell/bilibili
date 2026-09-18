@@ -277,6 +277,9 @@ function Invoke-K6CapacityPhase {
         mqBacklogPeaks = $mqPeaks
         mqObserved = $mqObserved
         samples = $samples.ToArray()
+        metricPass = $null
+        resourceBreaches = @()
+        mqBreaches = @()
     }
 }
 
