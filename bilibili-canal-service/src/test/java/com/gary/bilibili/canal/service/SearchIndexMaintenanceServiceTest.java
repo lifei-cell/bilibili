@@ -41,8 +41,8 @@ class SearchIndexMaintenanceServiceTest {
         distributedLock = mock(MySqlNamedLock.class);
         service = new SearchIndexMaintenanceService(source, operations, alias,
                 new VideoIndexWriteGate(), distributedLock);
-        when(distributedLock.execute(any(String.class), any(Supplier.class)))
-                .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(1)).get());
+        when(distributedLock.execute(any(String.class), eq(30), eq("cutover"), any(Supplier.class)))
+                .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(3)).get());
         when(alias.activeIndex()).thenReturn("video_index");
         when(alias.newIndexName()).thenReturn("video_index_v1234567890abcdef1234567890abcdef");
         when(operations.indexOps(any(IndexCoordinates.class))).thenReturn(mock(IndexOperations.class));
@@ -74,6 +74,8 @@ class SearchIndexMaintenanceServiceTest {
         verify(source, org.mockito.Mockito.times(3)).page(0, 200);
         verify(source, org.mockito.Mockito.times(3)).page(1001, 200);
         verify(alias).switchTo("video_index", result.activeIndex());
+        verify(distributedLock).execute(eq(VideoIndexWriteGate.DISTRIBUTED_LOCK_NAME),
+                eq(30), eq("cutover"), any(Supplier.class));
 
         ArgumentCaptor<Query> idsQueries = ArgumentCaptor.forClass(Query.class);
         verify(operations, times(2)).multiGet(idsQueries.capture(), eq(VideoDocument.class),

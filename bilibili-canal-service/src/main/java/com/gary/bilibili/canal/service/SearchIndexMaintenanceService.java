@@ -88,7 +88,7 @@ public class SearchIndexMaintenanceService {
         writePages(target);
         String oldIndex = previous;
         ReconciliationReport[] verified = new ReconciliationReport[1];
-        distributedLock.execute(VideoIndexWriteGate.DISTRIBUTED_LOCK_NAME, () -> {
+        distributedLock.execute(VideoIndexWriteGate.DISTRIBUTED_LOCK_NAME, 30, "cutover", () -> {
             writeGate.withCutover(() -> {
                 if (!oldIndex.equals(alias.activeIndex())) {
                     throw new IllegalStateException("Search alias changed during rebuild");

@@ -10,6 +10,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class PublishedVideoSource {
@@ -38,6 +39,18 @@ public class PublishedVideoSource {
         String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
         return jdbc.queryForList("select id from video where status = 1 and deleted = 0 and id in ("
                 + placeholders + ")", Long.class, ids.toArray());
+    }
+
+    public Optional<VideoDocument> findById(long videoId) {
+        List<VideoDocument> documents = jdbc.query("""
+                select v.id, v.title, v.description, v.tags, v.category_id, v.user_id,
+                       v.status, v.create_time,
+                       coalesce(s.view_count, 0) as view_count,
+                       coalesce(s.like_count, 0) as like_count
+                from video v left join video_stats s on s.video_id = v.id
+                where v.status = 1 and v.deleted = 0 and v.id = ?
+                """, (rs, row) -> mapDocument(rs), videoId);
+        return documents.stream().findFirst();
     }
 
     private VideoDocument mapDocument(ResultSet rs) throws SQLException {

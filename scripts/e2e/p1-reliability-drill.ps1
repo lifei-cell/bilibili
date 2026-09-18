@@ -1,7 +1,8 @@
 param(
     [string]$AdminToken = 'change-me-in-production',
     [string]$ResultsDirectory,
-    [switch]$CrashAfterPlayable
+    [switch]$CrashAfterPlayable,
+    [switch]$MeasureIndexCutover
 )
 
 Set-StrictMode -Version Latest
@@ -78,6 +79,19 @@ $canalResult = [ordered]@{
     aliasIndexCount = $null
     reconcileConsistent = $false
     updatedTitleSearchable = $false
+    measurement = $null
+}
+
+$indexMeasurement = [ordered]@{
+    sourceUpdates = 0
+    capturedEvents = 0
+    consumedEvents = 0
+    maxUncaptured = 0
+    maxUnconsumed = 0
+    maxOutboxPending = 0
+    drainMilliseconds = $null
+    samples = @()
+    lockTimers = @()
 }
 
 function Get-WorkerContainers {
@@ -136,6 +150,40 @@ function Get-EsAliasIndexCount {
     if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect Elasticsearch video_search alias' }
     $json = ($response -join "`n") | ConvertFrom-Json
     @($json.PSObject.Properties).Count
+}
+
+function Get-VideoCdcProgress {
+    param([Parameter(Mandatory)][long]$VideoId)
+
+    $sql = "select count(*), coalesce(sum(o.status <> 'PUBLISHED'),0), coalesce(sum(i.status = 'SUCCEEDED'),0) from reliable_event_outbox o left join mq_consumed_message i on i.topic=o.topic and i.message_key=o.event_id and i.consumer_group='bilibili-canal-cache-sync' where o.topic='cache-sync' and o.aggregate_type='video' and o.aggregate_id='$VideoId'"
+    $parts = ([string](Get-MySqlScalar $sql)).Split("`t")
+    if ($parts.Count -ne 3) { throw 'Cannot read video CDC Outbox/Inbox progress' }
+    [pscustomobject]@{ captured = [int]$parts[0]; pending = [int]$parts[1]; consumed = [int]$parts[2] }
+}
+
+function Get-IndexLockTimer {
+    param([Parameter(Mandatory)][int]$Port, [Parameter(Mandatory)][string]$Operation)
+
+    $uri = "http://localhost:$Port/actuator/metrics/bilibili.index.lock.wait?tag=operation:$Operation"
+    $raw = & $script:CurlExecutable --noproxy '*' --connect-timeout 5 --max-time 15 -sS -w "`n__HTTP__:%{http_code}" $uri
+    if ($LASTEXITCODE -ne 0) { throw "Cannot read index lock timer from port $Port" }
+    $body = ($raw -join "`n").Trim()
+    $marker = [regex]::Match($body, '__HTTP__:(\d{3})$')
+    if (!$marker.Success) { throw "Index lock timer response lacked status on port $Port" }
+    if ($marker.Groups[1].Value -eq '404') {
+        return [pscustomobject]@{ port = $Port; operation = $Operation; count = 0; totalMilliseconds = 0; maxMilliseconds = 0 }
+    }
+    if ($marker.Groups[1].Value -ne '200') { throw "Index lock timer returned HTTP $($marker.Groups[1].Value) on port $Port" }
+    $metric = $body.Substring(0, $marker.Index).Trim() | ConvertFrom-Json
+    $values = @{}
+    foreach ($measurement in $metric.measurements) { $values[$measurement.statistic] = [double]$measurement.value }
+    [pscustomobject]@{
+        port = $Port
+        operation = $Operation
+        count = [int]$values['COUNT']
+        totalMilliseconds = [math]::Round(1000 * $values['TOTAL_TIME'], 3)
+        maxMilliseconds = [math]::Round(1000 * $values['MAX'], 3)
+    }
 }
 
 function Wait-CanalConnectorLogs {
@@ -328,6 +376,14 @@ try {
     $canalResult.connectorLogsObserved = $true
 
     $updatedTitle = "p1-multi-canal-$runId"
+    $cdcBaseline = $null
+    if ($MeasureIndexCutover) {
+        Wait-Until -TimeoutSeconds 90 -IntervalSeconds 2 -Description 'initial video CDC settled' -Condition {
+            $progress = Get-VideoCdcProgress $videoId
+            return $progress.captured -ge 1 -and $progress.captured -eq $progress.consumed
+        }
+        $cdcBaseline = Get-VideoCdcProgress $videoId
+    }
     $rebuildScript = {
         param($curlPath, $url, $token)
         $body = & $curlPath --noproxy '*' --connect-timeout 5 --max-time 180 -sS `
@@ -341,7 +397,46 @@ try {
     $jobTwo = Start-Job -ScriptBlock $rebuildScript -ArgumentList @(
         $script:CurlExecutable, 'http://localhost:8087/api/admin/reliability/es/rebuild', $AdminToken)
     $rebuildJobs += $jobTwo
-    Invoke-BiliApi -Method PUT -Uri "http://localhost:8080/api/video/$videoId" -Headers $authHeaders -Body @{ title = $updatedTitle } | Out-Null
+    if ($MeasureIndexCutover) {
+        $indexMeasurement.sourceUpdates = 20
+        $updates = 1..$indexMeasurement.sourceUpdates | ForEach-Object {
+            "update video set title='$updatedTitle-$_' where id=$videoId"
+        }
+        $sql = ($updates -join '; ') + ';'
+        & docker exec -e MYSQL_PWD=root bilibili-mysql mysql -uroot bilibili -e $sql | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'Cannot generate video CDC update workload' }
+        $updatedTitle = "$updatedTitle-$($indexMeasurement.sourceUpdates)"
+        $writeCompleted = [DateTimeOffset]::UtcNow
+        $deadline = $writeCompleted.AddSeconds(180)
+        do {
+            $progress = Get-VideoCdcProgress $videoId
+            $captured = [math]::Max(0, $progress.captured - $cdcBaseline.captured)
+            $consumed = [math]::Max(0, $progress.consumed - $cdcBaseline.consumed)
+            $unconsumed = [math]::Max(0, $captured - $consumed)
+            $uncaptured = [math]::Max(0, $indexMeasurement.sourceUpdates - $captured)
+            $indexMeasurement.maxUncaptured = [math]::Max($indexMeasurement.maxUncaptured, $uncaptured)
+            $indexMeasurement.maxUnconsumed = [math]::Max($indexMeasurement.maxUnconsumed, $unconsumed)
+            $indexMeasurement.maxOutboxPending = [math]::Max($indexMeasurement.maxOutboxPending, $progress.pending)
+            $indexMeasurement.samples += [pscustomobject]@{
+                millisecondsAfterWrites = [math]::Round(([DateTimeOffset]::UtcNow - $writeCompleted).TotalMilliseconds)
+                captured = $captured
+                consumed = $consumed
+                uncaptured = $uncaptured
+                unconsumed = $unconsumed
+                outboxPending = $progress.pending
+            }
+            if ($captured -ge $indexMeasurement.sourceUpdates -and $consumed -ge $indexMeasurement.sourceUpdates) {
+                $indexMeasurement.capturedEvents = $captured
+                $indexMeasurement.consumedEvents = $consumed
+                $indexMeasurement.drainMilliseconds = [math]::Round(([DateTimeOffset]::UtcNow - $writeCompleted).TotalMilliseconds)
+                break
+            }
+            Start-Sleep -Milliseconds 500
+        } while ([DateTimeOffset]::UtcNow -lt $deadline)
+        Assert-True ($null -ne $indexMeasurement.drainMilliseconds) 'Video CDC did not drain within 180 seconds'
+    } else {
+        Invoke-BiliApi -Method PUT -Uri "http://localhost:8080/api/video/$videoId" -Headers $authHeaders -Body @{ title = $updatedTitle } | Out-Null
+    }
     Wait-Job -Job $rebuildJobs -Timeout 240 | Out-Null
     foreach ($job in $rebuildJobs) {
         if ($job.State -ne 'Completed') { throw 'Concurrent multi Canal rebuild request did not complete' }
@@ -356,6 +451,7 @@ try {
             body = $raw.Substring(0, $marker.Index).Trim()
         }
     })
+    $canalResult.rebuildResponses = @($responses | Select-Object instance, status, body)
     $responses | ForEach-Object {
         if ($_.status -eq 200) {
             $body = $_.body | ConvertFrom-Json
@@ -366,7 +462,15 @@ try {
         }
     }
     Assert-True (@($responses | Where-Object status -eq 200).Count -ge 1) 'Neither Canal instance completed an index cutover'
-    $canalResult.rebuildResponses = @($responses | Select-Object instance, status)
+    if ($MeasureIndexCutover) {
+        $indexMeasurement.lockTimers = @(
+            Get-IndexLockTimer -Port 8086 -Operation cdc
+            Get-IndexLockTimer -Port 8086 -Operation cutover
+            Get-IndexLockTimer -Port 8087 -Operation cdc
+            Get-IndexLockTimer -Port 8087 -Operation cutover
+        )
+        $canalResult.measurement = $indexMeasurement
+    }
     $canalResult.aliasIndexCount = Get-EsAliasIndexCount
     Assert-True ($canalResult.aliasIndexCount -eq 1) 'video_search alias must resolve to exactly one index'
 
@@ -392,9 +496,9 @@ catch {
         try { $workerResult.lastSnapshot = Get-TranscodeSnapshot -Task $taskId } catch { }
     }
     if (![string]::IsNullOrWhiteSpace($workerTwo)) {
-        try { $workerResult.survivingWorkerLogs = @(& docker logs --tail 120 $workerTwo 2>&1) } catch { }
+        try { $workerResult.survivingWorkerLogs = @(& docker logs --tail 120 $workerTwo 2>&1 | ForEach-Object { [string]$_ }) } catch { }
     }
-    Write-Error "[p1] $failure"
+    Write-Warning "[p1] $failure"
 }
 finally {
     try {

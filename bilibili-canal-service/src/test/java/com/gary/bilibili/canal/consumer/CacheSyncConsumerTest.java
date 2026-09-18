@@ -7,6 +7,7 @@ import com.gary.bilibili.canal.repository.VideoDocumentRepository;
 import com.gary.bilibili.canal.service.VideoBloomFilter;
 import com.gary.bilibili.canal.service.VideoIndexWriteGate;
 import com.gary.bilibili.canal.service.MySqlNamedLock;
+import com.gary.bilibili.canal.service.PublishedVideoSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -34,6 +35,7 @@ class CacheSyncConsumerTest {
     private VideoBloomFilter videoBloomFilter;
     private ReliableMessageExecutor reliableMessageExecutor;
     private MySqlNamedLock distributedLock;
+    private PublishedVideoSource publishedVideoSource;
     private CacheSyncConsumer consumer;
 
     @BeforeEach
@@ -45,6 +47,7 @@ class CacheSyncConsumerTest {
         videoBloomFilter = mock(VideoBloomFilter.class);
         reliableMessageExecutor = mock(ReliableMessageExecutor.class);
         distributedLock = mock(MySqlNamedLock.class);
+        publishedVideoSource = mock(PublishedVideoSource.class);
         doAnswer(invocation -> {
             invocation.<Runnable>getArgument(4).run();
             return null;
@@ -61,7 +64,8 @@ class CacheSyncConsumerTest {
         when(stringRedisTemplate.opsForSet()).thenReturn(setOperations);
         consumer = new CacheSyncConsumer(
                 videoDocumentRepository, stringRedisTemplate, videoBloomFilter,
-                reliableMessageExecutor, new VideoIndexWriteGate(), distributedLock);
+                reliableMessageExecutor, new VideoIndexWriteGate(), distributedLock,
+                publishedVideoSource);
     }
 
     @Test
@@ -76,7 +80,12 @@ class CacheSyncConsumerTest {
         data.put("status", "1");
         data.put("deleted", "0");
         data.put("create_time", "2026-08-03 10:00:00");
-        when(videoDocumentRepository.findById(10001L)).thenReturn(Optional.empty());
+        VideoDocument current = new VideoDocument();
+        current.setId(10001L);
+        current.setTitle("当前数据库标题");
+        current.setTags(java.util.List.of("SpringBoot", "Vue3"));
+        current.setCreateTime("2026-08-03T10:00:00");
+        when(publishedVideoSource.findById(10001L)).thenReturn(Optional.of(current));
 
         consumer.onMessage(event("video", "UPDATE", data));
 
@@ -84,6 +93,7 @@ class CacheSyncConsumerTest {
         verify(videoDocumentRepository).save(captor.capture());
         assertThat(captor.getValue()).satisfies(document -> {
             assertThat(document.getId()).isEqualTo(10001L);
+            assertThat(document.getTitle()).isEqualTo("当前数据库标题");
             assertThat(document.getTags()).containsExactly("SpringBoot", "Vue3");
             assertThat(document.getCreateTime()).isEqualTo("2026-08-03T10:00:00");
         });
@@ -95,6 +105,7 @@ class CacheSyncConsumerTest {
 
     @Test
     void shouldRemoveOfflineVideoFromIndex() {
+        when(publishedVideoSource.findById(10001L)).thenReturn(Optional.empty());
         consumer.onMessage(event("video", "UPDATE", Map.of(
                 "id", "10001",
                 "status", "3",
@@ -108,7 +119,9 @@ class CacheSyncConsumerTest {
     void shouldRefreshIndexedStatsAfterDatabaseSync() {
         VideoDocument document = new VideoDocument();
         document.setId(10001L);
-        when(videoDocumentRepository.findById(10001L)).thenReturn(Optional.of(document));
+        document.setViewCount(1200L);
+        document.setLikeCount(88L);
+        when(publishedVideoSource.findById(10001L)).thenReturn(Optional.of(document));
 
         consumer.onMessage(event("video_stats", "UPDATE", Map.of(
                 "video_id", "10001",
@@ -119,6 +132,19 @@ class CacheSyncConsumerTest {
         assertThat(document.getLikeCount()).isEqualTo(88L);
         verify(videoDocumentRepository).save(document);
         verify(stringRedisTemplate).delete("video:detail:10001");
+    }
+
+    @Test
+    void delayedDeleteEventCannotRemoveRepublishedVideo() {
+        VideoDocument current = new VideoDocument();
+        current.setId(10001L);
+        current.setTitle("重新发布的视频");
+        when(publishedVideoSource.findById(10001L)).thenReturn(Optional.of(current));
+
+        consumer.onMessage(event("video", "DELETE", Map.of("id", "10001")));
+
+        verify(videoDocumentRepository).save(current);
+        verify(videoDocumentRepository, never()).deleteById(10001L);
     }
 
     @Test

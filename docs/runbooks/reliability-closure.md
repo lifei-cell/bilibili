@@ -46,7 +46,7 @@ curl -X POST -H "X-Admin-Token: $OPERATIONS_ADMIN_TOKEN" \
   "http://localhost:8080/api/admin/reliability/es/rollback?targetIndex=video_index"
 ```
 
-当前暂缓 CDC 的进程内读写锁由 MySQL 命名锁扩展到跨 Canal 实例；重建最终追平、Alias 切换和视频 CDC 写入共用同一命名锁。多实例的锁等待、CDC 积压和容量 SLO 仍需按目标规模单独验收。搜索结果 Redis 缓存最长保留 30 秒，切换后可能短暂返回旧结果。容器内 ES 联调以发布验收报告为准。
+当前暂缓 CDC 的进程内读写锁由 MySQL 命名锁扩展到跨 Canal 实例；重建最终追平、Alias 切换和视频 CDC 写入共用同一命名锁。切换最多等锁 30 秒，锁等待与持有时间由 `bilibili.index.lock.wait`、`bilibili.index.lock.hold` 记录，可按 `operation=cdc|cutover` 在 Canal 实例的 Actuator 指标接口查看。本地量化演练运行 `scripts/e2e/p1-reliability-drill.ps1 -MeasureIndexCutover`；采样、口径和结果见 `docs/reports/2026-09-18-index-cutover-lock-cdc-backlog.md`。该结果不构成目标规模的容量 SLO。搜索结果 Redis 缓存最长保留 30 秒，切换后可能短暂返回旧结果。容器内 ES 联调以发布验收报告为准。
 
 ## 人工处置
 

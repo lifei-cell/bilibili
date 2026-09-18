@@ -1,5 +1,6 @@
 package com.gary.bilibili.canal.service;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 
 import javax.sql.DataSource;
@@ -31,7 +32,8 @@ class MySqlNamedLockTest {
         when(result.next()).thenReturn(true);
         when(result.getInt(1)).thenReturn(1);
 
-        MySqlNamedLock lock = new MySqlNamedLock(dataSource);
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        MySqlNamedLock lock = new MySqlNamedLock(dataSource, registry);
 
         assertThat(lock.execute("lock-name", () -> "done")).isEqualTo("done");
         verify(acquire).setString(1, "lock-name");
@@ -39,6 +41,8 @@ class MySqlNamedLockTest {
         verify(release).setString(1, "lock-name");
         verify(release).executeQuery();
         verify(connection).close();
+        assertThat(registry.get("bilibili.index.lock.wait").tag("operation", "cutover").timer().count()).isEqualTo(1);
+        assertThat(registry.get("bilibili.index.lock.hold").tag("operation", "cutover").timer().count()).isEqualTo(1);
     }
 
     @Test
@@ -53,13 +57,16 @@ class MySqlNamedLockTest {
         when(result.next()).thenReturn(true);
         when(result.getInt(1)).thenReturn(0);
 
-        MySqlNamedLock lock = new MySqlNamedLock(dataSource);
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        MySqlNamedLock lock = new MySqlNamedLock(dataSource, registry);
 
         assertThatThrownBy(() -> lock.execute("lock-name", () -> {
             throw new AssertionError("contended lock must not run the action");
         })).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("already held");
         verify(connection, never()).prepareStatement("select release_lock(?)");
+        assertThat(registry.get("bilibili.index.lock.wait").tag("operation", "cutover").timer().count()).isEqualTo(1);
+        assertThat(registry.find("bilibili.index.lock.hold").timer()).isNull();
     }
 
     @Test
@@ -76,9 +83,11 @@ class MySqlNamedLockTest {
         when(result.next()).thenReturn(true);
         when(result.getInt(1)).thenReturn(1);
 
-        MySqlNamedLock lock = new MySqlNamedLock(dataSource);
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        MySqlNamedLock lock = new MySqlNamedLock(dataSource, registry);
 
         assertThat(lock.execute("lock-name", 30, () -> "done")).isEqualTo("done");
         verify(acquire).setInt(2, 30);
+        assertThat(registry.get("bilibili.index.lock.wait").tag("operation", "cdc").timer().count()).isEqualTo(1);
     }
 }
