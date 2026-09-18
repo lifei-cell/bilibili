@@ -41,10 +41,15 @@ export const options = {
   },
 }
 
-function toAccessibleUrl(url) {
-  // The API signs localhost for host clients. k6 runs in a separate container,
-  // so route the same exposed MinIO port through Docker's host gateway.
-  return url.replace(/:\/\/(localhost|127\.0\.0\.1|minio)(?=[:/])/, '://host.docker.internal')
+function toAccessibleUploadTarget(url) {
+  // The API signs the original host (normally localhost:9000). k6 runs in a
+  // separate container, so route the same port through Docker's host gateway
+  // while retaining the signed Host header for MinIO's SigV4 check.
+  const match = url.match(/^(https?:\/\/)([^/]+)(\/.*)$/)
+  if (!match) return { url, signedHost: null }
+  const signedHost = match[2]
+  const accessibleHost = signedHost.replace(/^(localhost|127\.0\.0\.1|minio)(?=[:.]|$)/, 'host.docker.internal')
+  return { url: `${match[1]}${accessibleHost}${match[3]}`, signedHost }
 }
 
 function successful(response, name) {
@@ -103,14 +108,18 @@ export default function (context) {
   }
 
   const uploadId = init.json('data.uploadId')
-  const upload = http.put(toAccessibleUrl(init.json('data.uploadUrl')), fixture.bytes, {
-    headers: { 'Content-Type': fixture.contentType || 'video/mp4' },
+  const uploadTarget = toAccessibleUploadTarget(init.json('data.uploadUrl'))
+  const uploadHeaders = { 'Content-Type': fixture.contentType || 'video/mp4' }
+  if (uploadTarget.signedHost) uploadHeaders.Host = uploadTarget.signedHost
+  const upload = http.put(uploadTarget.url, fixture.bytes, {
+    headers: uploadHeaders,
     tags: { endpoint: 'transcode-upload' },
   })
   const uploadOk = check(upload, {
     'transcode upload: HTTP success': (item) => item.status >= 200 && item.status < 300,
   })
   if (!uploadOk) {
+    console.error(`transcode upload failed: status=${upload.status} body=${upload.body}`)
     businessFailure.add(true)
     uploadLatency.add(Date.now() - startedAt)
     e2eLatency.add(Date.now() - startedAt)
