@@ -1,13 +1,15 @@
 # Bilibili Cloud 项目亮点与后续开发计划
 
-核对时间：2026-09-18；当前脚本修复提交 `23f4a51`。本文依据当前源码、已提交报告及工作区状态整理。P2 原始容量测量绑定提交 `74579d1`；工作区当时包含既有未提交改动。
+> 历史梳理。2026-09-18 更新版见 [项目亮点与下一步提升计划](2026-09-18-project-highlights-next-plan.md)。
+
+核对时间：2026-09-18；转码上传脚本修复提交 `23f4a51`。本文依据当时源码、已提交报告及工作区状态整理。P2 有效容量测量绑定提交 `9fcd049`；工作区当时包含既有未提交改动。
 
 ## 可展示的亮点
 
 1. **上传到播放的媒体闭环**：视频服务支持 MD5 秒传、分片续传、MinIO 存储、RocketMQ 异步转码与多档 HLS；低清晰度先发布，后续补充高档位。转码任务持久化，结果与视频播放地址在一个 MySQL 事务内更新。数据库租约、代次和独立对象前缀阻止旧 Worker 覆盖新结果。见 `UploadServiceImpl`、`VideoTranscodeConsumer`、`VideoTranscodeResultService`、Flyway V6。
 2. **可恢复的消息链路**：通用 Outbox、Inbox、有限重试、应用 DLQ 与重放支持故障恢复；转码另用持久化任务表和超时重新领取。语义是至少一次投递与消费幂等，不是 Exactly Once，也不保证 MySQL 与 MinIO 跨系统强一致。
 3. **实时弹幕与持久化分离**：Netty WebSocket 按视频房间推送，Redis Pub/Sub 跨实例广播，RocketMQ 异步落库；Ticket、限流和幂等约束接入与重复写入。Pub/Sub 只负责在线广播，不提供离线可靠投递。
-4. **可修复的搜索读模型**：MySQL 是事实源，Canal/消息链路更新缓存与 Elasticsearch；索引对账、影子索引分页重建、Alias 原子切换及保留旧索引回退已实现。当前切换协调只在单个 Canal 进程内有效。
+4. **可修复的搜索读模型**：MySQL 是事实源，Canal/消息链路更新缓存与 Elasticsearch；索引对账、影子索引分页重建、Alias 原子切换及保留旧索引回退已实现。后续已用 MySQL 命名锁实现跨 Canal 实例协调，并在本地双实例演练中通过。
 5. **工程化证据**：Maven/JaCoCo、Testcontainers、前端 Vitest/Playwright、Compose E2E、故障演练、k6、可观测性及 CI 已接入。P0 发布复验、P1 双 Worker/多 Canal 演练和 P2 四场景容量基线均已取得本地通过报告。历史读链路数据不覆盖写入、转码或生产容量。前端浏览器测试使用 API/WebSocket 桩，验证交互和恢复，不代表真实后端端到端通过。
 
 ## 当前验证边界
