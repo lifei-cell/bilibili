@@ -58,8 +58,8 @@ public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMe
         }
 
         VideoTranscodeTask task = taskMapper.selectByTaskId(message.getTaskId());
-        if (task == null || Integer.valueOf(UploadConstant.TRANSCODE_STATUS_SUCCESS)
-                .equals(task.getStatus())) {
+        if (task == null || (Integer.valueOf(UploadConstant.TRANSCODE_STATUS_SUCCESS)
+                .equals(task.getStatus()) && !Integer.valueOf(5).equals(task.getRenditionStatus()))) {
             return;
         }
 
@@ -72,11 +72,15 @@ public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMe
         task.setClaimGeneration(generation);
         task.setClaimToken(token);
 
+        boolean compensation = Integer.valueOf(UploadConstant.TRANSCODE_STATUS_SUCCESS)
+                .equals(task.getStatus());
         AtomicBoolean playablePublished = new AtomicBoolean(false);
         try (VideoTranscodeLeaseService.Lease lease = leaseService.start(task.getTaskId(), generation, token)) {
             MediaTranscodeResult result = transcodeWorker.transcode(task, playable -> {
                 lease.assertHeld();
-                resultService.publish(task, playable, false);
+                if (!compensation) {
+                    resultService.publish(task, playable, false);
+                }
                 playablePublished.set(true);
                 log.info("Low rendition published, taskId={}, variants={}",
                         task.getTaskId(), playable.variants().size());
@@ -87,8 +91,9 @@ public class VideoTranscodeConsumer implements RocketMQListener<VideoTranscodeMe
             log.info("Ignore result from expired transcode attempt, taskId={}, generation={}",
                     task.getTaskId(), generation);
         } catch (Exception exception) {
-            if (playablePublished.get()) {
-                taskMapper.markDegradedSuccess(task.getTaskId(), generation, token, safeMessage(exception));
+            if (compensation || playablePublished.get()) {
+                taskMapper.markDegradedSuccess(task.getTaskId(), generation, token,
+                        safeMessage(exception), maxRetries, retryDelaySeconds);
                 log.warn("Adaptive renditions failed after playable rendition was published, taskId={}",
                         task.getTaskId(), exception);
             } else {

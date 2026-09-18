@@ -25,6 +25,10 @@ public class VideoTranscodeTask {
     private String variantsJson;
     private Integer status;
     private Integer retryCount;
+    private Integer renditionStatus;
+    private Integer renditionRetryCount;
+    private LocalDateTime renditionNextRetryTime;
+    private String renditionErrorMessage;
     private Long claimGeneration;
     private String claimToken;
     private LocalDateTime leaseUntil;

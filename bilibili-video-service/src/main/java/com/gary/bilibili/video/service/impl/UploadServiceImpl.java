@@ -221,6 +221,10 @@ public class UploadServiceImpl implements UploadService {
         result.setStatus(toTranscodeState(task.getStatus()));
         result.setRetryCount(task.getRetryCount() == null ? 0 : task.getRetryCount());
         result.setNextRetryTime(task.getNextRetryTime());
+        result.setRenditionStatus(toRenditionState(task.getRenditionStatus()));
+        result.setRenditionRetryCount(task.getRenditionRetryCount() == null ? 0 : task.getRenditionRetryCount());
+        result.setRenditionNextRetryTime(task.getRenditionNextRetryTime());
+        result.setRenditionErrorMessage(task.getRenditionErrorMessage());
         if (Integer.valueOf(UploadConstant.TRANSCODE_STATUS_SUCCESS).equals(task.getStatus())) {
             result.setOutputUrl(task.getOutputUrl());
             result.setCoverUrl(task.getCoverUrl());
@@ -546,6 +550,8 @@ public class UploadServiceImpl implements UploadService {
             transcodeTask.setSourceObjectName(sourceObjectName);
             transcodeTask.setStatus(UploadConstant.TRANSCODE_STATUS_PENDING);
             transcodeTask.setRetryCount(0);
+            transcodeTask.setRenditionStatus(0);
+            transcodeTask.setRenditionRetryCount(0);
             videoTranscodeTaskMapper.insert(transcodeTask);
             return;
         }
@@ -568,6 +574,14 @@ public class UploadServiceImpl implements UploadService {
             return UploadConstant.TRANSCODE_STATE_PROCESSING;
         }
         return UploadConstant.TRANSCODE_STATE_WAITING;
+    }
+
+    private String toRenditionState(Integer status) {
+        if (status == null || status == 0) return "WAITING";
+        if (status == 2) return "COMPLETED";
+        if (status == 3) return "RETRY_PENDING";
+        if (status == 4) return "FAILED";
+        return "PROCESSING";
     }
 
     private void markChunksCompleted(UploadTask task) {

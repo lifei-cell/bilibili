@@ -15,6 +15,10 @@ public class VideoTranscodeStatusVO {
     private String taskId;
     private String status;
     private Integer retryCount;
+    private String renditionStatus;
+    private Integer renditionRetryCount;
+    private LocalDateTime renditionNextRetryTime;
+    private String renditionErrorMessage;
     private String errorMessage;
     private String outputUrl;
     private String coverUrl;

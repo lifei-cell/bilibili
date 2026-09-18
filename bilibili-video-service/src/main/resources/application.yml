@@ -69,6 +69,9 @@ video:
     retry-delay-seconds: ${VIDEO_TRANSCODE_RETRY_DELAY_SECONDS:10}
     # Heartbeat renews the database lease while FFmpeg is running.
     lease-seconds: ${VIDEO_TRANSCODE_LEASE_SECONDS:120}
+    cleanup-enabled: ${VIDEO_TRANSCODE_CLEANUP_ENABLED:true}
+    cleanup-retention-hours: ${VIDEO_TRANSCODE_CLEANUP_RETENTION_HOURS:168}
+    cleanup-interval: ${VIDEO_TRANSCODE_CLEANUP_INTERVAL:300000}
     ffmpeg-path: ${VIDEO_TRANSCODE_FFMPEG_PATH:ffmpeg}
     ffprobe-path: ${VIDEO_TRANSCODE_FFPROBE_PATH:ffprobe}
     temp-dir: ${VIDEO_TRANSCODE_TEMP_DIR:/tmp/bilibili-transcode}

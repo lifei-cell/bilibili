@@ -37,7 +37,8 @@ class VideoTranscodeTaskPublisherTest {
         task.setSourceUrl("http://minio/videos/source/demo.mp4");
         task.setClaimGeneration(0L);
         when(taskMapper.selectDispatchable(20)).thenReturn(List.of(task));
-        when(taskMapper.markDispatched(eq("upload-task-001"), eq(0L), anyString(), eq(120))).thenReturn(1);
+        when(taskMapper.markDispatched(eq("upload-task-001"), eq(0L), anyString(), eq(120), eq(3)))
+                .thenReturn(1);
 
         VideoTranscodeTaskPublisher publisher = new VideoTranscodeTaskPublisher(
                 taskMapper, rocketMQTemplate, redisTemplate, 3, 10, 120);

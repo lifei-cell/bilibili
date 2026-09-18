@@ -119,6 +119,8 @@ public class DirectUploadService {
         task.setSourceUrl(publicEndpoint + "/" + bucket + "/" + session.getObjectName());
         task.setStatus(UploadConstant.TRANSCODE_STATUS_PENDING);
         task.setRetryCount(0);
+        task.setRenditionStatus(0);
+        task.setRenditionRetryCount(0);
         taskMapper.insert(task);
 
         UploadMergeVO result = new UploadMergeVO();

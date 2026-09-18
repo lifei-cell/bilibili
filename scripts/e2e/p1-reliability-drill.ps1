@@ -61,6 +61,8 @@ $workerResult = [ordered]@{
     firstWorkerExitState = $null
     takeoverLogObserved = $false
     outputUrl = $null
+    lastSnapshot = $null
+    survivingWorkerLogs = @()
 }
 $canalResult = [ordered]@{
     passed = $false
@@ -353,6 +355,12 @@ try {
 }
 catch {
     $failure = $_.Exception.Message
+    if (![string]::IsNullOrWhiteSpace($taskId)) {
+        try { $workerResult.lastSnapshot = Get-TranscodeSnapshot -Task $taskId } catch { }
+    }
+    if (![string]::IsNullOrWhiteSpace($workerTwo)) {
+        try { $workerResult.survivingWorkerLogs = @(& docker logs --tail 120 $workerTwo 2>&1) } catch { }
+    }
     Write-Error "[p1] $failure"
 }
 finally {

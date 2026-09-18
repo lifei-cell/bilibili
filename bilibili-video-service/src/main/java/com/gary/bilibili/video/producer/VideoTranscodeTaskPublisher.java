@@ -62,6 +62,12 @@ public class VideoTranscodeTaskPublisher {
     }
 
     private void dispatch(VideoTranscodeTask task) {
+        if (Integer.valueOf(3).equals(task.getStatus())
+                && task.getRenditionRetryCount() != null
+                && task.getRenditionRetryCount() >= maxRetries) {
+            taskMapper.markRenditionExhausted(task.getTaskId(), maxRetries);
+            return;
+        }
         String lockKey = UploadConstant.TRANSCODE_DISPATCH_LOCK_KEY_PREFIX + task.getTaskId();
         String lockValue = UUID.randomUUID().toString();
         Boolean locked = stringRedisTemplate.opsForValue()
@@ -73,7 +79,8 @@ public class VideoTranscodeTaskPublisher {
         long generation = task.getClaimGeneration() == null ? 0 : task.getClaimGeneration();
         String claimToken = UUID.randomUUID().toString();
         try {
-            if (taskMapper.markDispatched(task.getTaskId(), generation, claimToken, leaseSeconds) == 0) {
+            if (taskMapper.markDispatched(task.getTaskId(), generation, claimToken,
+                    leaseSeconds, maxRetries) == 0) {
                 return;
             }
             VideoTranscodeMessage message = new VideoTranscodeMessage();

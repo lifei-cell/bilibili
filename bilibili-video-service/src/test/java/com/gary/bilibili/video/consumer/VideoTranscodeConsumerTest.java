@@ -71,7 +71,7 @@ class VideoTranscodeConsumerTest {
 
         consumer.onMessage(message());
 
-        verify(taskMapper).markDegradedSuccess(eq("task-1"), eq(2L), eq("owner-2"), anyString());
+        verify(taskMapper).markDegradedSuccess(eq("task-1"), eq(2L), eq("owner-2"), anyString(), eq(3), eq(10));
         verify(taskMapper, never()).markPendingAfterFailure(anyString(), anyLong(), anyString(), anyInt(),
                 anyString(), anyInt(), anyInt());
     }
@@ -108,7 +108,40 @@ class VideoTranscodeConsumerTest {
         consumer.onMessage(message());
 
         verify(resultService).publish(task, playable, false);
-        verify(taskMapper).markDegradedSuccess(eq("task-1"), eq(2L), eq("owner-2"), anyString());
+        verify(taskMapper).markDegradedSuccess(eq("task-1"), eq(2L), eq("owner-2"), anyString(), eq(3), eq(10));
+    }
+
+    @Test
+    void compensationKeepsOldPlaybackUntilCompleteResultCommits() {
+        task.setStatus(3);
+        task.setRenditionStatus(5);
+        MediaTranscodeResult playable = result("360P");
+        MediaTranscodeResult adaptive = result("360P", "720P");
+        when(worker.transcode(eq(task), any(), any())).thenAnswer(invocation -> {
+            Consumer<MediaTranscodeResult> listener = invocation.getArgument(1);
+            listener.accept(playable);
+            return adaptive;
+        });
+
+        consumer.onMessage(message());
+
+        verify(resultService, never()).publish(task, playable, false);
+        verify(resultService).publish(task, adaptive, true);
+    }
+
+    @Test
+    void compensationFailureKeepsPlayableTaskAndSchedulesRetry() {
+        task.setStatus(3);
+        task.setRenditionStatus(5);
+        when(worker.transcode(eq(task), any(), any())).thenThrow(new IllegalStateException("high batch timeout"));
+
+        consumer.onMessage(message());
+
+        verify(taskMapper).markDegradedSuccess(eq("task-1"), eq(2L), eq("owner-2"),
+                anyString(), eq(3), eq(10));
+        verify(taskMapper, never()).markPendingAfterFailure(anyString(), anyLong(), anyString(),
+                anyInt(), anyString(), anyInt(), anyInt());
+        verifyNoInteractions(resultService);
     }
 
     @Test
@@ -134,7 +167,8 @@ class VideoTranscodeConsumerTest {
         verifyNoInteractions(resultService);
         verify(taskMapper, never()).markPendingAfterFailure(anyString(), anyLong(), anyString(), anyInt(),
                 anyString(), anyInt(), anyInt());
-        verify(taskMapper, never()).markDegradedSuccess(anyString(), anyLong(), anyString(), anyString());
+        verify(taskMapper, never()).markDegradedSuccess(anyString(), anyLong(), anyString(),
+                anyString(), anyInt(), anyInt());
     }
 
     private VideoTranscodeMessage message() {

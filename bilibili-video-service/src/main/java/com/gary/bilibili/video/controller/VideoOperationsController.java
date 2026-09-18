@@ -2,6 +2,7 @@ package com.gary.bilibili.video.controller;
 
 import com.gary.bilibili.common.result.Result;
 import com.gary.bilibili.video.service.VideoPublicationOperationsService;
+import com.gary.bilibili.video.service.VideoRenditionRecoveryService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
@@ -21,13 +22,16 @@ import java.util.Arrays;
 public class VideoOperationsController {
 
     private final VideoPublicationOperationsService publicationService;
+    private final VideoRenditionRecoveryService renditionRecoveryService;
     private final String adminToken;
 
     public VideoOperationsController(
             VideoPublicationOperationsService publicationService,
+            VideoRenditionRecoveryService renditionRecoveryService,
             @Value("${operations.admin-token:change-me-in-production}") String adminToken,
             Environment environment) {
         this.publicationService = publicationService;
+        this.renditionRecoveryService = renditionRecoveryService;
         this.adminToken = adminToken;
         if (Arrays.asList(environment.getActiveProfiles()).contains("prod")
                 && "change-me-in-production".equals(adminToken)) {
@@ -41,6 +45,15 @@ public class VideoOperationsController {
             @PathVariable long videoId) {
         authorize(token);
         return Result.ok(publicationService.publish(videoId));
+    }
+
+    @PostMapping("/transcode/{taskId}/retry-renditions")
+    public Result<Void> retryRenditions(
+            @RequestHeader(value = "X-Admin-Token", required = false) String token,
+            @PathVariable String taskId) {
+        authorize(token);
+        renditionRecoveryService.requeue(taskId);
+        return Result.ok();
     }
 
     private void authorize(String token) {

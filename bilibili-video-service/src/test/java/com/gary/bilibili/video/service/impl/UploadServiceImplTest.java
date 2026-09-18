@@ -177,6 +177,9 @@ class UploadServiceImplTest {
         task.setUserId(1L);
         task.setStatus(3);
         task.setRetryCount(1);
+        task.setRenditionStatus(4);
+        task.setRenditionRetryCount(3);
+        task.setRenditionErrorMessage("high batch timeout");
         task.setOutputUrl("https://minio.example.com/play/demo.mp4");
         when(videoTranscodeTaskMapper.selectByTaskId("up_test")).thenReturn(task);
 
@@ -188,6 +191,9 @@ class UploadServiceImplTest {
             assertThat(result.getStatus()).isEqualTo("completed");
             assertThat(result.getOutputUrl()).isEqualTo("https://minio.example.com/play/demo.mp4");
             assertThat(result.getRetryCount()).isEqualTo(1);
+            assertThat(result.getRenditionStatus()).isEqualTo("FAILED");
+            assertThat(result.getRenditionRetryCount()).isEqualTo(3);
+            assertThat(result.getRenditionErrorMessage()).isEqualTo("high batch timeout");
         }
     }
 
