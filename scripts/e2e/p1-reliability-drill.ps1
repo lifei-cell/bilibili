@@ -1,6 +1,7 @@
 param(
     [string]$AdminToken = 'change-me-in-production',
-    [string]$ResultsDirectory
+    [string]$ResultsDirectory,
+    [switch]$CrashAfterPlayable
 )
 
 Set-StrictMode -Version Latest
@@ -61,6 +62,10 @@ $workerResult = [ordered]@{
     firstWorkerExitState = $null
     takeoverLogObserved = $false
     outputUrl = $null
+    lowOutputUrl = $null
+    lowPlaybackReadableBeforeCrash = $false
+    playbackPreserved = $false
+    finalRenditionStatus = $null
     lastSnapshot = $null
     survivingWorkerLogs = @()
 }
@@ -83,18 +88,26 @@ function Get-WorkerContainers {
 function Get-TranscodeSnapshot {
     param([Parameter(Mandatory)][string]$Task)
 
-    $sql = "select status, claim_generation, coalesce(claim_token,''), coalesce(output_url,''), coalesce(source_object_name,'') from video_transcode_task where task_id='$Task' limit 1"
+    $sql = "select status, claim_generation, coalesce(claim_token,''), coalesce(output_url,''), coalesce(source_object_name,''), rendition_status from video_transcode_task where task_id='$Task' limit 1"
     $raw = (& docker exec -e MYSQL_PWD=root bilibili-mysql mysql -N -B -uroot bilibili -e $sql) -join "`n"
     if ($LASTEXITCODE -ne 0) { throw "MySQL transcode snapshot failed for task $Task" }
     $parts = $raw.Trim().Split("`t")
-    if ($parts.Count -lt 5) { throw "Transcode task disappeared: $Task" }
+    if ($parts.Count -lt 6) { throw "Transcode task disappeared: $Task" }
     [pscustomobject]@{
         status = [int]$parts[0]
         generation = [long]$parts[1]
         token = $parts[2]
         outputUrl = $parts[3]
         sourceObject = $parts[4]
+        renditionStatus = [int]$parts[5]
     }
+}
+
+function Test-ReadableHls {
+    param([Parameter(Mandatory)][string]$Url)
+
+    $playlist = & $script:CurlExecutable --noproxy '*' --connect-timeout 5 --max-time 15 -fsS $Url
+    return $LASTEXITCODE -eq 0 -and ($playlist -join "`n").Contains('#EXTM3U')
 }
 
 function Invoke-RawAdminRequest {
@@ -208,9 +221,16 @@ try {
     $sourceObject = [string](Get-MySqlScalar "select source_object_name from video_transcode_task where task_id='$taskId'")
 
     $script:transcodeRow = $null
-    Wait-Until -TimeoutSeconds 120 -IntervalSeconds 1 -Description 'first Worker to claim the task' -Condition {
+    $firstStage = if ($CrashAfterPlayable) { 'first playable rendition' } else { 'first Worker to claim the task' }
+    Wait-Until -TimeoutSeconds 180 -IntervalSeconds 1 -Description $firstStage -Condition {
         $row = Get-TranscodeSnapshot -Task $taskId
-        if ($row.status -eq 2 -and $row.generation -eq 1) {
+        $ready = if ($CrashAfterPlayable) {
+            $row.status -eq 3 -and $row.renditionStatus -eq 1 -and
+                $row.generation -eq 1 -and ![string]::IsNullOrWhiteSpace($row.outputUrl)
+        } else {
+            $row.status -eq 2 -and $row.generation -eq 1
+        }
+        if ($ready) {
             $script:transcodeRow = $row
             return $true
         }
@@ -218,6 +238,11 @@ try {
     }
     $workerResult.taskId = $taskId
     $workerResult.firstGeneration = $transcodeRow.generation
+    if ($CrashAfterPlayable) {
+        $workerResult.lowOutputUrl = $transcodeRow.outputUrl
+        $workerResult.lowPlaybackReadableBeforeCrash = Test-ReadableHls $transcodeRow.outputUrl
+        Assert-True $workerResult.lowPlaybackReadableBeforeCrash 'First rendition was not readable before the Worker crash'
+    }
     $claimLog = "Transcode task claimed, taskId=$taskId, generation=1"
     $script:claimingWorker = ''
     Wait-Until -TimeoutSeconds 60 -IntervalSeconds 1 -Description 'claiming Worker log' -Condition {
@@ -253,9 +278,14 @@ try {
     Assert-True ($workerResult.firstWorkerExitState -eq 'exited') 'The crashed Worker did not stop'
     Wait-ContainerHealthy $workerTwo 120
     $script:transcodeRow = $null
-    Wait-Until -TimeoutSeconds 240 -IntervalSeconds 2 -Description 'second Worker takeover and transcode recovery' -Condition {
+    Wait-Until -TimeoutSeconds 240 -IntervalSeconds 1 -Description 'second Worker takeover and transcode recovery' -Condition {
         $row = Get-TranscodeSnapshot -Task $taskId
-        if ($row.status -eq 3 -and $row.generation -ge 2 -and [string]::IsNullOrWhiteSpace($row.token) -and $row.outputUrl -like '*attempt-2-*') {
+        if ($CrashAfterPlayable -and $row.generation -ge 2 -and $row.status -eq 3 -and $row.renditionStatus -ne 2) {
+            Assert-True ($row.outputUrl -eq $workerResult.lowOutputUrl) 'Playable low rendition changed before compensation finished'
+            if (Test-ReadableHls $row.outputUrl) { $workerResult.playbackPreserved = $true }
+        }
+        if ($row.status -eq 3 -and $row.generation -ge 2 -and [string]::IsNullOrWhiteSpace($row.token) -and
+            $row.outputUrl -like '*attempt-2-*' -and (!$CrashAfterPlayable -or $row.renditionStatus -eq 2)) {
             $logs = ((& docker logs $workerTwo 2>$null) -join "`n")
             if ($logs.Contains("Transcode task claimed, taskId=$taskId, generation=2")) {
                 $script:transcodeRow = $row
@@ -267,8 +297,11 @@ try {
     }
     $workerResult.recoveredGeneration = $transcodeRow.generation
     $workerResult.outputUrl = $transcodeRow.outputUrl
-    $hls = & $script:CurlExecutable --noproxy '*' --connect-timeout 5 --max-time 30 -fsS $transcodeRow.outputUrl
-    if ($LASTEXITCODE -ne 0 -or !($hls -join "`n").Contains('#EXTM3U')) {
+    $workerResult.finalRenditionStatus = $transcodeRow.renditionStatus
+    if ($CrashAfterPlayable) {
+        Assert-True $workerResult.playbackPreserved 'No compensation interval preserved the low rendition was observed'
+    }
+    if (!(Test-ReadableHls $transcodeRow.outputUrl)) {
         throw 'Recovered Worker did not publish a readable HLS master playlist'
     }
     $workerResult.passed = $true
@@ -391,6 +424,7 @@ finally {
     $report = [ordered]@{
         schemaVersion = 1
         type = 'p1-reliability-drill'
+        crashAfterPlayable = [bool]$CrashAfterPlayable
         generatedAt = [DateTimeOffset]::UtcNow.ToString('o')
         passed = $overallPassed -and $cleanupPassed -and $workerResult.passed -and $canalResult.passed
         failure = $failure

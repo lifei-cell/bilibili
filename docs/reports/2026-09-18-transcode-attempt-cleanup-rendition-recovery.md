@@ -19,7 +19,8 @@
 - 真实 MinIO Testcontainers：孤立 `attempt-*` 对象删除，仍被引用的 HLS 对象保留。
 - 九模块 `mvn -s .mvn/settings.xml --batch-mode --no-transfer-progress clean verify`：2026-09-18 本地 Docker Engine 上通过，全部 9 模块 SUCCESS；Surefire/Failsafe 汇总 93 个测试，失败 0、错误 0、跳过 0。
 - P1 Docker 双 Worker/双 Canal 演练：首次运行 `p1-reliability-drill-20260918-143227` 因第二 Worker 未在 240 秒内完成接管而未通过，清理成功；脚本现保留失败时任务快照和存活 Worker 日志。复跑 `p1-reliability-drill-20260918-144225` 的 `passed=true`、`cleanupPassed=true`，代次 1 崩溃后代次 2 产出可播放 HLS，多 Canal Alias 与 CDC 对账通过。两次结果分别保留，不将一次通过解释为稳定性证明。
+- 新增 `-CrashAfterPlayable` 故障点：`loadtest/results/p1-reliability-drill-20260918-183328/p1-reliability-drill.json` 记录 `passed=true`、`cleanupPassed=true`。首档发布后实际读取 HLS 成功，代次 1 Worker 崩溃；代次 2 补偿期间原播放地址保持且再次读取成功，最终 `rendition_status=2`，完整 HLS 切换到 `attempt-2-*`。双 Canal Alias 数量为 1，CDC 对账通过。此前地址保持检查的首次运行记录为 `p1-reliability-drill-20260918-182824`，最终证据以增加 HTTP 读取检查的复跑为准。
 
 ## 边界
 
-本地集成测试直接验证补偿状态和对象删除；P1 演练验证真实容器崩溃接管，没有在真实容器中注入“低清已发布后高档位超时”的完整重试旅程。高档位补偿重新编码低清档，增加计算成本，但在完整结果提交前不会替换已发布地址。源视频若已按生命周期清理，补偿会失败并进入可查询失败态，需要先恢复源文件再由管理员重新排队。以上均为本地证据，不代表远端 CI 或生产环境。
+本地集成测试直接验证补偿状态和对象删除；P1 演练验证低清已可播放后的真实容器崩溃接管，但没有注入 FFmpeg 返回错误或网络超时。高档位补偿重新编码低清档，增加计算成本，但在完整结果提交前不会替换已发布地址。源视频若已按生命周期清理，补偿会失败并进入可查询失败态，需要先恢复源文件再由管理员重新排队。以上均为本地证据，不代表远端 CI 或生产环境。
