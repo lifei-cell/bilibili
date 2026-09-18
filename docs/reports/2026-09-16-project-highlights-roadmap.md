@@ -8,13 +8,13 @@
 2. **可恢复的异步链路。** 通用 Outbox 保存事件，Inbox 用业务消息键与租约控制重复消费，有限重试后可进入应用 DLQ 并人工重放；转码另有专用任务表与超时重派。故障演练覆盖 MQ、Redis 和 Elasticsearch 恢复。语义是至少一次投递加消费幂等，允许重复消息，不能宣称 Exactly Once 或跨 MySQL、MinIO、MQ 强一致。见 `bilibili-common/.../reliability`、`docs/runbooks/reliability-closure.md`。
 3. **实时弹幕与持久化解耦。** Netty WebSocket 按视频房间推送，Redis Pub/Sub 用于跨实例实时广播，RocketMQ 用于异步落库；一次性 Ticket、限流和请求幂等降低滥用与重复写入。Pub/Sub 不提供离线可靠投递。见 `bilibili-danmu-service`。
 4. **读路径与可重建索引。** Redis 缓存和布隆过滤器降低热点读取与无效查询压力；Canal 订阅 MySQL Binlog，经消息链路维护缓存和 Elasticsearch。以 MySQL 为事实源，提供影子索引、对账和 Alias 原子切换；重建及视频 CDC 写入由 MySQL 命名锁协调多 Canal 实例。见 `CacheSyncConsumer`、`SearchIndexMaintenanceService`。
-5. **工程化验证。** Java 21 / Spring Boot 4 多模块工程，包含 Flyway、Testcontainers、JaCoCo、前端 lint/Vitest/构建、Compose E2E、故障演练、读写压测、Prometheus/Grafana/日志追踪与 GitHub Actions。2026-09-17 本地 Docker 复验已通过发布门禁，并补通过双 Worker 崩溃接管和双 Canal 索引切换；2026-09-18 已取得读、写、弹幕容量测量，转码直传仍待复验。证据见 `docs/reports/2026-09-17-release-validation-pass.md`、`docs/reports/2026-09-17-p1-reliability-drill.md` 和 `docs/reports/2026-09-18-p2-capacity-baseline.md`。
+5. **工程化验证。** Java 21 / Spring Boot 4 多模块工程，包含 Flyway、Testcontainers、JaCoCo、前端 lint/Vitest/构建、Compose E2E、故障演练、读写压测、Prometheus/Grafana/日志追踪与 GitHub Actions。2026-09-17 本地 Docker 复验已通过发布门禁，并补通过双 Worker 崩溃接管和双 Canal 索引切换；2026-09-18 四场景容量基线也已通过。证据见 `docs/reports/2026-09-17-release-validation-pass.md`、`docs/reports/2026-09-17-p1-reliability-drill.md` 和 `docs/reports/2026-09-18-p2-capacity-baseline.md`。
 
 ## 证据边界
 
 - 2026-08-25 本地 Docker、预热后列表/详情/搜索混合读链路持续 5 分钟达到 300.016 RPS、90,003 请求、错误率 0、整体 P95 12.35 ms。该结果不覆盖上传、转码、弹幕或生产环境；原始结果在被忽略的 `loadtest/results/`，仓库可见汇总见 `loadtest/PERFORMANCE_REPORT.md`。
 - 2026-09-11 发布候选报告为 **未通过**；当时未以同一提交完成远端 CI 与交付闭环。当前脚本、配置和报告中仍有未提交改动，不能把其功能或测试记录表述为已发布版本。
-- 2026-09-18 P2 本地容量报告中，读 50 iterations/s（约 150 HTTP RPS）、写 1 operation/s、弹幕 1 message/s 的测量通过；转码 1 task/s 的 31 次直传均失败，未形成有效转码吞吐结论。
+- 2026-09-18 P2 本地容量报告中，读 50 iterations/s（约 150 HTTP RPS）、写 1 operation/s、弹幕 1 message/s、转码 1 task/s（2 Worker）均通过；该结果仍只代表当前 Docker Desktop 和固定数据集。
 - 前端现有测试主要覆盖格式工具和空状态组件，尚不足以证明上传、播放、弹幕、互动等业务旅程稳定。
 
 ## 优化顺序与验收
@@ -24,7 +24,7 @@
 | P0 | 关闭发布门禁 | **已完成（2026-09-17）**。CPU 采集按容器配额归一化；Docker Engine 恢复后真实 Compose E2E、故障演练、写链路 SLO、MQ 积压和资源门禁均通过，最终报告见 `docs/reports/2026-09-17-release-validation-pass.md`。 |
 | P1 | 转码状态机正确性 | **已完成（2026-09-17）**。数据库租约、代次/fencing token、续租、带条件完成写入和独立 HLS 尝试前缀已落地；真实双 Worker 抢占与崩溃恢复通过，见 `docs/reports/2026-09-17-p1-reliability-drill.md`。孤立对象清理和高档位超时补偿仍是后续项。 |
 | P1 | 前端业务回归 | 补上传续传、发布播放、弹幕和互动的组件/页面测试，以及浏览器 E2E；将关键旅程并入 CI，失败时保留截图、日志和请求证据。 |
-| P2 | 容量与编码矩阵 | **部分完成（2026-09-18）**。读、写、弹幕已取得短时 Docker 基线；转码预签名直传失败，修复提交 `23f4a51` 后仍需单独复验，再扩展 CPU、Intel QSV、NVIDIA NVENC 与软件回退矩阵。 |
+| P2 | 容量与编码矩阵 | **已完成基线（2026-09-18）**。读、写、弹幕、转码短时 Docker 基线通过；修复提交 `23f4a51` 已经真实验证。后续扩展 CPU、Intel QSV、NVIDIA NVENC 与软件回退矩阵。 |
 | P3 | 部署与数据恢复 | 补 TLS/CDN、密钥管理和备份恢复演练；影子索引与 Alias 切换已落地，继续按真实部署需求评估 Helm/Kubernetes。 |
 | P4 | 产品功能 | 在上述质量门禁稳定后，再按目标岗位和使用场景选择推荐、创作者中心、历史记录、审核体验等功能。 |
 

@@ -8,13 +8,13 @@
 2. **可恢复的消息链路**：通用 Outbox、Inbox、有限重试、应用 DLQ 与重放支持故障恢复；转码另用持久化任务表和超时重新领取。语义是至少一次投递与消费幂等，不是 Exactly Once，也不保证 MySQL 与 MinIO 跨系统强一致。
 3. **实时弹幕与持久化分离**：Netty WebSocket 按视频房间推送，Redis Pub/Sub 跨实例广播，RocketMQ 异步落库；Ticket、限流和幂等约束接入与重复写入。Pub/Sub 只负责在线广播，不提供离线可靠投递。
 4. **可修复的搜索读模型**：MySQL 是事实源，Canal/消息链路更新缓存与 Elasticsearch；索引对账、影子索引分页重建、Alias 原子切换及保留旧索引回退已实现。当前切换协调只在单个 Canal 进程内有效。
-5. **工程化证据**：Maven/JaCoCo、Testcontainers、前端 Vitest/Playwright、Compose E2E、故障演练、k6、可观测性及 CI 已接入。P0 发布复验和 P1 双 Worker/多 Canal 演练已通过；P2 已建立读、写、弹幕、转码四场景采样和原始报告，但转码直传失败，完整容量门禁尚未通过。历史读链路数据不覆盖写入、转码或生产容量。前端浏览器测试使用 API/WebSocket 桩，验证交互和恢复，不代表真实后端端到端通过。
+5. **工程化证据**：Maven/JaCoCo、Testcontainers、前端 Vitest/Playwright、Compose E2E、故障演练、k6、可观测性及 CI 已接入。P0 发布复验、P1 双 Worker/多 Canal 演练和 P2 四场景容量基线均已取得本地通过报告。历史读链路数据不覆盖写入、转码或生产容量。前端浏览器测试使用 API/WebSocket 桩，验证交互和恢复，不代表真实后端端到端通过。
 
 ## 当前验证边界
 
 - 2026-09-17 的 P0 发布复验已在 Docker Desktop 上通过，报告见 `docs/reports/2026-09-17-release-validation-pass.md`。
 - 2026-09-17 的 P1 真实双 Worker 抢占/崩溃恢复和多 Canal 索引切换已通过，报告见 `docs/reports/2026-09-17-p1-reliability-drill.md`。
-- 2026-09-18 的 P2 报告 `docs/reports/2026-09-18-p2-capacity-baseline.md` 中，读、写、弹幕场景通过；转码预签名直传失败，修复已提交但按要求未再次运行验证。
+- 2026-09-18 的 P2 报告 `docs/reports/2026-09-18-p2-capacity-baseline.md` 中，读、写、弹幕和转码四场景均通过；转码 30 个任务完成，双 Worker、资源和 MQ 门禁通过。
 - 本地前端质量门禁及两条 Chromium 旅程通过；远端 CI 应以对应提交的 Actions 记录为准。
 
 ## 后续计划（按优先级）
@@ -23,7 +23,7 @@
 | --- | --- | --- |
 | P0 | 发布验证 | **已完成（2026-09-17）**。真实 E2E、故障演练、写链路 SLO、MQ 积压和资源门禁通过，见 `docs/reports/2026-09-17-release-validation-pass.md`。 |
 | P1 | 转码恢复与搜索重建 | **已完成（2026-09-17）**。双 Worker 抢占/崩溃恢复和多 Canal 索引切换通过；孤立对象清理、高档位超时补偿和规模化 SLO 仍是后续项。 |
-| P2 | 分场景容量基线 | **部分完成（2026-09-18）**。读、写、弹幕取得通过测量；转码直传失败，原始报告和修复边界见 `docs/reports/2026-09-18-p2-capacity-baseline.md`，需后续单独复验转码门禁。 |
+| P2 | 分场景容量基线 | **已完成（2026-09-18）**。读、写、弹幕、转码均在真实 Docker/k6 中通过当前阈值，环境、负载和原始报告见 `docs/reports/2026-09-18-p2-capacity-baseline.md`；生产容量仍需按目标环境复测。 |
 | P3 | 交付与体验：按实际部署需求补备份恢复、密钥/TLS/CDN 演练；再选择审核、创作者工具、推荐等产品功能。 | 先有可复现恢复演练和用户需求，再定义功能验收指标。 |
 
 ## 简历与答辩取材
