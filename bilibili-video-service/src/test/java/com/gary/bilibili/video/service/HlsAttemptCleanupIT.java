@@ -32,7 +32,7 @@ class HlsAttemptCleanupIT {
 
     @Container
     static final GenericContainer<?> MINIO = new GenericContainer<>(
-            DockerImageName.parse("minio/minio:RELEASE.2024-12-18T13-15-44Z"))
+            DockerImageName.parse("quay.io/minio/minio:RELEASE.2024-12-13T22-19-12Z"))
             .withEnv("MINIO_ROOT_USER", "minioadmin")
             .withEnv("MINIO_ROOT_PASSWORD", "minioadmin")
             .withCommand("server", "/data")
