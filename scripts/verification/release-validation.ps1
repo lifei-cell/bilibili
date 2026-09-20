@@ -88,15 +88,17 @@ function Get-MavenTestSummary {
 }
 
 function Write-ReleaseEnvironment {
-    $dockerVersion = & docker version --format '{{json .}}'
+    $dockerVersion = & docker version --format '{{.Client.Version}}|{{.Server.Version}}|{{.Server.Os}}|{{.Server.Arch}}'
     if ($LASTEXITCODE -ne 0) { throw 'Docker version inspection failed' }
+    $dockerFields = ([string]$dockerVersion).Trim() -split '\|', 4
+    if ($dockerFields.Count -ne 4) { throw 'Docker version inspection returned unexpected output' }
     $composeConfig = & docker compose @script:ComposeFiles config
     if ($LASTEXITCODE -ne 0) { throw 'Merged Compose configuration is invalid' }
     Set-Content -Encoding utf8 -Path $composeConfigPath -Value $composeConfig
 
-    $mavenVersion = @(& mvn --version 2>&1)
+    $mavenVersion = @((& mvn --version 2>&1) | ForEach-Object { [string]$_ })
     if ($LASTEXITCODE -ne 0) { throw 'Maven version inspection failed' }
-    $javaVersion = @(& java -version 2>&1)
+    $javaVersion = @((& java -version 2>&1) | ForEach-Object { [string]$_ })
     if ($LASTEXITCODE -ne 0) { throw 'Java version inspection failed' }
 
     [ordered]@{
@@ -120,12 +122,17 @@ function Write-ReleaseEnvironment {
             powershell = $PSVersionTable.PSVersion.ToString()
         }
         tools = [ordered]@{
-            docker = (($dockerVersion -join "`n") | ConvertFrom-Json)
+            docker = [ordered]@{
+                clientVersion = $dockerFields[0]
+                serverVersion = $dockerFields[1]
+                serverOs = $dockerFields[2]
+                serverArchitecture = $dockerFields[3]
+            }
             maven = $mavenVersion
             java = $javaVersion
         }
         composeConfig = [IO.Path]::GetFileName($composeConfigPath)
-    } | ConvertTo-Json -Depth 12 | Set-Content -Encoding utf8 -Path $environmentReportPath
+    } | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 -Path $environmentReportPath
 }
 
 try {
@@ -224,10 +231,10 @@ try {
         worktreeClean = $worktreeClean
         steps = $steps
         backendTestSummary = $backendTestSummary
-        environmentReport = $environmentReportPath
-        composeConfig = $composeConfigPath
-        composeE2eReport = $e2eReportPath
-        writeSloReport = $writeReportPath
+        environmentReport = [IO.Path]::GetFileName($environmentReportPath)
+        composeConfig = [IO.Path]::GetFileName($composeConfigPath)
+        composeE2eReport = [IO.Path]::GetFileName($e2eReportPath)
+        writeSloReport = [IO.Path]::GetFileName($writeReportPath)
     } | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 -Path $releaseReportPath
     Write-Host "[release] report=$releaseReportPath passed=$overallPassed"
 }
