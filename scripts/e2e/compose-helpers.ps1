@@ -1,6 +1,13 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$curlCommand = Get-Command curl.exe -ErrorAction SilentlyContinue
+if ($null -eq $curlCommand) {
+    $curlCommand = Get-Command curl -CommandType Application -ErrorAction Stop
+}
+$script:CurlExecutable = $curlCommand.Source
+$script:NullDevice = if ([IO.Path]::DirectorySeparatorChar -eq [char]92) { 'NUL' } else { '/dev/null' }
+
 $script:ComposeFiles = @(
     '-f', 'docker-compose.yml',
     '-f', 'docker-compose.service.yml',
@@ -23,17 +30,30 @@ function Invoke-BiliApi {
         [hashtable]$Headers = @{},
         [int]$TimeoutSec = 30
     )
-    $parameters = @{
-        Method = $Method
-        Uri = $Uri
-        Headers = $Headers
-        TimeoutSec = $TimeoutSec
+    $arguments = @(
+        '--noproxy', '*',
+        '--connect-timeout', '5',
+        '--max-time', [string]$TimeoutSec,
+        '-fsS', '-X', $Method,
+        '-H', 'Accept: application/json'
+    )
+    foreach ($name in $Headers.Keys) {
+        $arguments += @('-H', "${name}: $($Headers[$name])")
     }
     if ($null -ne $Body) {
-        $parameters.ContentType = 'application/json; charset=utf-8'
-        $parameters.Body = $Body | ConvertTo-Json -Depth 10 -Compress
+        $jsonBody = $Body | ConvertTo-Json -Depth 10 -Compress
+        $arguments += @('-H', 'Content-Type: application/json; charset=utf-8', '--data-raw', $jsonBody)
     }
-    $response = Invoke-RestMethod @parameters
+    $arguments += $Uri
+    $responseBody = & $script:CurlExecutable @arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "API request failed: $Method $Uri (curl exit $LASTEXITCODE)"
+    }
+    try {
+        $response = ($responseBody -join "`n") | ConvertFrom-Json
+    } catch {
+        throw "API returned invalid JSON: $Method $Uri"
+    }
     if ($response.PSObject.Properties.Name -contains 'success' -and !$response.success) {
         throw "API business failure: $Uri - $($response.errorMsg)"
     }

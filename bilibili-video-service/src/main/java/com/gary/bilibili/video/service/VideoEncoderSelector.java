@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -42,9 +41,11 @@ class VideoEncoderSelector {
         }
 
         Set<String> encoders = detectEncoders(logFile);
+        // NVIDIA CUDA base images commonly define NVIDIA_VISIBLE_DEVICES=all even
+        // when Compose did not attach a GPU. The device node is the reliable
+        // runtime signal; otherwise auto mode must remain portable and use CPU.
         if (encoders.contains(VideoEncoder.NVIDIA.ffmpegName())
-                && (Files.exists(Path.of("/dev/nvidia0"))
-                || StringUtils.hasText(System.getenv("NVIDIA_VISIBLE_DEVICES")))) {
+                && Files.isReadable(Path.of("/dev/nvidia0"))) {
             return VideoEncoder.NVIDIA;
         }
         if (Files.exists(Path.of("/dev/dri/renderD128"))) {

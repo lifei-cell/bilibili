@@ -2,11 +2,125 @@ param(
     [switch]$SkipBuild,
     [switch]$RunFaultDrill,
     [switch]$KeepRunning,
+    [switch]$KeepTestData,
+    [string]$TestContextPath,
+    [string]$CleanupContextPath,
+    [string]$SloConfigPath,
+    [string]$SloReportPath,
     [string]$AdminToken = 'change-me-in-production'
 )
 
 . "$PSScriptRoot/compose-helpers.ps1"
 . "$PSScriptRoot/fault-drill.ps1"
+
+function Remove-E2eTestData {
+    param([Parameter(Mandatory)][pscustomobject]$Context)
+
+    $videoId = [long]$Context.videoId
+    $danmuId = [long]$Context.danmuId
+    $fileMd5 = [string]$Context.fileMd5
+    $uploadId = [string]$Context.uploadId
+    $creatorUserId = [long]$Context.creatorUserId
+    $cleanupSql = "delete from mq_consumed_message where topic='video-view' and message_key like '${videoId}:%'; delete from mq_consumed_message where topic='danmu-persist' and message_key='$danmuId'; delete i from mq_consumed_message i join reliable_event_outbox o on i.topic=o.topic and i.message_key=o.event_id where o.aggregate_id='$videoId'; delete from reliable_event_outbox where aggregate_id='$videoId' or (aggregate_type='danmu' and aggregate_id='$danmuId'); delete from content_report where target_type='VIDEO' and target_id=$videoId; delete from content_audit_log where target_type='VIDEO' and target_id=$videoId; delete from content_risk_event where target_type='VIDEO' and target_id=$videoId; delete from danmu where video_id=$videoId; delete from comment where video_id=$videoId; delete from user_like where target_type=1 and target_id=$videoId; delete from collection where video_id=$videoId; delete from video_stats where video_id=$videoId; delete from video where id=$videoId; delete from video_transcode_task where file_md5='$fileMd5'; delete from file_chunk where file_md5='$fileMd5'; delete from direct_upload_session where upload_id='$uploadId';"
+    & docker exec -e MYSQL_PWD=root bilibili-mysql mysql -uroot bilibili -e $cleanupSql | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'E2E database cleanup failed' }
+    & docker run --rm --network bilibili-net --entrypoint sh minio/mc -c "mc alias set local http://minio:9000 minioadmin minioadmin >/dev/null; mc rm --force local/videos/source/direct/$creatorUserId/$uploadId.mp4 local/videos/source/$fileMd5.mp4 local/tmp/$uploadId/0 >/dev/null 2>&1 || true; mc rm --recursive --force local/videos/play/$fileMd5 >/dev/null 2>&1 || true" | Out-Null
+    Invoke-BiliApi -Method POST -Uri 'http://localhost:8086/api/admin/reliability/es/rebuild' -Headers @{ 'X-Admin-Token' = $AdminToken } -TimeoutSec 120 | Out-Null
+    # Business cleanup itself emits CDC delete events. Let Canal consume them,
+    # then remove only audit rows whose payload points at this video.
+    Start-Sleep -Seconds 3
+    $cdcScope = "(json_unquote(json_extract(payload, '$.table'))='video' and json_unquote(json_extract(payload, '$.data.id'))='$videoId') or (json_unquote(json_extract(payload, '$.table'))='video_stats' and json_unquote(json_extract(payload, '$.data.video_id'))='$videoId') or (json_unquote(json_extract(payload, '$.table'))='user_like' and json_unquote(json_extract(payload, '$.data.target_id'))='$videoId')"
+    $auditCleanupSql = "delete i from mq_consumed_message i join reliable_event_outbox o on i.topic=o.topic and i.message_key=o.event_id where $cdcScope; delete from reliable_event_outbox where $cdcScope;"
+    & docker exec -e MYSQL_PWD=root bilibili-mysql mysql -uroot bilibili -e $auditCleanupSql | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'E2E reliability-event cleanup failed' }
+}
+
+function Complete-E2eSloStage {
+    param([Parameter(Mandatory)][string]$Name,
+          [Parameter(Mandatory)][Diagnostics.Stopwatch]$Stopwatch)
+
+    $Stopwatch.Stop()
+    $definition = $script:SloConfig.slo.PSObject.Properties[$Name].Value
+    $durationMs = [math]::Round($Stopwatch.Elapsed.TotalMilliseconds, 2)
+    if ($null -eq $definition.PSObject.Properties['maxDurationMs']) {
+        # Playback, danmu and interaction have percentile/error-rate SLOs. A
+        # single E2E request remains useful smoke evidence, but the k6 stage is
+        # the authoritative gate for those latency objectives.
+        $script:SloStages[$Name] = [ordered]@{
+            durationMs = $durationMs
+            evaluation = 'k6'
+            passed = $true
+        }
+        return
+    }
+    $passed = $durationMs -le [double]$definition.maxDurationMs
+    $script:SloStages[$Name] = [ordered]@{
+        durationMs = $durationMs
+        maxDurationMs = [double]$definition.maxDurationMs
+        passed = $passed
+    }
+    if (!$passed) {
+        throw "SLO breach: $Name took ${durationMs}ms, limit is $($definition.maxDurationMs)ms"
+    }
+}
+
+function Write-E2eSloReport {
+    if ([string]::IsNullOrWhiteSpace($SloReportPath)) { return }
+
+    $directory = Split-Path -Parent $SloReportPath
+    if (![string]::IsNullOrWhiteSpace($directory)) {
+        New-Item -ItemType Directory -Force -Path $directory | Out-Null
+    }
+    [ordered]@{
+        schemaVersion = 1
+        type = 'compose-e2e-write-slo'
+        generatedAt = [DateTimeOffset]::UtcNow.ToString('o')
+        passed = $script:RunSucceeded
+        error = $script:RunError
+        stages = $script:SloStages
+    } | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 -Path $SloReportPath
+}
+
+function Write-E2eTestContext {
+    if (!$KeepTestData) { return }
+
+    $contextDirectory = Split-Path -Parent $TestContextPath
+    if (![string]::IsNullOrWhiteSpace($contextDirectory)) {
+        New-Item -ItemType Directory -Force -Path $contextDirectory | Out-Null
+    }
+    [ordered]@{
+        videoId = $script:videoId
+        danmuId = $script:danmuId
+        fileMd5 = $script:fileMd5
+        uploadId = $script:uploadId
+        creatorUserId = $script:creatorUserId
+    } | ConvertTo-Json | Set-Content -Encoding utf8 -Path $TestContextPath
+}
+
+if (![string]::IsNullOrWhiteSpace($CleanupContextPath)) {
+    if (!(Test-Path -LiteralPath $CleanupContextPath)) {
+        throw "E2E context does not exist: $CleanupContextPath"
+    }
+    $cleanupContext = Get-Content -Raw -LiteralPath $CleanupContextPath | ConvertFrom-Json
+    Remove-E2eTestData -Context $cleanupContext
+    Remove-Item -LiteralPath $CleanupContextPath -Force
+    Write-Host "[e2e] CLEANUP PASS videoId=$($cleanupContext.videoId)"
+    return
+}
+
+if ([string]::IsNullOrWhiteSpace($SloConfigPath)) {
+    $SloConfigPath = Join-Path $PSScriptRoot '../../loadtest/write-slo.json'
+}
+if (!(Test-Path -LiteralPath $SloConfigPath)) {
+    throw "Write-path SLO configuration does not exist: $SloConfigPath"
+}
+$script:SloConfig = Get-Content -Raw -LiteralPath $SloConfigPath | ConvertFrom-Json
+$script:SloStages = [ordered]@{}
+$script:RunSucceeded = $false
+$script:RunError = $null
+if ($KeepTestData -and [string]::IsNullOrWhiteSpace($TestContextPath)) {
+    throw 'KeepTestData requires TestContextPath so the temporary test data can be cleaned safely'
+}
 
 $services = @(
     'bilibili-gateway', 'bilibili-user-service', 'bilibili-video-service',
@@ -21,6 +135,8 @@ $temporaryDirectory = Join-Path ([IO.Path]::GetTempPath()) ("bilibili-reliabilit
 $videoId = 0L
 $danmuId = 0L
 $fileMd5 = ''
+$uploadId = ''
+$creatorUserId = 0L
 $started = $false
 
 try {
@@ -52,6 +168,14 @@ try {
         Wait-ContainerHealthy $container 240
     }
     $started = $true
+    # Container health proves that each process is alive; it does not prove
+    # Nacos registration has reached the Gateway load balancer. Wait for an
+    # end-to-end routed request before beginning non-idempotent write steps.
+    Wait-Until -TimeoutSeconds 90 -Description 'Gateway route convergence' -Condition {
+        & $script:CurlExecutable --noproxy '*' --connect-timeout 3 --max-time 5 -fsS -o $script:NullDevice `
+            'http://localhost:8080/api/video/list?page=1&size=1&sort=hot'
+        return $LASTEXITCODE -eq 0
+    }
 
     $login = Invoke-BiliApi -Method POST -Uri 'http://localhost:8080/api/user/login' -Body @{
         username = 'demo_alice'; password = 'Demo@123'; terminal = 'e2e'
@@ -76,22 +200,29 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Cannot copy generated E2E video' }
     $fileMd5 = (Get-FileHash -Path $videoPath -Algorithm MD5).Hash.ToLowerInvariant()
     $fileSize = (Get-Item $videoPath).Length
+    $uploadStopwatch = [Diagnostics.Stopwatch]::StartNew()
     $direct = Invoke-BiliApi -Method POST -Uri 'http://localhost:8080/api/upload/direct/init' -Headers $authHeaders -Body @{
         fileMd5 = $fileMd5; fileName = 'reliability-e2e.mp4'; fileSize = $fileSize; contentType = 'video/mp4'
     }
     $uploadId = $direct.data.uploadId
     Assert-True (![string]::IsNullOrWhiteSpace($uploadId)) 'Direct upload did not create a session'
-    Invoke-WebRequest -UseBasicParsing -Method PUT -Uri $direct.data.uploadUrl -InFile $videoPath `
-        -ContentType 'video/mp4' -TimeoutSec 60 | Out-Null
+    Write-E2eTestContext
+    & $script:CurlExecutable --noproxy '*' --connect-timeout 5 --max-time 60 -fsS `
+        -X PUT -H 'Content-Type: video/mp4' --upload-file $videoPath $direct.data.uploadUrl
+    if ($LASTEXITCODE -ne 0) { throw 'Direct upload to MinIO failed' }
     $merge = Invoke-BiliApi -Method POST -Uri 'http://localhost:8080/api/upload/direct/complete' -Headers $authHeaders -Body @{
         uploadId = $uploadId
     }
+    Complete-E2eSloStage -Name 'upload' -Stopwatch $uploadStopwatch
+
+    $transcodeStopwatch = [Diagnostics.Stopwatch]::StartNew()
     Wait-Until -TimeoutSeconds 180 -Description 'video transcode completion' -Condition {
         $script:transcode = Invoke-BiliApi -Method GET -Uri "http://localhost:8080/api/upload/transcode/$uploadId" -Headers $authHeaders
         $script:transcode.data.status -eq 'completed'
     }
     Assert-True ($transcode.data.outputUrl -like '*/master.m3u8') 'Transcode did not produce an HLS master playlist'
     Assert-True ($transcode.data.coverUrl -like '*/cover.jpg') 'Transcode did not produce an automatic cover'
+    Complete-E2eSloStage -Name 'transcode' -Stopwatch $transcodeStopwatch
 
     Write-Host '[e2e] Publish -> play -> search -> interaction'
     $title = "reliability-e2e-$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
@@ -104,23 +235,25 @@ try {
     Invoke-BiliApi -Method POST -Uri "http://localhost:8080/api/admin/content/videos/$videoId/audit" -Headers $contentAdminHeaders -Body @{
         action = 'APPROVE'; remark = 'Compose E2E human review'
     } | Out-Null
+    Write-E2eTestContext
 
+    $playbackStopwatch = [Diagnostics.Stopwatch]::StartNew()
     $play = Invoke-BiliApi -Method GET -Uri "http://localhost:8080/api/video/$videoId/play"
     Assert-True ($play.data.videoId -eq $videoId) 'Published video is not playable'
     Assert-True ($play.data.qualities.Count -ge 1) 'HLS quality list is empty'
     Assert-True ($play.data.qualities[0].url -like '*/index.m3u8') 'Playback did not return an HLS rendition'
-    $master = Invoke-WebRequest -UseBasicParsing -Uri $transcode.data.outputUrl -TimeoutSec 20
-    $masterContent = if ($master.Content -is [byte[]]) {
-        [Text.Encoding]::UTF8.GetString($master.Content)
-    } else {
-        [string]$master.Content
-    }
+    $masterContent = & $script:CurlExecutable --noproxy '*' --connect-timeout 5 --max-time 20 -fsS `
+        $transcode.data.outputUrl
+    if ($LASTEXITCODE -ne 0) { throw 'Download HLS master playlist failed' }
+    $masterContent = $masterContent -join "`n"
     Assert-True ($masterContent.Contains('#EXT-X-STREAM-INF')) 'HLS master playlist is invalid'
+    Complete-E2eSloStage -Name 'playback' -Stopwatch $playbackStopwatch
     $rebuild = Invoke-BiliApi -Method POST -Uri 'http://localhost:8080/api/admin/reliability/es/rebuild' -Headers $adminHeaders -TimeoutSec 120
     Assert-True $rebuild.data.verified 'Initial Elasticsearch rebuild did not verify'
     $search = Invoke-BiliApi -Method GET -Uri "http://localhost:8080/api/search?keyword=$title&page=1&size=10"
     Assert-True (@($search.data | Where-Object { $_.id -eq $videoId }).Count -eq 1) 'Published video is not searchable'
 
+    $interactionStopwatch = [Diagnostics.Stopwatch]::StartNew()
     $comment = Invoke-BiliApi -Method POST -Uri 'http://localhost:8080/api/comment' -Headers $authHeaders -Body @{
         videoId = $videoId; content = 'reliability e2e comment'; parentId = 0; replyToId = 0
     }
@@ -129,35 +262,38 @@ try {
         targetType = 1; targetId = $videoId
     }
     Assert-True $like.data.liked 'Like interaction failed'
+    Complete-E2eSloStage -Name 'interaction' -Stopwatch $interactionStopwatch
+
+    $danmuStopwatch = [Diagnostics.Stopwatch]::StartNew()
     $danmu = Invoke-BiliApi -Method POST -Uri 'http://localhost:8080/api/danmu/send' -Headers $authHeaders -Body @{
         videoId = $videoId; content = 'reliability e2e danmu'; color = '#FFFFFF'
         position = 0; fontSize = 16; videoTime = 1; requestId = [Guid]::NewGuid().ToString('N')
     }
     Assert-True $danmu.data.accepted 'Danmu interaction failed'
     $danmuId = [long]$danmu.data.danmuId
+    Write-E2eTestContext
     Wait-Until -TimeoutSeconds 120 -Description 'danmu Inbox persistence' -Condition {
         [long](Get-MySqlScalar "select count(*) from danmu where id=$danmuId") -eq 1
     }
+    Complete-E2eSloStage -Name 'danmu' -Stopwatch $danmuStopwatch
 
     $report = Invoke-BiliApi -Method GET -Uri 'http://localhost:8080/api/admin/reliability/cdc/reconcile' -Headers $adminHeaders
     Assert-True $report.data.consistent 'CDC reconciliation failed after the core journey'
     if ($RunFaultDrill) {
         Invoke-ReliabilityFaultDrill -VideoId $videoId -Token $token -AdminToken $AdminToken
     }
+    $script:RunSucceeded = $true
     Write-Host "[e2e] PASS videoId=$videoId uploadId=$uploadId faultDrill=$RunFaultDrill"
+} catch {
+    $script:RunError = $_.Exception.Message
+    throw
 } finally {
-    if ($started -and $videoId -gt 0) {
+    if ($started -and ![string]::IsNullOrWhiteSpace($uploadId) -and !$KeepTestData) {
         try {
-            $cleanupSql = "delete from mq_consumed_message where topic='video-view' and message_key like '${videoId}:%'; delete from mq_consumed_message where topic='danmu-persist' and message_key='$danmuId'; delete i from mq_consumed_message i join reliable_event_outbox o on i.topic=o.topic and i.message_key=o.event_id where o.aggregate_id='$videoId'; delete from reliable_event_outbox where aggregate_id='$videoId' or (aggregate_type='danmu' and aggregate_id='$danmuId'); delete from content_report where target_type='VIDEO' and target_id=$videoId; delete from content_audit_log where target_type='VIDEO' and target_id=$videoId; delete from content_risk_event where target_type='VIDEO' and target_id=$videoId; delete from danmu where video_id=$videoId; delete from comment where video_id=$videoId; delete from user_like where target_type=1 and target_id=$videoId; delete from collection where video_id=$videoId; delete from video_stats where video_id=$videoId; delete from video where id=$videoId; delete from video_transcode_task where file_md5='$fileMd5'; delete from file_chunk where file_md5='$fileMd5'; delete from direct_upload_session where upload_id='$uploadId';"
-            & docker exec -e MYSQL_PWD=root bilibili-mysql mysql -uroot bilibili -e $cleanupSql | Out-Null
-            & docker run --rm --network bilibili-net --entrypoint sh minio/mc -c "mc alias set local http://minio:9000 minioadmin minioadmin >/dev/null; mc rm --force local/videos/source/direct/$creatorUserId/$uploadId.mp4 local/videos/source/$fileMd5.mp4 local/tmp/$uploadId/0 >/dev/null 2>&1 || true; mc rm --recursive --force local/videos/play/$fileMd5 >/dev/null 2>&1 || true" | Out-Null
-            Invoke-BiliApi -Method POST -Uri 'http://localhost:8086/api/admin/reliability/es/rebuild' -Headers @{ 'X-Admin-Token' = $AdminToken } -TimeoutSec 120 | Out-Null
-            # Business cleanup itself emits CDC delete events. Let Canal consume
-            # them, then remove only audit rows whose payload points at this video.
-            Start-Sleep -Seconds 3
-            $cdcScope = "(json_unquote(json_extract(payload, '$.table'))='video' and json_unquote(json_extract(payload, '$.data.id'))='$videoId') or (json_unquote(json_extract(payload, '$.table'))='video_stats' and json_unquote(json_extract(payload, '$.data.video_id'))='$videoId') or (json_unquote(json_extract(payload, '$.table'))='user_like' and json_unquote(json_extract(payload, '$.data.target_id'))='$videoId')"
-            $auditCleanupSql = "delete i from mq_consumed_message i join reliable_event_outbox o on i.topic=o.topic and i.message_key=o.event_id where $cdcScope; delete from reliable_event_outbox where $cdcScope;"
-            & docker exec -e MYSQL_PWD=root bilibili-mysql mysql -uroot bilibili -e $auditCleanupSql | Out-Null
+            Remove-E2eTestData -Context ([pscustomobject]@{
+                videoId = $videoId; danmuId = $danmuId; fileMd5 = $fileMd5
+                uploadId = $uploadId; creatorUserId = $creatorUserId
+            })
         } catch {
             Write-Warning "E2E data cleanup needs attention: $($_.Exception.Message)"
         }
@@ -168,4 +304,5 @@ try {
     if (!$KeepRunning) {
         try { Invoke-Compose stop @services @infrastructure } catch { Write-Warning $_ }
     }
+    Write-E2eSloReport
 }

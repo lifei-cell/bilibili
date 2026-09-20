@@ -483,6 +483,14 @@ mvn -pl bilibili-video-service -am test
 
 脚本会生成真实 MP4、验证 Outbox/Inbox 与 CDC 对账、清理业务测试数据并停止本次服务。详细恢复边界见 [可靠性闭环 Runbook](./docs/runbooks/reliability-closure.md)。
 
+发布验证入口会先执行完整 `clean verify`，再准备隔离的临时视频运行 Compose E2E 和写链路压测；报告同时绑定提交 SHA、工具环境和 Compose 展开配置，并记录测试总数、上传/转码单次 SLO、播放/弹幕/互动 P95、RocketMQ 积压曲线及容器 CPU/内存曲线：
+
+```powershell
+./scripts/verification/release-validation.ps1
+```
+
+默认 SLO、压测速率和资源/积压门槛位于 [`loadtest/write-slo.json`](./loadtest/write-slo.json)。运行产物写入被 Git 忽略的 `loadtest/results/release-validation-*`；脚本会清理临时视频、互动和媒体对象。若需要保留容器用于排障，追加 `-KeepRunning`。
+
 ## 项目结构
 
 ```text

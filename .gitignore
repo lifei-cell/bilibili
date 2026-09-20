@@ -32,3 +32,4 @@ Thumbs.db
 *.log
 logs/
 .repo_memory/
+.memorax-code/

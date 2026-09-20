@@ -1,6 +1,9 @@
 services:
   bilibili-video-service:
     environment:
+      # CI and ordinary Docker Desktop runners have no GPU device. Keep the
+      # media E2E deterministic; dedicated GPU Compose overlays still use NVENC.
+      VIDEO_TRANSCODE_ENCODER: software
       VIDEO_TRANSCODE_DISPATCH_INTERVAL: 500
       VIDEO_TRANSCODE_DISPATCH_INITIAL_DELAY: 1000
       OUTBOX_DISPATCH_INTERVAL: 250
