@@ -1,9 +1,11 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$curlCommand = Get-Command curl.exe -ErrorAction SilentlyContinue
+$curlCommand = @(Get-Command curl.exe -CommandType Application -ErrorAction SilentlyContinue) |
+    Select-Object -First 1
 if ($null -eq $curlCommand) {
-    $curlCommand = Get-Command curl -CommandType Application -ErrorAction Stop
+    $curlCommand = @(Get-Command curl -CommandType Application -ErrorAction Stop) |
+        Select-Object -First 1
 }
 $script:CurlExecutable = $curlCommand.Source
 $script:NullDevice = if ([IO.Path]::DirectorySeparatorChar -eq [char]92) { 'NUL' } else { '/dev/null' }
