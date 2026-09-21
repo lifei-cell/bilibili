@@ -103,11 +103,11 @@ function Get-ContainerResources {
 
 function Get-RocketMqBacklog {
     try {
-        # Some hosts route localhost traffic through a configured proxy. Use
-        # native curl with an explicit bypass on both Windows and Linux.
-        $rawResult = & $script:CurlExecutable --noproxy '*' --connect-timeout 3 --max-time 5 -fsS `
-            'http://localhost:9090/api/v1/query?query=rocketmq_group_diff'
-        if ($LASTEXITCODE -ne 0) { return @() }
+        # Some hosts route localhost traffic through a configured proxy.
+        $rawResult = Invoke-CurlNoProxy -CurlArguments @(
+            '--connect-timeout', '3', '--max-time', '5', '-fsS',
+            'http://localhost:9090/api/v1/query?query=rocketmq_group_diff')
+        if ($script:CurlExitCode -ne 0) { return @() }
         $result = $rawResult | ConvertFrom-Json
         if ($result.status -ne 'success') { return @() }
         return @($result.data.result | ForEach-Object {

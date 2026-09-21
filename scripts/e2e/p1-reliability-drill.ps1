@@ -120,8 +120,9 @@ function Get-TranscodeSnapshot {
 function Test-ReadableHls {
     param([Parameter(Mandatory)][string]$Url)
 
-    $playlist = & $script:CurlExecutable --noproxy '*' --connect-timeout 5 --max-time 15 -fsS $Url
-    return $LASTEXITCODE -eq 0 -and ($playlist -join "`n").Contains('#EXTM3U')
+    $playlist = Invoke-CurlNoProxy -CurlArguments @(
+        '--connect-timeout', '5', '--max-time', '15', '-fsS', $Url)
+    return $script:CurlExitCode -eq 0 -and ($playlist -join "`n").Contains('#EXTM3U')
 }
 
 function Invoke-RawAdminRequest {
@@ -131,10 +132,11 @@ function Invoke-RawAdminRequest {
         [Parameter(Mandatory)][string]$Token
     )
 
-    $response = & $script:CurlExecutable --noproxy '*' --connect-timeout 5 --max-time 180 -sS `
-        -X $Method -H 'Accept: application/json' -H "X-Admin-Token: $Token" `
-        -w "`n__HTTP__:%{http_code}" $Url
-    if ($LASTEXITCODE -ne 0) { throw "Admin request failed: $Method $Url" }
+    $response = Invoke-CurlNoProxy -CurlArguments @(
+        '--connect-timeout', '5', '--max-time', '180', '-sS',
+        '-X', $Method, '-H', 'Accept: application/json',
+        '-H', "X-Admin-Token: $Token", '-w', "`n__HTTP__:%{http_code}", $Url)
+    if ($script:CurlExitCode -ne 0) { throw "Admin request failed: $Method $Url" }
     $raw = ($response -join "`n").Trim()
     $marker = [regex]::Match($raw, '__HTTP__:(\d{3})$')
     if (!$marker.Success) { throw "Admin request did not return an HTTP status: $Url" }
@@ -145,9 +147,10 @@ function Invoke-RawAdminRequest {
 }
 
 function Get-EsAliasIndexCount {
-    $response = & $script:CurlExecutable --noproxy '*' --connect-timeout 5 --max-time 20 -fsS `
-        'http://localhost:9200/_alias/video_search'
-    if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect Elasticsearch video_search alias' }
+    $response = Invoke-CurlNoProxy -CurlArguments @(
+        '--connect-timeout', '5', '--max-time', '20', '-fsS',
+        'http://localhost:9200/_alias/video_search')
+    if ($script:CurlExitCode -ne 0) { throw 'Cannot inspect Elasticsearch video_search alias' }
     $json = ($response -join "`n") | ConvertFrom-Json
     @($json.PSObject.Properties).Count
 }
@@ -165,8 +168,10 @@ function Get-IndexLockTimer {
     param([Parameter(Mandatory)][int]$Port, [Parameter(Mandatory)][string]$Operation)
 
     $uri = "http://localhost:$Port/actuator/metrics/bilibili.index.lock.wait?tag=operation:$Operation"
-    $raw = & $script:CurlExecutable --noproxy '*' --connect-timeout 5 --max-time 15 -sS -w "`n__HTTP__:%{http_code}" $uri
-    if ($LASTEXITCODE -ne 0) { throw "Cannot read index lock timer from port $Port" }
+    $raw = Invoke-CurlNoProxy -CurlArguments @(
+        '--connect-timeout', '5', '--max-time', '15', '-sS',
+        '-w', "`n__HTTP__:%{http_code}", $uri)
+    if ($script:CurlExitCode -ne 0) { throw "Cannot read index lock timer from port $Port" }
     $body = ($raw -join "`n").Trim()
     $marker = [regex]::Match($body, '__HTTP__:(\d{3})$')
     if (!$marker.Success) { throw "Index lock timer response lacked status on port $Port" }
@@ -229,9 +234,11 @@ try {
         Wait-ContainerHealthy $container 300
     }
     Wait-Until -TimeoutSeconds 120 -Description 'Gateway route convergence' -Condition {
-        & $script:CurlExecutable --noproxy '*' --connect-timeout 3 --max-time 5 -fsS -o $script:NullDevice `
-            'http://localhost:8080/api/video/list?page=1&size=1&sort=hot'
-        return $LASTEXITCODE -eq 0
+        Invoke-CurlNoProxy -CurlArguments @(
+            '--connect-timeout', '3', '--max-time', '5', '-fsS',
+            '-o', $script:NullDevice,
+            'http://localhost:8080/api/video/list?page=1&size=1&sort=hot')
+        return $script:CurlExitCode -eq 0
     }
     Invoke-Compose --profile transcode-scale up --detach --build --scale bilibili-transcode-worker=2 bilibili-transcode-worker
     $workerCandidates = @(Get-WorkerContainers | Where-Object { (& docker inspect --format '{{.State.Status}}' $_) -eq 'running' })
@@ -260,9 +267,11 @@ try {
         fileMd5 = $fileMd5; fileName = 'p1-worker-recovery.mp4'; fileSize = $fileSize; contentType = 'video/mp4'
     }
     $uploadId = [string]$direct.data.uploadId
-    & $script:CurlExecutable --noproxy '*' --connect-timeout 5 --max-time 120 -fsS `
-        -X PUT -H 'Content-Type: video/mp4' --upload-file $videoPath $direct.data.uploadUrl
-    if ($LASTEXITCODE -ne 0) { throw 'P1 direct upload failed' }
+    Invoke-CurlNoProxy -CurlArguments @(
+        '--connect-timeout', '5', '--max-time', '120', '-fsS',
+        '-X', 'PUT', '-H', 'Content-Type: video/mp4',
+        '--upload-file', $videoPath, $direct.data.uploadUrl)
+    if ($script:CurlExitCode -ne 0) { throw 'P1 direct upload failed' }
     $merge = Invoke-BiliApi -Method POST -Uri 'http://localhost:8080/api/upload/direct/complete' -Headers $authHeaders -Body @{ uploadId = $uploadId }
     $taskId = [string](Get-MySqlScalar "select task_id from video_transcode_task where file_md5='$fileMd5' order by id desc limit 1")
     if ([string]::IsNullOrWhiteSpace($taskId)) { throw 'P1 transcode task was not persisted' }
@@ -386,10 +395,17 @@ try {
     }
     $rebuildScript = {
         param($curlPath, $url, $token)
-        $body = & $curlPath --noproxy '*' --connect-timeout 5 --max-time 180 -sS `
-            -X POST -H 'Accept: application/json' -H "X-Admin-Token: $token" `
-            -w "`n__HTTP__:%{http_code}" $url
-        [string]::Join("`n", @($body))
+        try {
+            $env:NO_PROXY = '*'
+            $env:no_proxy = '*'
+            $body = & $curlPath --connect-timeout 5 --max-time 180 -sS `
+                -X POST -H 'Accept: application/json' -H "X-Admin-Token: $token" `
+                -w "`n__HTTP__:%{http_code}" $url
+            [string]::Join("`n", @($body))
+        } finally {
+            Remove-Item Env:NO_PROXY -ErrorAction SilentlyContinue
+            Remove-Item Env:no_proxy -ErrorAction SilentlyContinue
+        }
     }
     $jobOne = Start-Job -ScriptBlock $rebuildScript -ArgumentList @(
         $script:CurlExecutable, 'http://localhost:8086/api/admin/reliability/es/rebuild', $AdminToken)

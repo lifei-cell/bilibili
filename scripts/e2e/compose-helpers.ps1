@@ -8,6 +8,7 @@ if ($null -eq $curlCommand) {
         Select-Object -First 1
 }
 $script:CurlExecutable = $curlCommand.Source
+$script:CurlExitCode = 0
 $script:NullDevice = if ([IO.Path]::DirectorySeparatorChar -eq [char]92) { 'NUL' } else { '/dev/null' }
 
 $script:ComposeFiles = @(
@@ -24,6 +25,28 @@ function Invoke-Compose {
     }
 }
 
+function Invoke-CurlNoProxy {
+    param(
+        [Parameter(Mandatory)]
+        [string[]]$CurlArguments
+    )
+
+    $hadUpper = Test-Path Env:NO_PROXY
+    $hadLower = Test-Path Env:no_proxy
+    $previousUpper = $env:NO_PROXY
+    $previousLower = $env:no_proxy
+    try {
+        $env:NO_PROXY = '*'
+        $env:no_proxy = '*'
+        $output = & $script:CurlExecutable @CurlArguments
+        $script:CurlExitCode = $LASTEXITCODE
+        return $output
+    } finally {
+        if ($hadUpper) { $env:NO_PROXY = $previousUpper } else { Remove-Item Env:NO_PROXY -ErrorAction SilentlyContinue }
+        if ($hadLower) { $env:no_proxy = $previousLower } else { Remove-Item Env:no_proxy -ErrorAction SilentlyContinue }
+    }
+}
+
 function Invoke-BiliApi {
     param(
         [Parameter(Mandatory)][ValidateSet('GET', 'POST', 'PUT', 'DELETE')][string]$Method,
@@ -33,7 +56,6 @@ function Invoke-BiliApi {
         [int]$TimeoutSec = 30
     )
     $arguments = @(
-        '--noproxy', '*',
         '--connect-timeout', '5',
         '--max-time', [string]$TimeoutSec,
         '-fsS', '-X', $Method,
@@ -47,9 +69,9 @@ function Invoke-BiliApi {
         $arguments += @('-H', 'Content-Type: application/json; charset=utf-8', '--data-raw', $jsonBody)
     }
     $arguments += $Uri
-    $responseBody = & $script:CurlExecutable @arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "API request failed: $Method $Uri (curl exit $LASTEXITCODE)"
+    $responseBody = Invoke-CurlNoProxy -CurlArguments $arguments
+    if ($script:CurlExitCode -ne 0) {
+        throw "API request failed: $Method $Uri (curl exit $script:CurlExitCode)"
     }
     try {
         $response = ($responseBody -join "`n") | ConvertFrom-Json

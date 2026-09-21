@@ -76,8 +76,9 @@ function Get-CapacityRocketMqBacklog {
     )
 
     try {
-        $rawResult = & $script:CurlExecutable --noproxy '*' --connect-timeout 3 --max-time 5 -fsS $PrometheusUrl
-        if ($LASTEXITCODE -ne 0) { return @() }
+        $rawResult = Invoke-CurlNoProxy -CurlArguments @(
+            '--connect-timeout', '3', '--max-time', '5', '-fsS', $PrometheusUrl)
+        if ($script:CurlExitCode -ne 0) { return @() }
         $result = ($rawResult -join "`n") | ConvertFrom-Json
         if ($result.status -ne 'success') { return @() }
         return @($result.data.result | ForEach-Object {

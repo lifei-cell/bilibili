@@ -172,9 +172,11 @@ try {
     # Nacos registration has reached the Gateway load balancer. Wait for an
     # end-to-end routed request before beginning non-idempotent write steps.
     Wait-Until -TimeoutSeconds 90 -Description 'Gateway route convergence' -Condition {
-        & $script:CurlExecutable --noproxy '*' --connect-timeout 3 --max-time 5 -fsS -o $script:NullDevice `
-            'http://localhost:8080/api/video/list?page=1&size=1&sort=hot'
-        return $LASTEXITCODE -eq 0
+        Invoke-CurlNoProxy -CurlArguments @(
+            '--connect-timeout', '3', '--max-time', '5', '-fsS',
+            '-o', $script:NullDevice,
+            'http://localhost:8080/api/video/list?page=1&size=1&sort=hot')
+        return $script:CurlExitCode -eq 0
     }
 
     $login = Invoke-BiliApi -Method POST -Uri 'http://localhost:8080/api/user/login' -Body @{
@@ -207,9 +209,11 @@ try {
     $uploadId = $direct.data.uploadId
     Assert-True (![string]::IsNullOrWhiteSpace($uploadId)) 'Direct upload did not create a session'
     Write-E2eTestContext
-    & $script:CurlExecutable --noproxy '*' --connect-timeout 5 --max-time 60 -fsS `
-        -X PUT -H 'Content-Type: video/mp4' --upload-file $videoPath $direct.data.uploadUrl
-    if ($LASTEXITCODE -ne 0) { throw 'Direct upload to MinIO failed' }
+    Invoke-CurlNoProxy -CurlArguments @(
+        '--connect-timeout', '5', '--max-time', '60', '-fsS',
+        '-X', 'PUT', '-H', 'Content-Type: video/mp4',
+        '--upload-file', $videoPath, $direct.data.uploadUrl)
+    if ($script:CurlExitCode -ne 0) { throw 'Direct upload to MinIO failed' }
     $merge = Invoke-BiliApi -Method POST -Uri 'http://localhost:8080/api/upload/direct/complete' -Headers $authHeaders -Body @{
         uploadId = $uploadId
     }
@@ -242,9 +246,10 @@ try {
     Assert-True ($play.data.videoId -eq $videoId) 'Published video is not playable'
     Assert-True ($play.data.qualities.Count -ge 1) 'HLS quality list is empty'
     Assert-True ($play.data.qualities[0].url -like '*/index.m3u8') 'Playback did not return an HLS rendition'
-    $masterContent = & $script:CurlExecutable --noproxy '*' --connect-timeout 5 --max-time 20 -fsS `
-        $transcode.data.outputUrl
-    if ($LASTEXITCODE -ne 0) { throw 'Download HLS master playlist failed' }
+    $masterContent = Invoke-CurlNoProxy -CurlArguments @(
+        '--connect-timeout', '5', '--max-time', '20', '-fsS',
+        $transcode.data.outputUrl)
+    if ($script:CurlExitCode -ne 0) { throw 'Download HLS master playlist failed' }
     $masterContent = $masterContent -join "`n"
     Assert-True ($masterContent.Contains('#EXT-X-STREAM-INF')) 'HLS master playlist is invalid'
     Complete-E2eSloStage -Name 'playback' -Stopwatch $playbackStopwatch
