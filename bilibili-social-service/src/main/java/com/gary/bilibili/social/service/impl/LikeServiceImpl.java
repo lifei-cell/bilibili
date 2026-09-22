@@ -1,6 +1,7 @@
 package com.gary.bilibili.social.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
+import com.gary.bilibili.common.analytics.CreatorAnalyticsDirtyPublisher;
 import com.gary.bilibili.common.exception.BusinessException;
 import com.gary.bilibili.social.constant.SocialConstant;
 import com.gary.bilibili.social.dto.LikeDTO;
@@ -22,13 +23,16 @@ public class LikeServiceImpl implements LikeService {
     private final LikeMapper likeMapper;
     private final StringRedisTemplate stringRedisTemplate;
     private final SocialStatsService socialStatsService;
+    private final CreatorAnalyticsDirtyPublisher analyticsDirtyPublisher;
 
     public LikeServiceImpl(LikeMapper likeMapper,
                            StringRedisTemplate stringRedisTemplate,
-                           SocialStatsService socialStatsService) {
+                           SocialStatsService socialStatsService,
+                           CreatorAnalyticsDirtyPublisher analyticsDirtyPublisher) {
         this.likeMapper = likeMapper;
         this.stringRedisTemplate = stringRedisTemplate;
         this.socialStatsService = socialStatsService;
+        this.analyticsDirtyPublisher = analyticsDirtyPublisher;
     }
 
     @Override
@@ -43,6 +47,7 @@ public class LikeServiceImpl implements LikeService {
         }
         if (changed > 0) {
             updateCount(request.getTargetType(), request.getTargetId(), 1);
+            publishVideoChange(userId, request);
         }
         cacheLike(userId, request.getTargetType(), request.getTargetId(), true);
         return buildResult(true);
@@ -55,6 +60,7 @@ public class LikeServiceImpl implements LikeService {
         int changed = likeMapper.deactivate(userId, request.getTargetType(), request.getTargetId());
         if (changed > 0) {
             updateCount(request.getTargetType(), request.getTargetId(), -1);
+            publishVideoChange(userId, request);
         }
         cacheLike(userId, request.getTargetType(), request.getTargetId(), false);
         return buildResult(false);
@@ -87,6 +93,15 @@ public class LikeServiceImpl implements LikeService {
             socialStatsService.increment(targetId, SocialConstant.LIKE_COUNT_FIELD, delta);
         } else {
             likeMapper.incrementCommentLikeCount(targetId, delta);
+        }
+    }
+
+    private void publishVideoChange(Long userId, LikeDTO request) {
+        if (SocialConstant.TARGET_VIDEO == request.getTargetType()) {
+            analyticsDirtyPublisher.publish(
+                    request.getTargetId(),
+                    likeMapper.selectCreatedDate(
+                            userId, request.getTargetType(), request.getTargetId()));
         }
     }
 

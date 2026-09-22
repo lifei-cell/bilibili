@@ -1,6 +1,7 @@
 package com.gary.bilibili.social.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
+import com.gary.bilibili.common.analytics.CreatorAnalyticsDirtyPublisher;
 import com.gary.bilibili.common.exception.BusinessException;
 import com.gary.bilibili.social.constant.SocialConstant;
 import com.gary.bilibili.social.dto.CommentCreateDTO;
@@ -16,6 +17,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 
 import java.util.List;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -32,6 +34,7 @@ class CommentServiceImplTest {
     private CommentMapper commentMapper;
     private StringRedisTemplate stringRedisTemplate;
     private SocialStatsService socialStatsService;
+    private CreatorAnalyticsDirtyPublisher analyticsDirtyPublisher;
     private CommentServiceImpl commentService;
 
     @BeforeEach
@@ -39,10 +42,12 @@ class CommentServiceImplTest {
         commentMapper = mock(CommentMapper.class);
         stringRedisTemplate = mock(StringRedisTemplate.class);
         socialStatsService = mock(SocialStatsService.class);
+        analyticsDirtyPublisher = mock(CreatorAnalyticsDirtyPublisher.class);
         when(stringRedisTemplate.execute(
                 any(RedisScript.class), anyList(), any(Object[].class))).thenReturn(1L);
         commentService = new CommentServiceImpl(
-                commentMapper, stringRedisTemplate, socialStatsService);
+                commentMapper, stringRedisTemplate, socialStatsService,
+                analyticsDirtyPublisher);
     }
 
     @Test
@@ -54,6 +59,8 @@ class CommentServiceImplTest {
             comment.setId(80001L);
             return 1;
         }).when(commentMapper).insert(any(Comment.class));
+        when(commentMapper.selectCreatedDate(80001L))
+                .thenReturn(LocalDate.of(2026, 9, 22));
 
         try (MockedStatic<StpUtil> stpUtil = mockStatic(StpUtil.class)) {
             stpUtil.when(StpUtil::getLoginIdAsLong).thenReturn(1L);
@@ -63,6 +70,8 @@ class CommentServiceImplTest {
 
         verify(socialStatsService).increment(
                 10001L, SocialConstant.COMMENT_COUNT_FIELD, 1);
+        verify(analyticsDirtyPublisher).publish(
+                10001L, LocalDate.of(2026, 9, 22));
     }
 
     @Test
@@ -129,6 +138,8 @@ class CommentServiceImplTest {
         when(commentMapper.selectOne(any())).thenReturn(comment);
         when(commentMapper.selectVideoAuthorId(10001L)).thenReturn(1L);
         when(commentMapper.countCommentTree(80001L)).thenReturn(3L);
+        when(commentMapper.selectAffectedDates(80001L, true)).thenReturn(List.of(
+                LocalDate.of(2026, 9, 21), LocalDate.of(2026, 9, 22)));
         when(commentMapper.markDeleted(80001L, true)).thenReturn(3);
 
         try (MockedStatic<StpUtil> stpUtil = mockStatic(StpUtil.class)) {
@@ -138,6 +149,8 @@ class CommentServiceImplTest {
 
         verify(socialStatsService).increment(
                 10001L, SocialConstant.COMMENT_COUNT_FIELD, -3L);
+        verify(analyticsDirtyPublisher).publish(10001L, LocalDate.of(2026, 9, 21));
+        verify(analyticsDirtyPublisher).publish(10001L, LocalDate.of(2026, 9, 22));
     }
 
     private CommentCreateDTO buildRequest() {

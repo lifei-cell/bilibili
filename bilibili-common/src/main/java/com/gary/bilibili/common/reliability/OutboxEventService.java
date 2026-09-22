@@ -29,25 +29,31 @@ public class OutboxEventService {
     @Transactional(propagation = Propagation.MANDATORY)
     public String append(String aggregateType, String aggregateId, String eventType,
                          String topic, Object payload) {
-        return append(UUID.randomUUID().toString(), aggregateType, aggregateId,
+        return persist(UUID.randomUUID().toString(), aggregateType, aggregateId,
                 eventType, topic, payload);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public String append(String eventId, String aggregateType, String aggregateId,
+                         String eventType, String topic, Object payload) {
+        return persist(eventId, aggregateType, aggregateId, eventType, topic, payload);
     }
 
     @Transactional
     public String appendStandalone(String aggregateType, String aggregateId, String eventType,
                                    String topic, Object payload) {
-        return append(UUID.randomUUID().toString(), aggregateType, aggregateId,
+        return persist(UUID.randomUUID().toString(), aggregateType, aggregateId,
                 eventType, topic, payload);
     }
 
     @Transactional
     public String appendStandalone(String eventId, String aggregateType, String aggregateId,
                                    String eventType, String topic, Object payload) {
-        return append(eventId, aggregateType, aggregateId, eventType, topic, payload);
+        return persist(eventId, aggregateType, aggregateId, eventType, topic, payload);
     }
 
-    private String append(String eventId, String aggregateType, String aggregateId,
-                          String eventType, String topic, Object payload) {
+    private String persist(String eventId, String aggregateType, String aggregateId,
+                           String eventType, String topic, Object payload) {
         if (payload == null) {
             throw new IllegalArgumentException("Outbox payload is required");
         }

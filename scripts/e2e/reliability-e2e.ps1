@@ -21,7 +21,7 @@ function Remove-E2eTestData {
     $fileMd5 = [string]$Context.fileMd5
     $uploadId = [string]$Context.uploadId
     $creatorUserId = [long]$Context.creatorUserId
-    $cleanupSql = "delete from mq_consumed_message where topic='video-view' and message_key like '${videoId}:%'; delete from mq_consumed_message where topic='danmu-persist' and message_key='$danmuId'; delete i from mq_consumed_message i join reliable_event_outbox o on i.topic=o.topic and i.message_key=o.event_id where o.aggregate_id='$videoId'; delete from reliable_event_outbox where aggregate_id='$videoId' or (aggregate_type='danmu' and aggregate_id='$danmuId'); delete from content_report where target_type='VIDEO' and target_id=$videoId; delete from content_audit_log where target_type='VIDEO' and target_id=$videoId; delete from content_risk_event where target_type='VIDEO' and target_id=$videoId; delete from danmu where video_id=$videoId; delete from comment where video_id=$videoId; delete from user_like where target_type=1 and target_id=$videoId; delete from collection where video_id=$videoId; delete from video_stats where video_id=$videoId; delete from video where id=$videoId; delete from video_transcode_task where file_md5='$fileMd5'; delete from file_chunk where file_md5='$fileMd5'; delete from direct_upload_session where upload_id='$uploadId';"
+    $cleanupSql = "delete from mq_consumed_message where topic='video-view' and message_key like '${videoId}:%'; delete from mq_consumed_message where topic='danmu-persist' and message_key='$danmuId'; delete i from mq_consumed_message i join reliable_event_outbox o on i.topic=o.topic and i.message_key=o.event_id where o.aggregate_id='$videoId'; delete from reliable_event_outbox where aggregate_id='$videoId' or (aggregate_type='danmu' and aggregate_id='$danmuId'); delete from content_report where target_type='VIDEO' and target_id=$videoId; delete from content_audit_log where target_type='VIDEO' and target_id=$videoId; delete from content_risk_event where target_type='VIDEO' and target_id=$videoId; delete from creator_analytics_dirty_day where creator_id=$creatorUserId; delete from creator_video_daily_stats where video_id=$videoId; delete from video_view_event where video_id=$videoId; delete from danmu where video_id=$videoId; delete from comment where video_id=$videoId; delete from user_like where target_type=1 and target_id=$videoId; delete from collection where video_id=$videoId; delete from video_stats where video_id=$videoId; delete from video where id=$videoId; delete from video_transcode_task where file_md5='$fileMd5'; delete from file_chunk where file_md5='$fileMd5'; delete from direct_upload_session where upload_id='$uploadId';"
     & docker exec -e MYSQL_PWD=root bilibili-mysql mysql -uroot bilibili -e $cleanupSql | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'E2E database cleanup failed' }
     & docker run --rm --network bilibili-net --entrypoint sh $script:MinioClientImage -c "mc alias set local http://minio:9000 minioadmin minioadmin >/dev/null; mc rm --force local/videos/source/direct/$creatorUserId/$uploadId.mp4 local/videos/source/$fileMd5.mp4 local/tmp/$uploadId/0 >/dev/null 2>&1 || true; mc rm --recursive --force local/videos/play/$fileMd5 >/dev/null 2>&1 || true" | Out-Null
@@ -158,7 +158,7 @@ try {
     Wait-ContainerHealthy bilibili-rocketmq-broker
     Wait-ContainerHealthy bilibili-elasticsearch
 
-    foreach ($topic in @('video-transcode', 'video-view', 'danmu-persist', 'cache-sync')) {
+    foreach ($topic in @('video-transcode', 'video-view', 'danmu-persist', 'creator-analytics-dirty', 'cache-sync')) {
         & docker exec bilibili-rocketmq-broker sh /home/rocketmq/rocketmq-5.3.1/bin/mqadmin updateTopic `
             -n rocketmq-namesrv:9876 -c DefaultCluster -t $topic | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "Cannot create RocketMQ topic $topic" }
@@ -286,6 +286,49 @@ try {
         [long](Get-MySqlScalar "select count(*) from danmu where id=$danmuId") -eq 1
     }
     Complete-E2eSloStage -Name 'danmu' -Stopwatch $danmuStopwatch
+
+    Write-Host '[e2e] Creator analytics -> permission isolation -> late-data rebuild'
+    Wait-Until -TimeoutSeconds 120 -Description 'view event fact persistence' -Condition {
+        [long](Get-MySqlScalar "select count(*) from video_view_event where video_id=$videoId") -eq 1
+    }
+    $today = [DateTime]::Today.ToString('yyyy-MM-dd')
+    $creatorAnalytics = Invoke-BiliApi -Method POST `
+        -Uri "http://localhost:8080/api/creator/analytics/rebuild?startDate=$today&endDate=$today" `
+        -Headers $authHeaders
+    Assert-True ($creatorAnalytics.data.totals.viewCount -ge 1) 'Creator analytics missed the playback event'
+    Assert-True ($creatorAnalytics.data.totals.likeCount -eq 1) 'Creator analytics missed the like'
+    Assert-True ($creatorAnalytics.data.totals.commentCount -eq 1) 'Creator analytics missed the comment'
+    Assert-True ($creatorAnalytics.data.totals.danmuCount -eq 1) 'Creator analytics missed the danmu'
+    Assert-True (@($creatorAnalytics.data.topVideos | Where-Object { $_.videoId -eq $videoId }).Count -eq 1) `
+        'Creator analytics Top videos did not include the owned video'
+    $otherCreatorAnalytics = Invoke-BiliApi -Method GET `
+        -Uri "http://localhost:8080/api/creator/analytics?startDate=$today&endDate=$today" `
+        -Headers $contentAdminHeaders
+    Assert-True (@($otherCreatorAnalytics.data.topVideos | Where-Object { $_.videoId -eq $videoId }).Count -eq 0) `
+        'Creator analytics leaked another creator video'
+
+    $lateComment = Invoke-BiliApi -Method POST -Uri 'http://localhost:8080/api/comment' -Headers $authHeaders -Body @{
+        videoId = $videoId; content = 'creator analytics dirty event'; parentId = 0; replyToId = 0
+    }
+    Assert-True ($lateComment.data.commentId -gt 0) 'Post-aggregation comment failed'
+    Wait-Until -TimeoutSeconds 120 -Description 'social event creator analytics rebuild' -Condition {
+        [long](Get-MySqlScalar "select coalesce(sum(comment_count), 0) from creator_video_daily_stats where creator_id=$creatorUserId and video_id=$videoId and stat_date='$today'") -eq 2
+    }
+
+    $lateDay = [DateTime]::Today.AddDays(-1).ToString('yyyy-MM-dd')
+    $lateRequestId = "late-$([Guid]::NewGuid().ToString('N'))"
+    $lateSql = "insert into video_view_event (request_id, video_id, creator_id, occurred_at) values ('$lateRequestId', $videoId, $creatorUserId, '${lateDay} 23:59:00'); insert into creator_analytics_dirty_day (creator_id, stat_date, dirty_version, status) values ($creatorUserId, '$lateDay', 1, 'PENDING') on duplicate key update dirty_version=dirty_version+1, status='PENDING', claim_token=null, locked_until=null;"
+    & docker exec -e MYSQL_PWD=root bilibili-mysql mysql -uroot bilibili -e $lateSql | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot inject late creator analytics event' }
+    Wait-Until -TimeoutSeconds 120 -Description 'late creator analytics rebuild' -Condition {
+        [long](Get-MySqlScalar "select coalesce(sum(view_count), 0) from creator_video_daily_stats where creator_id=$creatorUserId and video_id=$videoId and stat_date='$lateDay'") -eq 1
+    }
+    $lateAnalytics = Invoke-BiliApi -Method GET `
+        -Uri "http://localhost:8080/api/creator/analytics?startDate=$lateDay&endDate=$today" `
+        -Headers $authHeaders
+    $lateTrend = @($lateAnalytics.data.trend | Where-Object { $_.date -eq $lateDay })
+    Assert-True ($lateTrend.Count -eq 1 -and $lateTrend[0].viewCount -eq 1) `
+        'Late event was not visible after automatic day recomputation'
 
     $report = Invoke-BiliApi -Method GET -Uri 'http://localhost:8080/api/admin/reliability/cdc/reconcile' -Headers $adminHeaders
     Assert-True $report.data.consistent 'CDC reconciliation failed after the core journey'

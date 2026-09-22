@@ -1,6 +1,7 @@
 package com.gary.bilibili.social.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
+import com.gary.bilibili.common.analytics.CreatorAnalyticsDirtyPublisher;
 import com.gary.bilibili.social.constant.SocialConstant;
 import com.gary.bilibili.social.dto.CollectionDTO;
 import com.gary.bilibili.social.dto.CollectionFolderCreateDTO;
@@ -14,10 +15,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -30,6 +33,7 @@ class CollectionServiceImplTest {
     private CollectionMapper collectionMapper;
     private CollectionFolderMapper collectionFolderMapper;
     private SocialStatsService socialStatsService;
+    private CreatorAnalyticsDirtyPublisher analyticsDirtyPublisher;
     private CollectionServiceImpl collectionService;
 
     @BeforeEach
@@ -37,8 +41,10 @@ class CollectionServiceImplTest {
         collectionMapper = mock(CollectionMapper.class);
         collectionFolderMapper = mock(CollectionFolderMapper.class);
         socialStatsService = mock(SocialStatsService.class);
+        analyticsDirtyPublisher = mock(CreatorAnalyticsDirtyPublisher.class);
         collectionService = new CollectionServiceImpl(
-                collectionMapper, collectionFolderMapper, socialStatsService);
+                collectionMapper, collectionFolderMapper, socialStatsService,
+                analyticsDirtyPublisher);
     }
 
     @Test
@@ -47,6 +53,8 @@ class CollectionServiceImplTest {
         when(collectionMapper.countPublishedVideo(10001L)).thenReturn(1L);
         when(collectionMapper.activate(1L, 10001L, 0L)).thenReturn(0);
         when(collectionMapper.insertActive(1L, 10001L, 0L)).thenReturn(1);
+        when(collectionMapper.selectCreatedDate(1L, 10001L, 0L))
+                .thenReturn(LocalDate.of(2026, 9, 22));
 
         try (MockedStatic<StpUtil> stpUtil = mockStatic(StpUtil.class)) {
             stpUtil.when(StpUtil::getLoginIdAsLong).thenReturn(1L);
@@ -56,6 +64,8 @@ class CollectionServiceImplTest {
 
         verify(socialStatsService).increment(
                 10001L, SocialConstant.COLLECT_COUNT_FIELD, 1);
+        verify(analyticsDirtyPublisher).publish(
+                10001L, LocalDate.of(2026, 9, 22));
         verify(collectionFolderMapper, never()).incrementVideoCount(0L, 1L, 1);
     }
 
@@ -73,6 +83,7 @@ class CollectionServiceImplTest {
 
         verify(socialStatsService, never()).increment(
                 10001L, SocialConstant.COLLECT_COUNT_FIELD, 1);
+        verify(analyticsDirtyPublisher, never()).publish(anyLong(), any());
     }
 
     @Test

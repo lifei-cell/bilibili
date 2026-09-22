@@ -2,7 +2,7 @@ import { apiRequest } from './http'
 import type {
   CollectionFolder, CommentItem, CurrentUser, DanmuItem, LoginResult, SearchVideo,
   AdminVideo, ContentReport, DirectUploadInit, GovernancePage, UploadCheck, UploadMerge, UploadTranscodeTask,
-  UserProfile, VideoCategory, VideoDetail, VideoListItem, VideoPlay,
+  CreatorAnalytics, UserProfile, VideoCategory, VideoDetail, VideoListItem, VideoPlay,
 } from '@/types/api'
 
 export const userApi = {
@@ -80,4 +80,11 @@ export const governanceApi = {
     apiRequest<GovernancePage<ContentReport>>({ method: 'GET', url: '/admin/content/reports', params }),
   resolveReport: (reportId: number, action: 'UPHOLD' | 'DISMISS', remark?: string) =>
     apiRequest<void>({ method: 'POST', url: `/admin/content/reports/${reportId}/resolve`, data: { action, remark } }),
+}
+
+export const creatorApi = {
+  analytics: (params: { startDate: string; endDate: string; limit?: number }) =>
+    apiRequest<CreatorAnalytics>({ method: 'GET', url: '/creator/analytics', params }),
+  rebuildAnalytics: (params: { startDate: string; endDate: string; limit?: number }) =>
+    apiRequest<CreatorAnalytics>({ method: 'POST', url: '/creator/analytics/rebuild', params }),
 }

@@ -2,6 +2,7 @@ package com.gary.bilibili.social.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.gary.bilibili.common.analytics.CreatorAnalyticsDirtyPublisher;
 import com.gary.bilibili.common.exception.BusinessException;
 import com.gary.bilibili.social.constant.SocialConstant;
 import com.gary.bilibili.social.dto.CollectionDTO;
@@ -30,13 +31,16 @@ public class CollectionServiceImpl implements CollectionService {
     private final CollectionMapper collectionMapper;
     private final CollectionFolderMapper collectionFolderMapper;
     private final SocialStatsService socialStatsService;
+    private final CreatorAnalyticsDirtyPublisher analyticsDirtyPublisher;
 
     public CollectionServiceImpl(CollectionMapper collectionMapper,
                                  CollectionFolderMapper collectionFolderMapper,
-                                 SocialStatsService socialStatsService) {
+                                 SocialStatsService socialStatsService,
+                                 CreatorAnalyticsDirtyPublisher analyticsDirtyPublisher) {
         this.collectionMapper = collectionMapper;
         this.collectionFolderMapper = collectionFolderMapper;
         this.socialStatsService = socialStatsService;
+        this.analyticsDirtyPublisher = analyticsDirtyPublisher;
     }
 
     @Override
@@ -55,6 +59,7 @@ public class CollectionServiceImpl implements CollectionService {
         }
         if (changed > 0) {
             updateCollectionCount(userId, request.getVideoId(), folderId, 1);
+            publishChange(userId, request.getVideoId(), folderId);
         }
         return buildResult(true);
     }
@@ -67,6 +72,7 @@ public class CollectionServiceImpl implements CollectionService {
         int changed = collectionMapper.deactivate(userId, request.getVideoId(), folderId);
         if (changed > 0) {
             updateCollectionCount(userId, request.getVideoId(), folderId, -1);
+            publishChange(userId, request.getVideoId(), folderId);
         }
         return buildResult(false);
     }
@@ -176,6 +182,11 @@ public class CollectionServiceImpl implements CollectionService {
             collectionFolderMapper.incrementVideoCount(folderId, userId, delta);
         }
         socialStatsService.increment(videoId, SocialConstant.COLLECT_COUNT_FIELD, delta);
+    }
+
+    private void publishChange(Long userId, Long videoId, long folderId) {
+        analyticsDirtyPublisher.publish(
+                videoId, collectionMapper.selectCreatedDate(userId, videoId, folderId));
     }
 
     private void assertOwnedFolder(Long userId, long folderId) {

@@ -220,7 +220,7 @@ try {
     foreach ($container in @('bilibili-mysql', 'bilibili-redis', 'bilibili-rocketmq-broker', 'bilibili-elasticsearch')) {
         Wait-ContainerHealthy $container 240
     }
-    foreach ($topic in @('video-transcode', 'video-view', 'danmu-persist', 'cache-sync')) {
+    foreach ($topic in @('video-transcode', 'video-view', 'danmu-persist', 'creator-analytics-dirty', 'cache-sync')) {
         & docker exec bilibili-rocketmq-broker sh /home/rocketmq/rocketmq-5.3.1/bin/mqadmin updateTopic `
             -n rocketmq-namesrv:9876 -c DefaultCluster -t $topic | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "Cannot create RocketMQ topic $topic" }

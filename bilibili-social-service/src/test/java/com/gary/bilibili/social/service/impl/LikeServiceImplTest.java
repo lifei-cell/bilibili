@@ -1,6 +1,7 @@
 package com.gary.bilibili.social.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
+import com.gary.bilibili.common.analytics.CreatorAnalyticsDirtyPublisher;
 import com.gary.bilibili.common.exception.BusinessException;
 import com.gary.bilibili.social.constant.SocialConstant;
 import com.gary.bilibili.social.dto.LikeDTO;
@@ -12,8 +13,12 @@ import org.mockito.MockedStatic;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+import java.time.LocalDate;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -25,6 +30,7 @@ class LikeServiceImplTest {
     private LikeMapper likeMapper;
     private SetOperations<String, String> setOperations;
     private SocialStatsService socialStatsService;
+    private CreatorAnalyticsDirtyPublisher analyticsDirtyPublisher;
     private LikeServiceImpl likeService;
 
     @BeforeEach
@@ -34,9 +40,10 @@ class LikeServiceImplTest {
         StringRedisTemplate stringRedisTemplate = mock(StringRedisTemplate.class);
         setOperations = mock(SetOperations.class);
         socialStatsService = mock(SocialStatsService.class);
+        analyticsDirtyPublisher = mock(CreatorAnalyticsDirtyPublisher.class);
         when(stringRedisTemplate.opsForSet()).thenReturn(setOperations);
         likeService = new LikeServiceImpl(
-                likeMapper, stringRedisTemplate, socialStatsService);
+                likeMapper, stringRedisTemplate, socialStatsService, analyticsDirtyPublisher);
     }
 
     @Test
@@ -45,6 +52,8 @@ class LikeServiceImplTest {
         when(likeMapper.countPublishedVideo(10001L)).thenReturn(1L);
         when(likeMapper.activate(1L, 1, 10001L)).thenReturn(0);
         when(likeMapper.insertActive(1L, 1, 10001L)).thenReturn(1);
+        when(likeMapper.selectCreatedDate(1L, 1, 10001L))
+                .thenReturn(LocalDate.of(2026, 9, 22));
 
         try (MockedStatic<StpUtil> stpUtil = mockStatic(StpUtil.class)) {
             stpUtil.when(StpUtil::getLoginIdAsLong).thenReturn(1L);
@@ -54,6 +63,8 @@ class LikeServiceImplTest {
 
         verify(socialStatsService).increment(
                 10001L, SocialConstant.LIKE_COUNT_FIELD, 1);
+        verify(analyticsDirtyPublisher).publish(
+                10001L, LocalDate.of(2026, 9, 22));
         verify(setOperations).add("like:1:10001", "1");
     }
 
@@ -71,6 +82,7 @@ class LikeServiceImplTest {
 
         verify(socialStatsService, never()).increment(
                 10001L, SocialConstant.LIKE_COUNT_FIELD, 1);
+        verify(analyticsDirtyPublisher, never()).publish(anyLong(), any());
     }
 
     @Test
@@ -85,6 +97,7 @@ class LikeServiceImplTest {
         }
 
         verify(likeMapper).incrementCommentLikeCount(80001L, 1);
+        verify(analyticsDirtyPublisher, never()).publish(anyLong(), any());
     }
 
     @Test

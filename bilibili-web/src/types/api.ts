@@ -176,3 +176,28 @@ export interface ContentReport {
   id: number; reporterId: number; reporterName: string; targetType: string; targetId: number
   reasonCode: string; description: string; evidenceUrl: string; status: number; createTime: string
 }
+
+export interface CreatorMetricTotal {
+  viewCount: number
+  likeCount: number
+  collectCount: number
+  commentCount: number
+  danmuCount: number
+}
+
+export interface CreatorDailyTrend extends CreatorMetricTotal { date: string }
+
+export interface CreatorTopVideo extends CreatorMetricTotal {
+  videoId: number
+  title: string
+  coverUrl: string
+}
+
+export interface CreatorAnalytics {
+  startDate: string
+  endDate: string
+  totals: CreatorMetricTotal
+  trend: CreatorDailyTrend[]
+  topVideos: CreatorTopVideo[]
+  lastAggregatedAt: string | null
+}

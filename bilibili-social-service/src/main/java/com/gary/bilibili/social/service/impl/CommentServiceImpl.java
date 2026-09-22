@@ -2,6 +2,7 @@ package com.gary.bilibili.social.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.gary.bilibili.common.analytics.CreatorAnalyticsDirtyPublisher;
 import com.gary.bilibili.common.exception.BusinessException;
 import com.gary.bilibili.social.constant.SocialConstant;
 import com.gary.bilibili.social.dto.CommentCreateDTO;
@@ -44,13 +45,16 @@ public class CommentServiceImpl implements CommentService {
     private final CommentMapper commentMapper;
     private final StringRedisTemplate stringRedisTemplate;
     private final SocialStatsService socialStatsService;
+    private final CreatorAnalyticsDirtyPublisher analyticsDirtyPublisher;
 
     public CommentServiceImpl(CommentMapper commentMapper,
                               StringRedisTemplate stringRedisTemplate,
-                              SocialStatsService socialStatsService) {
+                              SocialStatsService socialStatsService,
+                              CreatorAnalyticsDirtyPublisher analyticsDirtyPublisher) {
         this.commentMapper = commentMapper;
         this.stringRedisTemplate = stringRedisTemplate;
         this.socialStatsService = socialStatsService;
+        this.analyticsDirtyPublisher = analyticsDirtyPublisher;
     }
 
     @Override
@@ -89,6 +93,8 @@ public class CommentServiceImpl implements CommentService {
         comment.setDeleted(0);
         commentMapper.insert(comment);
         socialStatsService.increment(request.getVideoId(), SocialConstant.COMMENT_COUNT_FIELD, 1);
+        analyticsDirtyPublisher.publish(
+                request.getVideoId(), commentMapper.selectCreatedDate(comment.getId()));
 
         CommentCreateVO result = new CommentCreateVO();
         result.setCommentId(comment.getId());
@@ -140,10 +146,14 @@ public class CommentServiceImpl implements CommentService {
         boolean includeReplies = comment.getParentId() == null || comment.getParentId() == 0;
         long count = includeReplies
                 ? nullToZero(commentMapper.countCommentTree(commentId)) : 1L;
+        List<java.time.LocalDate> affectedDates =
+                commentMapper.selectAffectedDates(commentId, includeReplies);
         int changed = commentMapper.markDeleted(commentId, includeReplies);
         if (changed > 0) {
             socialStatsService.increment(
                     comment.getVideoId(), SocialConstant.COMMENT_COUNT_FIELD, -count);
+            affectedDates.forEach(date ->
+                    analyticsDirtyPublisher.publish(comment.getVideoId(), date));
         }
     }
 

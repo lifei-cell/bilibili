@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface CollectionMapper extends BaseMapper<Collection> {
@@ -26,6 +27,11 @@ public interface CollectionMapper extends BaseMapper<Collection> {
     int deactivate(@Param("userId") Long userId,
                    @Param("videoId") Long videoId,
                    @Param("folderId") Long folderId);
+
+    @Select("select date(create_time) from collection where user_id = #{userId} and video_id = #{videoId} and folder_id = #{folderId} limit 1")
+    LocalDate selectCreatedDate(@Param("userId") Long userId,
+                                @Param("videoId") Long videoId,
+                                @Param("folderId") Long folderId);
 
     @Select("select count(*) from video where id = #{videoId} and status = 1 and deleted = 0")
     Long countPublishedVideo(@Param("videoId") Long videoId);
