@@ -134,8 +134,8 @@ function Invoke-RawAdminRequest {
 
     $response = Invoke-CurlNoProxy -CurlArguments @(
         '--connect-timeout', '5', '--max-time', '180', '-sS',
-        '-X', $Method, '-H', 'Accept: application/json',
-        '-H', "X-Admin-Token: $Token", '-w', "`n__HTTP__:%{http_code}", $Url)
+        '-X', $Method, '--header', 'Accept:application/json',
+        '--header', "X-Admin-Token:$Token", '-w', "`n__HTTP__:%{http_code}", $Url)
     if ($script:CurlExitCode -ne 0) { throw "Admin request failed: $Method $Url" }
     $raw = ($response -join "`n").Trim()
     $marker = [regex]::Match($raw, '__HTTP__:(\d{3})$')
@@ -207,7 +207,7 @@ function Remove-DrillData {
     }
     if ($sourceObject -or $fileMd5) {
         $sourcePath = if ($sourceObject) { "videos/$sourceObject" } else { "videos/play/$fileMd5" }
-        & docker run --rm --network bilibili-net --entrypoint sh minio/mc -c `
+        & docker run --rm --network bilibili-net --entrypoint sh $script:MinioClientImage -c `
             "mc alias set local http://minio:9000 minioadmin minioadmin >/dev/null; mc rm --force local/$sourcePath >/dev/null 2>&1 || true; mc rm --recursive --force local/videos/play/$fileMd5 >/dev/null 2>&1 || true" | Out-Null
         if ($LASTEXITCODE -ne 0) { throw 'P1 MinIO cleanup failed' }
     }
@@ -399,7 +399,7 @@ try {
             $env:NO_PROXY = '*'
             $env:no_proxy = '*'
             $body = & $curlPath --connect-timeout 5 --max-time 180 -sS `
-                -X POST -H 'Accept: application/json' -H "X-Admin-Token: $token" `
+                -X POST --header 'Accept:application/json' --header "X-Admin-Token:$token" `
                 -w "`n__HTTP__:%{http_code}" $url
             [string]::Join("`n", @($body))
         } finally {

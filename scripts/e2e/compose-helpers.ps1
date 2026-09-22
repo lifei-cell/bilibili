@@ -10,6 +10,11 @@ if ($null -eq $curlCommand) {
 $script:CurlExecutable = $curlCommand.Source
 $script:CurlExitCode = 0
 $script:NullDevice = if ([IO.Path]::DirectorySeparatorChar -eq [char]92) { 'NUL' } else { '/dev/null' }
+$script:MinioClientImage = if ([string]::IsNullOrWhiteSpace($env:MINIO_CLIENT_IMAGE)) {
+    'quay.io/minio/mc@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727'
+} else {
+    $env:MINIO_CLIENT_IMAGE
+}
 
 $script:ComposeFiles = @(
     '-f', 'docker-compose.yml',
@@ -59,14 +64,16 @@ function Invoke-BiliApi {
         '--connect-timeout', '5',
         '--max-time', [string]$TimeoutSec,
         '-fsS', '-X', $Method,
-        '-H', 'Accept: application/json'
+        '--header', 'Accept:application/json'
     )
     foreach ($name in $Headers.Keys) {
-        $arguments += @('-H', "${name}: $($Headers[$name])")
+        # Keep the complete header in one native-command argument. This avoids
+        # host-specific PowerShell argument reconstruction around spaces.
+        $arguments += @('--header', "${name}:$($Headers[$name])")
     }
     if ($null -ne $Body) {
         $jsonBody = $Body | ConvertTo-Json -Depth 10 -Compress
-        $arguments += @('-H', 'Content-Type: application/json; charset=utf-8', '--data-raw', $jsonBody)
+        $arguments += @('--header', 'Content-Type:application/json;charset=utf-8', '--data-raw', $jsonBody)
     }
     $arguments += $Uri
     $responseBody = Invoke-CurlNoProxy -CurlArguments $arguments

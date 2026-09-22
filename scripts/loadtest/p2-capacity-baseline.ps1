@@ -367,7 +367,7 @@ function Remove-TranscodeBaselineData {
         }
     }
     $commands += "mc rm --recursive --force local/videos/play/$FileMd5 >/dev/null 2>&1 || true"
-    & docker run --rm --network bilibili-net --entrypoint sh minio/mc -c ($commands -join '; ')
+    & docker run --rm --network bilibili-net --entrypoint sh $script:MinioClientImage -c ($commands -join '; ')
     if ($LASTEXITCODE -ne 0) { throw 'P2 transcode MinIO cleanup failed' }
     $cleanupSql = "delete i from mq_consumed_message i join video_transcode_task t on i.message_key=t.task_id where i.topic='video-transcode' and t.file_md5='$FileMd5'; delete from video_transcode_task where file_md5='$FileMd5'; delete from file_chunk where file_md5='$FileMd5'; delete from direct_upload_session where file_md5='$FileMd5';"
     & docker exec -e MYSQL_PWD=root bilibili-mysql mysql -uroot bilibili -e $cleanupSql | Out-Null

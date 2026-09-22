@@ -24,7 +24,8 @@ function Remove-E2eTestData {
     $cleanupSql = "delete from mq_consumed_message where topic='video-view' and message_key like '${videoId}:%'; delete from mq_consumed_message where topic='danmu-persist' and message_key='$danmuId'; delete i from mq_consumed_message i join reliable_event_outbox o on i.topic=o.topic and i.message_key=o.event_id where o.aggregate_id='$videoId'; delete from reliable_event_outbox where aggregate_id='$videoId' or (aggregate_type='danmu' and aggregate_id='$danmuId'); delete from content_report where target_type='VIDEO' and target_id=$videoId; delete from content_audit_log where target_type='VIDEO' and target_id=$videoId; delete from content_risk_event where target_type='VIDEO' and target_id=$videoId; delete from danmu where video_id=$videoId; delete from comment where video_id=$videoId; delete from user_like where target_type=1 and target_id=$videoId; delete from collection where video_id=$videoId; delete from video_stats where video_id=$videoId; delete from video where id=$videoId; delete from video_transcode_task where file_md5='$fileMd5'; delete from file_chunk where file_md5='$fileMd5'; delete from direct_upload_session where upload_id='$uploadId';"
     & docker exec -e MYSQL_PWD=root bilibili-mysql mysql -uroot bilibili -e $cleanupSql | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'E2E database cleanup failed' }
-    & docker run --rm --network bilibili-net --entrypoint sh minio/mc -c "mc alias set local http://minio:9000 minioadmin minioadmin >/dev/null; mc rm --force local/videos/source/direct/$creatorUserId/$uploadId.mp4 local/videos/source/$fileMd5.mp4 local/tmp/$uploadId/0 >/dev/null 2>&1 || true; mc rm --recursive --force local/videos/play/$fileMd5 >/dev/null 2>&1 || true" | Out-Null
+    & docker run --rm --network bilibili-net --entrypoint sh $script:MinioClientImage -c "mc alias set local http://minio:9000 minioadmin minioadmin >/dev/null; mc rm --force local/videos/source/direct/$creatorUserId/$uploadId.mp4 local/videos/source/$fileMd5.mp4 local/tmp/$uploadId/0 >/dev/null 2>&1 || true; mc rm --recursive --force local/videos/play/$fileMd5 >/dev/null 2>&1 || true" | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'E2E MinIO cleanup failed' }
     Invoke-BiliApi -Method POST -Uri 'http://localhost:8086/api/admin/reliability/es/rebuild' -Headers @{ 'X-Admin-Token' = $AdminToken } -TimeoutSec 120 | Out-Null
     # Business cleanup itself emits CDC delete events. Let Canal consume them,
     # then remove only audit rows whose payload points at this video.
@@ -138,8 +139,12 @@ $fileMd5 = ''
 $uploadId = ''
 $creatorUserId = 0L
 $started = $false
+$hadOperationsAdminToken = Test-Path Env:OPERATIONS_ADMIN_TOKEN
+$previousOperationsAdminToken = $env:OPERATIONS_ADMIN_TOKEN
 
 try {
+    # API probes and Compose services must use one token, including overrides.
+    $env:OPERATIONS_ADMIN_TOKEN = $AdminToken
     New-Item -ItemType Directory -Path $temporaryDirectory | Out-Null
     if (!$SkipBuild) {
         & mvn -s .mvn/settings.xml -DskipTests package
@@ -308,6 +313,11 @@ try {
     }
     if (!$KeepRunning) {
         try { Invoke-Compose stop @services @infrastructure } catch { Write-Warning $_ }
+    }
+    if ($hadOperationsAdminToken) {
+        $env:OPERATIONS_ADMIN_TOKEN = $previousOperationsAdminToken
+    } else {
+        Remove-Item Env:OPERATIONS_ADMIN_TOKEN -ErrorAction SilentlyContinue
     }
     Write-E2eSloReport
 }
