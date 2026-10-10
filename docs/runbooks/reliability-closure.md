@@ -5,10 +5,28 @@
 核心链路为：上传分片 → MinIO 合并 → 转码任务表 → RocketMQ → FFmpeg → 发布审核 → 播放 → CDC → Elasticsearch → 评论、点赞、弹幕。
 
 - `video_transcode_task` 是转码专用 Outbox；通用 `reliable_event_outbox` 承载播放量、弹幕持久化和 CDC 事件。
-- `mq_consumed_message` 使用 `consumer_group + topic + message_key` 唯一键和租约完成消费 Inbox 幂等。
+- `mq_consumed_message` 使用 `consumer_group + topic + message_key` 唯一键和 token/generation 租约完成消费 Inbox 幂等；完成和失败回写同时校验领取者及有效期。
 - Outbox 采用至少一次投递；发送成功但状态未落库时允许重复发送，消费端必须保持业务幂等。
 - 消费失败先进行应用内有限重试，再写应用 DLQ 并抛回 RocketMQ。短时依赖故障恢复后由 Broker 重投；成功后 DLQ 状态改为 `RESOLVED`。
 - 弹幕以业务 ID `insert ignore`，播放量以 `videoId + requestId` Redis Lua 去重，CDC 以 Binlog 文件、偏移和行序号生成稳定事件 ID。
+
+## Inbox 租约边界
+
+业务每次尝试在独立数据库事务中先锁定当前 Inbox 行，再执行业务操作与成功标记；接管等待这笔事务提交或回滚。领取者已更换或租约已过期时，回调不执行；业务执行后租约过期时，数据库写入全部回滚，消息抛回 Broker。最终失败标记与 DLQ 写入也在同一受保护事务中完成。旧消费者不再重试业务或修改 DLQ。
+
+只有 `SUCCEEDED` 的重复消息可以直接确认。`PROCESSING` 的竞争投递必须抛回 Broker，防止唯一的重投在原消费者崩溃前被误确认。指标 `bilibili_mq_consume_total` 的 `result=busy` 和 `result=lease_lost` 分别表示竞争消费和租约失效。
+
+回调中的数据库写入必须加入当前事务。弹幕可靠消费采用同线程写入，避免后台队列越过 Inbox 的事务边界；非事务调用仍保留原批量队列。Redis 和 Elasticsearch 不参与数据库事务，继续依赖稳定业务键去重及现有回源同步；这不是跨系统原子提交。数据库连接丢失后的外部在途请求也不能仅凭 Inbox 行锁撤销。
+
+`reliability.mq.inbox-lease-seconds` 默认 60 秒。超过期限的数据库业务不会提交，需要按实际耗时调整配置；行锁会占用一个数据库连接，应关注连接池等待和消息积压。FFmpeg 使用独立转码租约，不走该执行器。
+
+升级包含 Flyway V9。部署时先停止并等待旧版消费者退出，再迁移和启动新版；旧版代码不校验 token，不能与新版消费者混跑。过期旧记录可由新版接管，已成功记录继续去重。
+
+定向验收：
+
+```powershell
+mvn -s .mvn/settings.xml --batch-mode --no-transfer-progress -pl bilibili-video-service -am '-Dit.test=MessageInboxLeaseMySqlIT' '-Dfailsafe.failIfNoSpecifiedTests=false' verify
+```
 
 ## 自动回归
 

@@ -20,6 +20,7 @@ public class ReliableMessageExecutor {
 
     private final FailedMessageRepository repository;
     private final MessageInboxRepository inboxRepository;
+    private final MessageInboxLeaseGuard leaseGuard;
     private final ObjectMapper objectMapper;
     private final MeterRegistry meterRegistry;
     private final int maxAttempts;
@@ -29,6 +30,7 @@ public class ReliableMessageExecutor {
 
     public ReliableMessageExecutor(FailedMessageRepository repository,
                                    MessageInboxRepository inboxRepository,
+                                   MessageInboxLeaseGuard leaseGuard,
                                    ObjectMapper objectMapper,
                                    MeterRegistry meterRegistry,
                                    @Value("${reliability.mq.max-attempts:3}") int maxAttempts,
@@ -40,6 +42,7 @@ public class ReliableMessageExecutor {
                                    boolean rethrowAfterFailure) {
         this.repository = repository;
         this.inboxRepository = inboxRepository;
+        this.leaseGuard = leaseGuard;
         this.objectMapper = objectMapper;
         this.meterRegistry = meterRegistry;
         this.maxAttempts = Math.max(1, maxAttempts);
@@ -54,18 +57,33 @@ public class ReliableMessageExecutor {
     public void execute(String topic, String consumerGroup, String messageKey,
                         Object payload, Runnable action) {
         String serializedPayload = serialize(payload);
-        if (!inboxRepository.acquire(topic, consumerGroup, messageKey, inboxLeaseSeconds)) {
-            counter("bilibili.mq.consume", topic, consumerGroup, "duplicate").increment();
-            return;
+        var acquired = inboxRepository.acquire(topic, consumerGroup, messageKey, inboxLeaseSeconds);
+        if (acquired.isEmpty()) {
+            if (inboxRepository.isSucceeded(topic, consumerGroup, messageKey)) {
+                counter("bilibili.mq.consume", topic, consumerGroup, "duplicate").increment();
+                return;
+            }
+            // A busy claim may still crash. Ask MQ to redeliver instead of acknowledging it.
+            counter("bilibili.mq.consume", topic, consumerGroup, "busy").increment();
+            throw new MessageProcessingException("MQ inbox message is still processing", null);
         }
+        MessageInboxLease lease = acquired.get();
         Throwable lastFailure = null;
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
-                action.run();
-                inboxRepository.markSucceeded(topic, consumerGroup, messageKey);
-                repository.markResolved(topic, consumerGroup, messageKey, serializedPayload);
+                leaseGuard.run(lease, () -> {
+                    action.run();
+                    if (!inboxRepository.markSucceeded(lease)) {
+                        throw new MessageInboxLeaseLostException(lease);
+                    }
+                    repository.markResolved(topic, consumerGroup, messageKey, serializedPayload);
+                });
                 counter("bilibili.mq.consume", topic, consumerGroup, "success").increment();
                 return;
+            } catch (MessageInboxLeaseLostException lost) {
+                counter("bilibili.mq.consume", topic, consumerGroup, "lease_lost").increment();
+                // A stale consumer must neither retry its action nor change another owner's DLQ.
+                throw lost;
             } catch (RuntimeException failure) {
                 lastFailure = failure;
                 counter("bilibili.mq.consume", topic, consumerGroup, "retry").increment();
@@ -75,10 +93,20 @@ public class ReliableMessageExecutor {
             }
         }
 
-        inboxRepository.markFailed(topic, consumerGroup, messageKey, lastFailure);
-        repository.saveFailure(topic, consumerGroup, messageKey,
-                payload.getClass().getName(), serializedPayload, lastFailure,
-                MDC.get("traceId"), maxAttempts);
+        Throwable finalFailure = lastFailure;
+        try {
+            leaseGuard.run(lease, () -> {
+                if (!inboxRepository.markFailed(lease, finalFailure)) {
+                    throw new MessageInboxLeaseLostException(lease);
+                }
+                repository.saveFailure(topic, consumerGroup, messageKey,
+                        payload.getClass().getName(), serializedPayload, finalFailure,
+                        MDC.get("traceId"), maxAttempts);
+            });
+        } catch (MessageInboxLeaseLostException lost) {
+            counter("bilibili.mq.consume", topic, consumerGroup, "lease_lost").increment();
+            throw lost;
+        }
         counter("bilibili.mq.consume", topic, consumerGroup, "dlq").increment();
         log.error("MQ message persisted to application DLQ topic={} group={} messageKey={} attempts={}",
                 topic, consumerGroup, messageKey, maxAttempts, lastFailure);

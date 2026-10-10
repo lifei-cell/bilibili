@@ -3,6 +3,7 @@ package com.gary.bilibili.danmu.service;
 import com.gary.bilibili.danmu.mapper.DanmuMapper;
 import com.gary.bilibili.danmu.message.DanmuPersistMessage;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -15,6 +16,23 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class DanmuBatchPersistServiceTest {
+
+    @Test
+    void shouldPersistOnConsumerThreadInsideInboxTransaction() {
+        DanmuMapper mapper = mock(DanmuMapper.class);
+        DanmuBatchPersistService service = new DanmuBatchPersistService(mapper, 100);
+        DanmuPersistMessage message = new DanmuPersistMessage();
+        message.setId(90002L);
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+        try {
+            service.persist(message);
+            verify(mapper).insertBatch(List.of(message));
+        } finally {
+            TransactionSynchronizationManager.setActualTransactionActive(false);
+        }
+        service.flush();
+        org.mockito.Mockito.verifyNoMoreInteractions(mapper);
+    }
 
     @Test
     void shouldBatchPersistQueuedRocketMqMessages() throws Exception {
