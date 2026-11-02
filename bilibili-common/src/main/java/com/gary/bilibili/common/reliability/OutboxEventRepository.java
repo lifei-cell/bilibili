@@ -7,6 +7,8 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 @ConditionalOnProperty(name = "spring.datasource.url")
@@ -43,7 +45,8 @@ public class OutboxEventRepository {
                 where owner = ? and attempt_count < ? and (
                     (status in ('PENDING', 'FAILED') and available_at <= now(3))
                     or (status = 'PROCESSING'
-                        and locked_at < date_sub(now(3), interval ? second)))
+                        and (locked_until <= now(3) or (locked_until is null
+                            and locked_at < date_sub(now(3), interval ? second)))))
                 order by id asc limit ?
                 """, (rs, rowNum) -> new OutboxEvent(
                 rs.getLong("id"), rs.getString("event_id"), rs.getString("owner"),
@@ -55,32 +58,38 @@ public class OutboxEventRepository {
                 owner, maxAttempts, reclaimSeconds, limit);
     }
 
-    public boolean claim(long id, int reclaimSeconds, int maxAttempts) {
-        return jdbcTemplate.update("""
+    public Optional<OutboxEventLease> claim(long id, int reclaimSeconds, int maxAttempts) {
+        String token = UUID.randomUUID().toString();
+        int updated = jdbcTemplate.update("""
                 update reliable_event_outbox
                 set status = 'PROCESSING', locked_at = now(3),
-                    attempt_count = attempt_count + 1, last_error = null
+                    attempt_count = attempt_count + 1, last_error = null,
+                    claim_token = ?, locked_until = timestampadd(SECOND, ?, now(3))
                 where id = ? and attempt_count < ? and (
                     (status in ('PENDING', 'FAILED') and available_at <= now(3))
                     or (status = 'PROCESSING'
-                        and locked_at < date_sub(now(3), interval ? second)))
-                """, id, maxAttempts, reclaimSeconds) == 1;
+                        and (locked_until <= now(3) or (locked_until is null
+                            and locked_at < date_sub(now(3), interval ? second)))))
+                """, token, reclaimSeconds, id, maxAttempts, reclaimSeconds);
+        return updated == 1 ? Optional.of(new OutboxEventLease(id, token)) : Optional.empty();
     }
 
-    public void markPublished(long id) {
-        jdbcTemplate.update("""
+    public boolean markPublished(OutboxEventLease lease) {
+        return jdbcTemplate.update("""
                 update reliable_event_outbox
                 set status = 'PUBLISHED', published_at = now(3), locked_at = null,
-                    last_error = null where id = ? and status = 'PROCESSING'
-                """, id);
+                    last_error = null, claim_token = null, locked_until = null
+                where id = ? and status = 'PROCESSING' and claim_token = ? and locked_until > now(3)
+                """, lease.id(), lease.token()) == 1;
     }
 
-    public void markFailed(long id, String error, LocalDateTime availableAt) {
-        jdbcTemplate.update("""
+    public boolean markFailed(OutboxEventLease lease, String error, LocalDateTime availableAt) {
+        return jdbcTemplate.update("""
                 update reliable_event_outbox
                 set status = 'FAILED', available_at = ?, locked_at = null,
-                    last_error = ? where id = ? and status = 'PROCESSING'
-                """, availableAt, truncate(error), id);
+                    last_error = ?, claim_token = null, locked_until = null
+                where id = ? and status = 'PROCESSING' and claim_token = ? and locked_until > now(3)
+                """, availableAt, truncate(error), lease.id(), lease.token()) == 1;
     }
 
     public long countPending(String owner) {

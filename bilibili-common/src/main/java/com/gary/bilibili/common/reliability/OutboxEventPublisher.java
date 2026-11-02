@@ -67,9 +67,11 @@ public class OutboxEventPublisher {
     }
 
     private void publish(OutboxEvent event) {
-        if (!repository.claim(event.id(), reclaimSeconds, maxAttempts)) {
+        var claimed = repository.claim(event.id(), reclaimSeconds, maxAttempts);
+        if (claimed.isEmpty()) {
             return;
         }
+        OutboxEventLease lease = claimed.orElseThrow();
         try {
             Class<?> payloadType = Class.forName(event.payloadType());
             if (!payloadType.getName().startsWith("com.gary.bilibili.")) {
@@ -77,12 +79,16 @@ public class OutboxEventPublisher {
             }
             Object payload = objectMapper.readValue(event.payload(), payloadType);
             rocketMQTemplate.syncSend(event.topic(), payload, 3000);
-            repository.markPublished(event.id());
-            publishedCounter.increment();
+            if (repository.markPublished(lease)) {
+                publishedCounter.increment();
+            } else {
+                log.warn("Outbox completion ignored after lease loss, owner={}, eventId={}", owner, event.eventId());
+            }
         } catch (Exception exception) {
-            repository.markFailed(event.id(), safeMessage(exception),
-                    LocalDateTime.now().plusSeconds(retrySeconds));
-            failedCounter.increment();
+            if (repository.markFailed(lease, safeMessage(exception),
+                    LocalDateTime.now().plusSeconds(retrySeconds))) {
+                failedCounter.increment();
+            }
             log.warn("Outbox dispatch failed, owner={}, eventId={}, topic={}, attempt={}",
                     owner, event.eventId(), event.topic(), event.attemptCount() + 1, exception);
         }
