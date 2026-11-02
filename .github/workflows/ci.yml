@@ -60,6 +60,19 @@ jobs:
       - run: npm ci
       - name: Lint, test with coverage, type-check and build
         run: npm run quality
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Browser regression with simulated gateway
+        run: npm run test:e2e
+      - name: Upload browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-regression
+          path: |
+            bilibili-web/playwright-report/
+            bilibili-web/test-results/
+          if-no-files-found: warn
       - name: Upload frontend coverage
         if: always()
         uses: actions/upload-artifact@v4
@@ -89,6 +102,16 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: bilibili-web/package-lock.json
+      - name: Prepare real browser journey
+        working-directory: bilibili-web
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
       - name: Run backend verify, core journey and write-path SLO
         shell: pwsh
         run: |
@@ -96,7 +119,7 @@ jobs:
           if ('${{ github.event_name }}' -eq 'schedule' -or '${{ inputs.run_fault_drill }}' -eq 'true') {
             $faultArgs += '-RunFaultDrill'
           }
-          ./scripts/verification/release-validation.ps1 @faultArgs
+          ./scripts/verification/release-validation.ps1 -RunBrowserE2e @faultArgs
       - name: Collect service logs on failure
         if: failure()
         run: docker compose -f docker-compose.yml -f docker-compose.service.yml -f docker-compose.e2e.yml logs --no-color --tail 300 > reliability-e2e.log
@@ -108,5 +131,7 @@ jobs:
           path: |
             reliability-e2e.log
             loadtest/results/release-validation-*/
+            bilibili-web/playwright-report/
+            bilibili-web/test-results/
           if-no-files-found: warn
           retention-days: 14

@@ -2,6 +2,7 @@ param(
     [switch]$SkipBackendVerify,
     [switch]$RunFaultDrill,
     [switch]$KeepRunning,
+    [switch]$RunBrowserE2e,
     [string]$AdminToken = 'change-me-in-production',
     [string]$SloConfigPath,
     [string]$ResultsDirectory,
@@ -51,6 +52,7 @@ $steps = [ordered]@{
     resourceNormalization = 'NOT_RUN'
     backendVerify = 'NOT_RUN'
     composeE2e = 'NOT_RUN'
+    browserE2e = 'NOT_RUN'
     writeSlo = 'NOT_RUN'
     cleanup = 'NOT_RUN'
 }
@@ -183,6 +185,15 @@ try {
         -AdminToken $AdminToken
     $steps.composeE2e = 'PASSED'
     $activeStep = $null
+
+    if ($RunBrowserE2e) {
+        $activeStep = 'browserE2e'
+        & (Join-Path $repositoryRoot 'scripts/e2e/browser-e2e.ps1')
+        $steps.browserE2e = 'PASSED'
+        $activeStep = $null
+    } else {
+        $steps.browserE2e = 'SKIPPED'
+    }
 
     $activeStep = 'writeSlo'
     $context = Get-Content -Raw -LiteralPath $contextPath | ConvertFrom-Json

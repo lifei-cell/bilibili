@@ -41,7 +41,7 @@ test.beforeEach(async ({ page }) => {
     scope.WebSocket = new Proxy(NativeWebSocket, {
       construct(target, args) {
         if (String(args[0]).includes('/api/danmu/ws/')) return new FakeSocket(String(args[0])) as unknown as WebSocket
-        return new target(...args)
+        return Reflect.construct(target, args)
       },
     })
   })

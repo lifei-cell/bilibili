@@ -132,6 +132,10 @@ npm run quality
 
 GitHub Actions 会对 Push 和 Pull Request 并行执行后端、前端与 Compose 配置校验，工作流见 `.github/workflows/ci.yml`。
 
+浏览器回归分为两层：Push/PR 执行 `npm --prefix bilibili-web run test:e2e`（模拟网关，覆盖页面交互与异常恢复）；定时/手动发布验证额外执行真实服务链路，覆盖页面登录、分片上传、转码、发布、审核后 HLS 播放以及评论刷新持久化。后者不拦截 API、媒体或 WebSocket 响应。
+
+在隔离的演示环境运行完整验证：先在 `bilibili-web` 安装依赖并执行 `npx playwright install --with-deps chromium`，再运行 `pwsh scripts/verification/release-validation.ps1 -RunBrowserE2e`。已有运行中的演示服务可直接执行 `pwsh scripts/e2e/browser-e2e.ps1`。脚本使用 FFmpeg 生成带唯一元数据的短视频，避免秒传跳过转码；默认使用种子演示账号，可通过 `E2E_USERNAME` / `E2E_PASSWORD` 和 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 覆盖。仅用于测试环境，测试会发布、审核并删除自己的视频与评论；软删除、上传对象和任务记录仍保留在测试存储中。失败诊断见 `bilibili-web/test-results` 和 CI 附件，trace 可能包含测试凭证，仅使用测试账号。
+
 ## 分环境配置
 
 所有服务默认使用 `dev`，并提供以下配置：
