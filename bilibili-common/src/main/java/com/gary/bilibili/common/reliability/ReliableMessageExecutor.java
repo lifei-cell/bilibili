@@ -60,6 +60,7 @@ public class ReliableMessageExecutor {
         var acquired = inboxRepository.acquire(topic, consumerGroup, messageKey, inboxLeaseSeconds);
         if (acquired.isEmpty()) {
             if (inboxRepository.isSucceeded(topic, consumerGroup, messageKey)) {
+                repository.markResolved(topic, consumerGroup, messageKey, serializedPayload);
                 counter("bilibili.mq.consume", topic, consumerGroup, "duplicate").increment();
                 return;
             }

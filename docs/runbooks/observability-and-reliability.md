@@ -27,10 +27,12 @@ curl -H "X-Admin-Token: $OPERATIONS_ADMIN_TOKEN" \
   "http://localhost:8080/api/admin/mq/failures?topic=cache-sync&status=FAILED&page=1&size=20"
 ```
 
-重放前必须确认导致消费失败的 MySQL、Redis、Elasticsearch 或业务数据问题已经恢复。重放使用数据库中记录的原 Topic 和载荷类型，并在同步发送成功后更新为 `REPLAYED`：
+重放前必须确认导致消费失败的 MySQL、Redis、Elasticsearch 或业务数据问题已经恢复。重放使用数据库中记录的原 Topic 和载荷类型，在同一事务内写入 Outbox 并更新为 `REPLAYED`（已排队）；成功消费或命中历史成功凭证后更新为 `RESOLVED`。完整限制见 [消息生命周期手册](message-lifecycle.md)：
 
 ```bash
 curl -X POST -H "X-Admin-Token: $OPERATIONS_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"requestId":"replay-request-000001","expectedReplayCount":0,"reason":"Dependency repaired and verified"}' \
   "http://localhost:8080/api/admin/mq/failures/{id}/replay"
 ```
 

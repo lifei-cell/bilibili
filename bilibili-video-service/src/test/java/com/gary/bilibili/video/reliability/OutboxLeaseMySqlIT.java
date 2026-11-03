@@ -115,8 +115,12 @@ class OutboxLeaseMySqlIT {
                 .cleanDisabled(false).target("9").load();
         legacy.clean();
         legacy.migrate();
-        first.insert("old", "test", "video", "1", "VIEW", "test", "payload", "{}");
-        first.insert("done", "test", "video", "2", "VIEW", "test", "payload", "{}");
+        jdbc.update("""
+                insert into reliable_event_outbox
+                (event_id, owner, aggregate_type, aggregate_id, event_type, topic, payload_type, payload)
+                values ('old','test','video','1','VIEW','test','payload','{}'),
+                       ('done','test','video','2','VIEW','test','payload','{}')
+                """);
         jdbc.update("update reliable_event_outbox set status = 'PROCESSING', locked_at = timestampadd(SECOND, -61, now(3)) where event_id = 'old'");
         jdbc.update("update reliable_event_outbox set status = 'PUBLISHED' where event_id = 'done'");
         Flyway.configure().dataSource(source).locations("classpath:db/migration").load().migrate();

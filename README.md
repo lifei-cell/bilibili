@@ -170,11 +170,14 @@ MySQL 表结构由 `bilibili-common/src/main/resources/db/migration` 统一管�
 curl -H "X-Admin-Token: change-me-in-production" \
   "http://localhost:8080/api/admin/mq/failures?status=FAILED&page=1&size=20"
 
-curl -X POST -H "X-Admin-Token: change-me-in-production" \
+curl -X POST -H "X-Admin-Token: change-me-in-production" -H "Content-Type: application/json" \
+  -d '{"requestId":"replay-request-000001","expectedReplayCount":0,"reason":"Dependency repaired and verified"}' \
   "http://localhost:8080/api/admin/mq/failures/1/replay"
 ```
 
 生产环境必须设置高强度 `OPERATIONS_ADMIN_TOKEN`。告警处置、DLQ 重放边界和排障查询见 `docs/runbooks/observability-and-reliability.md`。
+
+消息生命周期默认将已发布 Outbox 在 7 天后归档，将成功 Inbox 在 30 天后压缩为永久去重凭证；失败和处理中记录不清理。Outbox 重试耗尽后进入 `EXHAUSTED`，支持管理员查询及带原因、请求编号、版本校验的事务化重放。归档策略、升级顺序和完整接口见 [消息生命周期运维手册](docs/runbooks/message-lifecycle.md)。
 
 CDC 对账和 Elasticsearch 全量重建同样使用管理员令牌：
 

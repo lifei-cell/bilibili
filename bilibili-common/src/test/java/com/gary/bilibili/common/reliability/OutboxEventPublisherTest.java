@@ -3,6 +3,10 @@ package com.gary.bilibili.common.reliability;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
+import org.apache.rocketmq.spring.support.RocketMQMessageConverter;
+import org.apache.rocketmq.spring.support.RocketMQUtil;
+import org.springframework.messaging.support.MessageBuilder;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -27,6 +31,7 @@ class OutboxEventPublisherTest {
         when(repository.markPublished(lease)).thenReturn(accepted);
         publisher(repository, mq, meters).dispatch();
         verify(repository).markPublished(lease);
+        verify(mq).syncSend("test-topic", "{\"id\":1}", 3000);
         assertThat(meters.get("bilibili.outbox.publish").tag("result", "success").counter().count())
                 .isEqualTo(accepted ? 1 : 0);
         verify(repository, never()).markFailed(any(), anyString(), any());
@@ -58,8 +63,14 @@ class OutboxEventPublisherTest {
 
     private OutboxEvent event() {
         return new OutboxEvent(1, "event", "test", "video", "1", "VIEW", "test-topic",
-                Payload.class.getName(), "{\"id\":1}", 0, LocalDateTime.now());
+                "com.gary.bilibili.other.ServiceOnlyPayload", "{\"id\":1}", 0, LocalDateTime.now());
     }
 
-    public record Payload(long id) { }
+    @Test
+    void rocketMqWireBodyPreservesStoredJsonWithoutDoubleEncoding() {
+        String json = "{\"requestId\":\"unchanged\",\"content\":\"旧消息\"}";
+        var wire = RocketMQUtil.convertToRocketMessage(new RocketMQMessageConverter().getMessageConverter(),
+                "UTF-8", "test-topic", MessageBuilder.withPayload(json).build());
+        assertThat(wire.getBody()).isEqualTo(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
 }

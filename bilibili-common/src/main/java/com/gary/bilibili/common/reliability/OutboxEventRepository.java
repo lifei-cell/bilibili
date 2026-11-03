@@ -23,17 +23,46 @@ public class OutboxEventRepository {
     public boolean insert(String eventId, String owner, String aggregateType,
                           String aggregateId, String eventType, String topic,
                           String payloadType, String payload) {
+        if (isArchived(eventId)) return false;
         try {
-            return jdbcTemplate.update("""
+            int inserted = jdbcTemplate.update("""
                     insert into reliable_event_outbox
                         (event_id, owner, aggregate_type, aggregate_id, event_type,
                          topic, payload_type, payload)
                     values (?, ?, ?, ?, ?, ?, ?, cast(? as json))
                     """, eventId, owner, aggregateType, aggregateId, eventType,
-                    topic, payloadType, payload) == 1;
+                    topic, payloadType, payload);
+            if (isArchived(eventId)) {
+                jdbcTemplate.update("delete from reliable_event_outbox where event_id = ? and status = 'PENDING'", eventId);
+                return false;
+            }
+            return inserted == 1;
         } catch (DuplicateKeyException duplicate) {
             return false;
         }
+    }
+
+    private boolean isArchived(String eventId) {
+        return !jdbcTemplate.query("select id from reliable_event_outbox_archive where event_id = ? for share",
+                (row, index) -> row.getLong(1), eventId).isEmpty();
+    }
+
+    public int exhaust(String owner, int maxAttempts, int reclaimSeconds, int batchSize) {
+        return jdbcTemplate.update("""
+                update reliable_event_outbox set status = 'EXHAUSTED', claim_token = null, locked_until = null
+                where owner = ? and attempt_count >= ? and (
+                    status in ('FAILED', 'PENDING') or (status = 'PROCESSING' and
+                    (locked_until <= now(3) or (locked_until is null
+                        and locked_at < timestampadd(SECOND, -?, now(3))))))
+                order by id limit ?
+                """, owner, maxAttempts, reclaimSeconds, batchSize);
+    }
+
+    public long countExhausted(String owner) {
+        Long value = jdbcTemplate.queryForObject("""
+                select count(*) from reliable_event_outbox where owner = ? and status = 'EXHAUSTED'
+                """, Long.class, owner);
+        return value == null ? 0L : value;
     }
 
     public List<OutboxEvent> findDispatchable(String owner, int limit, int reclaimSeconds,

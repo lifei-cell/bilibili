@@ -21,6 +21,9 @@ public class MessageInboxRepository {
 
     public Optional<MessageInboxLease> acquire(String topic, String consumerGroup, String messageKey,
                                                int leaseSeconds) {
+        if (hasReceipt(topic, consumerGroup, messageKey)) {
+            return Optional.empty();
+        }
         String token = UUID.randomUUID().toString();
         try {
             jdbcTemplate.update("""
@@ -28,6 +31,15 @@ public class MessageInboxRepository {
                         (topic, consumer_group, message_key, status, claim_generation, claim_token, locked_until)
                     values (?, ?, ?, 'PROCESSING', 1, ?, timestampadd(SECOND, ?, now(3)))
                     """, topic, consumerGroup, messageKey, token, leaseSeconds);
+            // Archiving can commit between the first receipt check and this insert. Recheck using
+            // a current (locking) read, including when the caller has a repeatable-read snapshot.
+            if (hasReceipt(topic, consumerGroup, messageKey)) {
+                jdbcTemplate.update("""
+                        delete from mq_consumed_message
+                        where topic = ? and consumer_group = ? and message_key = ? and claim_token = ?
+                        """, topic, consumerGroup, messageKey, token);
+                return Optional.empty();
+            }
             return Optional.of(new MessageInboxLease(topic, consumerGroup, messageKey, 1, token));
         } catch (DuplicateKeyException duplicate) {
             int updated = jdbcTemplate.update("""
@@ -52,10 +64,19 @@ public class MessageInboxRepository {
     }
 
     public boolean isSucceeded(String topic, String consumerGroup, String messageKey) {
-        return Boolean.TRUE.equals(jdbcTemplate.queryForObject("""
+        boolean hot = Boolean.TRUE.equals(jdbcTemplate.queryForObject("""
                 select count(*) > 0 from mq_consumed_message
                 where topic = ? and consumer_group = ? and message_key = ? and status = 'SUCCEEDED'
                 """, Boolean.class, topic, consumerGroup, messageKey));
+        // Hot row may have moved during the first query; immutable receipt is checked last.
+        return hot || hasReceipt(topic, consumerGroup, messageKey);
+    }
+
+    private boolean hasReceipt(String topic, String consumerGroup, String messageKey) {
+        return !jdbcTemplate.query("""
+                select consumed_at from mq_inbox_receipt
+                where consumer_group = ? and topic = ? and message_key = ? for share
+                """, (row, index) -> row.getTimestamp(1), consumerGroup, topic, messageKey).isEmpty();
     }
 
     public boolean lockCurrent(MessageInboxLease lease) {

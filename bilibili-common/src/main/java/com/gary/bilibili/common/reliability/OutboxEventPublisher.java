@@ -56,11 +56,14 @@ public class OutboxEventPublisher {
         Gauge.builder("bilibili.outbox.pending", repository,
                         value -> value.countPending(owner))
                 .tag("owner", owner).register(meterRegistry);
+        Gauge.builder("bilibili.outbox.exhausted", repository, value -> value.countExhausted(owner))
+                .tag("owner", owner).register(meterRegistry);
     }
 
     @Scheduled(fixedDelayString = "${reliability.outbox.dispatch-interval:500}",
             initialDelayString = "${reliability.outbox.initial-delay:3000}")
     public void dispatch() {
+        repository.exhaust(owner, maxAttempts, reclaimSeconds, batchSize);
         List<OutboxEvent> events = repository.findDispatchable(
                 owner, batchSize, reclaimSeconds, maxAttempts);
         events.forEach(this::publish);
@@ -73,12 +76,12 @@ public class OutboxEventPublisher {
         }
         OutboxEventLease lease = claimed.orElseThrow();
         try {
-            Class<?> payloadType = Class.forName(event.payloadType());
-            if (!payloadType.getName().startsWith("com.gary.bilibili.")) {
-                throw new IllegalStateException("Unsupported outbox payload type");
+            if (objectMapper.readTree(event.payload()) == null) {
+                throw new IllegalStateException("Empty outbox JSON payload");
             }
-            Object payload = objectMapper.readValue(event.payload(), payloadType);
-            rocketMQTemplate.syncSend(event.topic(), payload, 3000);
+            // RocketMQ sends String payloads as UTF-8 bytes. Preserve stored JSON exactly and
+            // allow DLQ replay across services without loading another service's Java classes.
+            rocketMQTemplate.syncSend(event.topic(), event.payload(), 3000);
             if (repository.markPublished(lease)) {
                 publishedCounter.increment();
             } else {

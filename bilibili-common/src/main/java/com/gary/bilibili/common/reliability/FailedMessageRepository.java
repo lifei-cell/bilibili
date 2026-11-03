@@ -78,19 +78,11 @@ public class FailedMessageRepository {
         return count == null ? 0 : count;
     }
 
-    public boolean markReplayed(long id) {
-        return jdbcTemplate.update("""
-                UPDATE mq_failed_message SET status = 'REPLAYED', replay_count = replay_count + 1,
-                    last_replay_time = CURRENT_TIMESTAMP, update_time = CURRENT_TIMESTAMP
-                WHERE id = ? AND status = 'FAILED'
-                """, id) == 1;
-    }
-
     public void markResolved(String topic, String consumerGroup, String messageKey,
                              String payload) {
         jdbcTemplate.update("""
                 UPDATE mq_failed_message SET status = 'RESOLVED', update_time = CURRENT_TIMESTAMP
-                WHERE fingerprint = ? AND status = 'FAILED'
+                WHERE fingerprint = ? AND status IN ('FAILED', 'REPLAYED')
                 """, fingerprint(topic, consumerGroup, messageKey, payload));
     }
 

@@ -43,6 +43,32 @@ groups:
           summary: "Application DLQ contains failed messages"
           description: "{{ $labels.application }} has messages awaiting query and replay."
 
+      - alert: OutboxRetriesExhausted
+        expr: max by (application, owner) (bilibili_outbox_exhausted) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Outbox dispatch retries exhausted"
+          description: "Query /api/admin/mq/outbox/exhausted, repair the cause and submit an audited replay."
+
+      - alert: MessageLifecycleFailing
+        expr: increase(bilibili_lifecycle_failures_total[10m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Message archival batch failed"
+          description: "Inspect database and lifecycle logs; transactions retain source rows on failure."
+
+      - alert: MessageLifecycleStalled
+        expr: (time() - bilibili_lifecycle_last_success_seconds > 900) and on(application, instance) (bilibili_lifecycle_enabled == 1)
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Message archival has not completed a batch for 15 minutes"
+
       - alert: JvmHeapPressure
         expr: |
           sum by (application) (jvm_memory_used_bytes{area="heap"})

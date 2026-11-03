@@ -1,14 +1,9 @@
 package com.gary.bilibili.common.reliability;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.ObjectProvider;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -24,7 +19,7 @@ class FailedMessageAdminServiceTest {
         when(repository.findFailures("video-view", "FAILED", 0, 100))
                 .thenReturn(List.of(failed));
         when(repository.countFailures("video-view", "FAILED")).thenReturn(1L);
-        FailedMessageAdminService service = service(repository, null);
+        FailedMessageAdminService service = service(repository);
 
         FailedMessageAdminService.FailedMessagePage page =
                 service.find(" video-view ", "unknown", 0, 200);
@@ -34,33 +29,19 @@ class FailedMessageAdminServiceTest {
     }
 
     @Test
-    void shouldReplayStoredPayloadAndMarkItReplayed() {
+    void shouldDelegateReplayToDurableAuditedQueue() {
         FailedMessageRepository repository = mock(FailedMessageRepository.class);
-        RocketMQTemplate rocketMQTemplate = mock(RocketMQTemplate.class);
-        FailedMessage failed = failedMessage();
-        FailedMessage replayed = new FailedMessage(
-                failed.id(), failed.topic(), failed.consumerGroup(), failed.messageKey(),
-                failed.payloadType(), failed.payload(), failed.exceptionType(), failed.errorMessage(),
-                failed.traceId(), failed.attemptCount(), "REPLAYED", 1,
-                failed.createTime(), LocalDateTime.now(), LocalDateTime.now());
-        when(repository.findById(7L)).thenReturn(Optional.of(failed), Optional.of(replayed));
-        when(repository.markReplayed(7L)).thenReturn(true);
-        FailedMessageAdminService service = service(repository, rocketMQTemplate);
-
-        FailedMessage result = service.replay(7L);
-
-        verify(rocketMQTemplate).syncSend("video-view", new TestPayload("message-7"), 3000);
-        verify(repository).markReplayed(7L);
-        assertThat(result.status()).isEqualTo("REPLAYED");
+        MessageReplayService replays = mock(MessageReplayService.class);
+        var request = new MessageReplayRequest("request-00000001", 0, "Fixed unavailable dependency");
+        var receipt = new MessageReplayService.ReplayReceipt(request.requestId(), "DLQ", 7, "queued-event");
+        when(replays.replayFailure(7, request)).thenReturn(receipt);
+        var service = new FailedMessageAdminService(repository, replays);
+        assertThat(service.replay(7, request)).isEqualTo(receipt);
+        verify(replays).replayFailure(7, request);
     }
 
-    @SuppressWarnings("unchecked")
-    private FailedMessageAdminService service(FailedMessageRepository repository,
-                                               RocketMQTemplate rocketMQTemplate) {
-        ObjectProvider<RocketMQTemplate> provider = mock(ObjectProvider.class);
-        when(provider.getIfAvailable()).thenReturn(rocketMQTemplate);
-        return new FailedMessageAdminService(
-                repository, new ObjectMapper(), provider, new SimpleMeterRegistry());
+    private FailedMessageAdminService service(FailedMessageRepository repository) {
+        return new FailedMessageAdminService(repository, mock(MessageReplayService.class));
     }
 
     private FailedMessage failedMessage() {

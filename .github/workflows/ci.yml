@@ -89,6 +89,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate merged Compose model
         run: docker compose -f docker-compose.yml -f docker-compose.service.yml -f docker-compose.e2e.yml config --quiet
+      - name: Verify message lifecycle alert rules
+        run: docker run --rm -v "$PWD/docker/observability:/rules:ro" --entrypoint /bin/promtool prom/prometheus:v3.5.0 test rules /rules/tests/message-lifecycle.test.yml
 
   release-validation:
     name: Release validation and write-path SLO

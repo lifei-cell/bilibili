@@ -74,6 +74,15 @@ rocketmq:
     retry-times-when-send-failed: ${ROCKETMQ_SEND_RETRY_TIMES:2}
 
 reliability:
+  lifecycle:
+    enabled: ${MESSAGE_LIFECYCLE_ENABLED:true}
+    outbox-retention-days: ${OUTBOX_RETENTION_DAYS:7}
+    inbox-retention-days: ${INBOX_RETENTION_DAYS:30}
+    batch-size: ${MESSAGE_LIFECYCLE_BATCH_SIZE:200}
+    interval-ms: ${MESSAGE_LIFECYCLE_INTERVAL_MS:60000}
+    initial-delay-ms: ${MESSAGE_LIFECYCLE_INITIAL_DELAY_MS:60000}
+    max-replays: ${MESSAGE_MAX_REPLAYS:5}
+    replay-cooldown-seconds: ${MESSAGE_REPLAY_COOLDOWN_SECONDS:60}
   mq:
     max-attempts: ${MQ_CONSUME_MAX_ATTEMPTS:3}
     initial-backoff: ${MQ_CONSUME_INITIAL_BACKOFF:100ms}
