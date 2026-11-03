@@ -84,7 +84,8 @@ flowchart LR
 
 | 模块 | 默认端口 | 职责 |
 | --- | ---: | --- |
-| `bilibili-common` | - | 统一响应、公共异常、配置和基础依赖 |
+| `bilibili-common` | - | 无运行时依赖的统一响应、公共异常和消息契约 |
+| `bilibili-common-*` | - | 按需引入的观测、Web、可靠性、MQ 发布与存储适配 |
 | `bilibili-gateway` | 8080 | API 路由、服务发现和 WebSocket 转发 |
 | `bilibili-user-service` | 8081 | 用户、认证、验证码和资料管理 |
 | `bilibili-video-service` | 8082 | 视频上传、对象存储、发布、播放和统计 |
@@ -504,7 +505,8 @@ mvn -pl bilibili-video-service -am test
 
 ```text
 .
-├── bilibili-common/          # 公共响应、异常和配置
+├── bilibili-common/          # 基础类型与共享 SQL 资源
+├── bilibili-common-*/        # 按需引入的观测、Web、可靠性、MQ 和存储组件
 ├── bilibili-gateway/         # Spring Cloud Gateway
 ├── bilibili-user-service/    # 用户与认证
 ├── bilibili-video-service/   # 视频与文件上传
@@ -561,3 +563,5 @@ docker logs bilibili-user-service
 ### Docker 构建时访问 Docker Hub 超时
 
 这是镜像仓库网络问题。确认代理或网络配置后重新执行 Compose 构建；Java 代码可以先通过 Maven 单独构建，不受 Docker Hub 状态影响。
+
+公共模块依赖与上传职责见 [架构说明](docs/architecture/shared-modules-and-upload.md)。

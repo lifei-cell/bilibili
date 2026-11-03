@@ -16,25 +16,19 @@
     <dependencies>
         <dependency>
             <groupId>com.gary.bilibili</groupId>
+            <artifactId>bilibili-common-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.gary.bilibili</groupId>
             <artifactId>bilibili-common</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>cn.dev33</groupId>
-                    <artifactId>sa-token-spring-boot4-starter</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.baomidou</groupId>
-                    <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.rocketmq</groupId>
-                    <artifactId>rocketmq-spring-boot-starter</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.minio</groupId>
-                    <artifactId>minio</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -65,6 +59,29 @@
     </dependencies>
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-module-boundary</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>com.baomidou:*</exclude>
+                                        <exclude>org.apache.rocketmq:*</exclude>
+                                        <exclude>io.minio:*</exclude>
+                                    </excludes>
+                                    <searchTransitive>true</searchTransitive>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

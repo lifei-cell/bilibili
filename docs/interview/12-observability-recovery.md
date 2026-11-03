@@ -31,7 +31,7 @@ sequenceDiagram
 
 ## 故障案例与验证
 
-[可靠性运行手册](../runbooks/observability-and-reliability.md)提供告警、日志查询及 DLQ 操作说明；[失败消息服务测试](../../bilibili-common/src/test/java/com/gary/bilibili/common/reliability/FailedMessageAdminServiceTest.java)提供重放行为断言。[索引演练报告](../reports/2026-09-18-index-cutover-lock-cdc-backlog.md)记录过失败诊断保存递归日志对象导致 JSON 序列化耗尽内存，改用纯文本日志后保留失败证据。
+[可靠性运行手册](../runbooks/observability-and-reliability.md)提供告警、日志查询及 DLQ 操作说明；[失败消息服务测试](../../bilibili-common-reliability/src/test/java/com/gary/bilibili/common/reliability/FailedMessageAdminServiceTest.java)提供重放行为断言。[索引演练报告](../reports/2026-09-18-index-cutover-lock-cdc-backlog.md)记录过失败诊断保存递归日志对象导致 JSON 序列化耗尽内存，改用纯文本日志后保留失败证据。
 
 这是“故障诊断本身也要可靠”的真实例子。未在本次确认监控 UI、告警接收渠道或端到端 Trace 链路处于运行状态。
 
@@ -47,4 +47,4 @@ sequenceDiagram
 
 > 可观测性的目标是定位业务卡在哪一段。项目记录接口延迟与请求关联信息，也关注异步积压和失败消息。处理失败时先查记录和日志、修根因、再重放，并用业务结果和积压收敛确认恢复。历史演练还出现过诊断对象递归导致报告生成失败，说明失败证据本身需要简洁、可靠地保存。当前有代码和运行手册，但不能把配置存在解释成告警已经送达或完整追踪已经验证。
 
-源码：[请求观测过滤器](../../bilibili-common/src/main/java/com/gary/bilibili/common/observability/RequestObservabilityFilter.java)、[慢查询拦截器](../../bilibili-common/src/main/java/com/gary/bilibili/common/observability/SlowQueryInterceptor.java)、[失败消息管理](../../bilibili-common/src/main/java/com/gary/bilibili/common/reliability/FailedMessageAdminService.java)。
+源码：[请求观测过滤器](../../bilibili-common-web/src/main/java/com/gary/bilibili/common/observability/RequestObservabilityFilter.java)、[慢查询拦截器](../../bilibili-common-web/src/main/java/com/gary/bilibili/common/observability/SlowQueryInterceptor.java)、[失败消息管理](../../bilibili-common-reliability/src/main/java/com/gary/bilibili/common/reliability/FailedMessageAdminService.java)。

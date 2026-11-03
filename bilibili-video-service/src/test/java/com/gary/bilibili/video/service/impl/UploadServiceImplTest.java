@@ -20,7 +20,8 @@ import com.gary.bilibili.video.vo.UploadCheckVO;
 import com.gary.bilibili.video.vo.UploadChunkVO;
 import com.gary.bilibili.video.vo.UploadProgressVO;
 import com.gary.bilibili.video.vo.VideoTranscodeStatusVO;
-import io.minio.MinioClient;
+import com.gary.bilibili.common.storage.ObjectStorage;
+import com.gary.bilibili.video.service.upload.*;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,16 +67,13 @@ class UploadServiceImplTest {
         when(stringRedisTemplate.execute(any(RedisScript.class), anyList(), any(Object[].class)))
                 .thenReturn(1L);
 
-        uploadService = new UploadServiceImpl(
-                fileChunkMapper,
-                videoMapper,
-                videoTranscodeTaskMapper,
-                mock(MinioClient.class),
-                stringRedisTemplate,
-                objectMapper,
-                "http://minio:9000",
-                "videos",
-                "tmp");
+        UploadSessionManager sessions = new UploadSessionManager(fileChunkMapper, stringRedisTemplate, objectMapper);
+        UploadChunkValidator validator = new UploadChunkValidator();
+        UploadChunkRepository chunks = new UploadChunkRepository(fileChunkMapper);
+        UploadStorage storage = new UploadStorage(mock(ObjectStorage.class), "http://minio:9000", "videos", "tmp");
+        UploadTranscodeTasks transcode = new UploadTranscodeTasks(videoTranscodeTaskMapper);
+        uploadService = new UploadServiceImpl(videoMapper, sessions, validator, chunks, storage,
+                new UploadMergeService(sessions, validator, chunks, storage, transcode), transcode);
     }
 
     @Test
