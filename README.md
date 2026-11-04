@@ -2,6 +2,8 @@
 
 媒体处理与内容治理演示见 [docs/MEDIA_GOVERNANCE_RUNBOOK.md](docs/MEDIA_GOVERNANCE_RUNBOOK.md)。
 
+转码异常退出、挂起、MinIO 部分写入与迟到 Worker 的验证见 [转码故障矩阵](docs/runbooks/transcode-fault-matrix.md)。
+
 面试准备见 [全项目架构、十五个技术专题与故障案例](docs/interview/README.md)。
 
 一个基于 Java 21、Spring Boot 4、Spring Cloud 和 Vue 3 的视频平台示例项目。项目采用微服务架构，覆盖用户登录、分片上传、视频管理、弹幕、社交互动、搜索以及基于 Canal 的数据同步。
