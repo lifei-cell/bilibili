@@ -1,5 +1,7 @@
 # Bilibili Cloud
 
+当前交付状态、验收入口与待验证范围见 [项目交付说明](docs/PROJECT_DELIVERY.md)。
+
 媒体处理与内容治理演示见 [docs/MEDIA_GOVERNANCE_RUNBOOK.md](docs/MEDIA_GOVERNANCE_RUNBOOK.md)。
 
 转码异常退出、挂起、MinIO 部分写入与迟到 Worker 的验证见 [转码故障矩阵](docs/runbooks/transcode-fault-matrix.md)。
@@ -560,7 +562,7 @@ docker logs bilibili-user-service
 
 ### 视频转码失败或播放地址无法访问
 
-视频服务镜像会安装 FFmpeg，并从 MinIO 的 `source/` 对象读取源文件，将 MP4 产物写入 `play/`。应用默认只给播放产物前缀配置匿名读权限，不会公开源文件；可通过 `MINIO_PUBLIC_READ_ENABLED=false` 关闭。Compose 默认把 `MINIO_PUBLIC_ENDPOINT` 配置为 `http://localhost:9000`，如果前端不在宿主机访问，请按实际浏览器可访问的 MinIO 地址覆盖该变量。
+视频服务镜像会安装 FFmpeg，并从 MinIO 的 `source/` 对象读取源文件，将 HLS 播放列表、分片和封面写入 `play/<任务标识>/attempt-<代次>-<令牌>/`。应用默认只给播放产物前缀配置匿名读权限，不会公开源文件；可通过 `MINIO_PUBLIC_READ_ENABLED=false` 关闭。Compose 默认把 `MINIO_PUBLIC_ENDPOINT` 配置为 `http://localhost:9000`，如果前端不在宿主机访问，请按实际浏览器可访问的 MinIO 地址覆盖该变量。
 
 ### Docker 构建时访问 Docker Hub 超时
 

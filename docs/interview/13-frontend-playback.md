@@ -47,4 +47,4 @@ sequenceDiagram
 
 > 前端亮点是把恢复逻辑从页面中分离：认证过期统一刷新，上传中断重新查询进度，弹幕断线重新取票，退出页面取消定时器并隔离旧回调。浏览器测试不仅检查页面出现，还检查媒体播放时间前进。不过测试使用确定性接口桩，因此它证明前端交互与恢复，不证明真实媒体和后端全部打通。演示时应结合真实 Compose 链路，并继续补真实浏览器端到端验收。
 
-源码：[播放页](../../bilibili-web/src/views/VideoView.vue)、[上传页](../../bilibili-web/src/views/UploadView.vue)、[连接封装](../../bilibili-web/src/services/danmuConnection.ts)、[浏览器工作流](../../.github/workflows/frontend-browser.yml)。
+源码：[播放页](../../bilibili-web/src/views/VideoView.vue)、[上传页](../../bilibili-web/src/views/UploadView.vue)、[连接封装](../../bilibili-web/src/services/danmuConnection.ts)、[浏览器工作流](../../.github/workflows/ci.yml)。
