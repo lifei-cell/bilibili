@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-18T15:31:50Z",
-  "updated_at": "2026-11-18T16:02:00Z",
+  "updated_at": "2026-11-19T11:49:08Z",
   "files": {
     ".env.prod.example": {
       "role": "index",
@@ -75,6 +75,12 @@
       "size": 126879,
       "normalized_sha256": "659523adf721e806d26b9ade8697b583ec7a6507bbff7f30b6d5971903fd2aa2"
     },
+    "aoci.database.txt": {
+      "role": "index",
+      "sha256": "116b6a4d64331af4d4093487cff6a06a0617eb65e218fc9807a1cd092b8d407c",
+      "size": 9187,
+      "normalized_sha256": "116b6a4d64331af4d4093487cff6a06a0617eb65e218fc9807a1cd092b8d407c"
+    },
     "aoci.meta.txt": {
       "role": "index",
       "sha256": "5ccd06dd2198435423141174e4f3eaed7e7645644070e0b5cc2e20dbc889172a",
@@ -83,9 +89,9 @@
     },
     "aoci.txt": {
       "role": "index",
-      "sha256": "5a14c608cf8dadd6e93fab11c5e109ccb422428914166e0ccbb9dd14acb01729",
-      "size": 297,
-      "normalized_sha256": "5a14c608cf8dadd6e93fab11c5e109ccb422428914166e0ccbb9dd14acb01729"
+      "sha256": "9b03fb3b11d2ace37b0215d57909b08c9da85d734d75978963d8bac4d9ad7964",
+      "size": 403,
+      "normalized_sha256": "9b03fb3b11d2ace37b0215d57909b08c9da85d734d75978963d8bac4d9ad7964"
     },
     "bilibili-canal-service/Dockerfile": {
       "role": "index",
@@ -3651,5 +3657,199 @@
       ]
     },
     "apply_authorization_mode": "auto"
+  },
+  "database_cognition": {
+    "version": "database-cognition-binding/v1",
+    "entries": [
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/collection",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "dd36002d7f352c5c5aad5fa6f6c2be0afe786b9f07c39713db14850cce62546b",
+        "entry_sha256": "10f5d324f5b5756c3413a768b0edb9ffd603eec4f98e7bb32e2889c651074f27"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/collection_folder",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "75c2e85201805da5705cf97d85c8256dbded8945c176317562ff422ce2224b2f",
+        "entry_sha256": "087dd38d55ff24767252477bd195481d47f078e69f15fcff5fd824005586ed7c"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/comment",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "4068c0f8a1c6095e45ce42e9ed4fab72bbdc88c16566a1156683ec90a9764b71",
+        "entry_sha256": "1898b76b418f5ac8e9939d8d18deeb23bf15d42e64bc510b5e26eb7e823c675d"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/content_audit_log",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "aa1a1831d24a61d86cfacd9f416d8ad9837dee600cd5aa6a6d435f37470c8532",
+        "entry_sha256": "213e52c3299cc28b97a36db0dd10f58b13f7e8599671daf78ec3abc65843c7a1"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/content_report",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "705f7f83f7e3fa318116e5a24f3b4cbefe6421923b2bf6a8cef31622e238a278",
+        "entry_sha256": "031477ee2c2b35b252ca7b37b8636b89643a6cfeb5ace7164ff7d60fd122794a"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/content_risk_event",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "d8fa5d480f70a1ee9783a98c63148b700cc597e0d981dc02c31a8d8b66ce37d5",
+        "entry_sha256": "e94141ccc9a13c0ca44e7b19dc6094b18df6a815bbe45baa3e5ada4123a8ac84"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/creator_analytics_dirty_day",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "a8f479c481962f09836422e5067402d555ebef12e5d54fca25260c863dcb058f",
+        "entry_sha256": "ddccf09afdd861ce61e920727d8a16db7a167737b6435fed2fde89aa1bd94d0c"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/creator_video_daily_stats",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "43f3548236948a09a642b4bacfc4065fbd87d2e37434dad3386671bb219243e9",
+        "entry_sha256": "d14dafdbda6c15255b3560919912149d93b704fee4fc33943e201dced9f7a258"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/danmu",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "8b27f753cd365bd0b4e1ce0e0f4a07fa4f53c367f2e07b6bedd7aaf2a67eae98",
+        "entry_sha256": "08f3a707dcd87bd1f716e7ca5429256bb09738093324e6b9e1946f9cd59104ce"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/direct_upload_session",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "eb6a632dbe79c0cd891893aac8b71a013301ab9b4beec19284e628b1d231d5fb",
+        "entry_sha256": "362239571d8e8441582b2c668dff07515476e1c8e28ba8106422a9441db6044b"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/file_chunk",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "a53648c073decabe23bd731eaf907ab7420366a8a986f6c3d71a7367aa49c3ee",
+        "entry_sha256": "2a8ab01d00ec5c6a3d41aa80bf68ef508a3d7b8773e4f33a2b375f6defdcc902"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/flyway_schema_history",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "2b8ff63325d41ec19832d3c8e5ce1fb1b92799b822ebf877ac3b79f4565ad39f",
+        "entry_sha256": "998f4ebc789cef9a355e930a28aaa9981f44a453b6e16eb63925c334350b076b"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/follow",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "0784a2ac3b703a276a88ead52b0f140685de11114822e51f70c51dde3d5ce5d8",
+        "entry_sha256": "09d5b73e90fed86e8476a4b2e1451cd94daf682e9df0e63aad779dd5eabf2790"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/mq_consumed_message",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "1d98d858806c45b2067caafc25e67a3bfed525948d36fab80896f31ab05c81ed",
+        "entry_sha256": "8f5c5968b4f52b5fd02449da889cc5b9b3ba4ba2ad82a01211443e3398eb72d7"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/mq_failed_message",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "995c36667869da95b93ecd932ce455145ccb4238fa45f238c30858fa60e7e5b9",
+        "entry_sha256": "72dec113ed158389772bd062baf572a9e49c4fcd56ce3edd79be93b25301ac45"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/mq_inbox_receipt",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "1ee70e104fc1ec4e3dbd22e1c068575837d6eaaf38dd41fbae059c02a670e16a",
+        "entry_sha256": "e9ed92ca3c4a961f5ea3f7eed6924b4c4aa8d9c9f3d75e731241a61c5b84c4af"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/mq_replay_audit",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "2165ced8944c697f4aec981bdd55aec3fdafdae9faa67408aa39b51e47a12d06",
+        "entry_sha256": "dfb326477d12b8a7f308c6756dc39d8e8c234ac98c854f9054a953555f4b8100"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/reliable_event_outbox",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "a2a537325d55ad4a71cd10b2435eed8985cfc67390f6bab16a7440ef49ecdfe1",
+        "entry_sha256": "8c26dc7e5ca9b362d51f58af5d8e2cd551f10c3626801156dd79bb348e6554cb"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/reliable_event_outbox_archive",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "a6592aeccc7056be1b5927f4b30168a48fa452086d38caae0d39b18c743813d3",
+        "entry_sha256": "8470994e16e13287ab4638b9054bedfd287c37119ab7c7aa4cf92908e817eb0a"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/sys_user",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "8c57c90b77d686fbfbc832a90768075a0f090c95e37443b74fadc307bdb3af7f",
+        "entry_sha256": "80118a00b58a58168a7efa6039af165430f41bda4d163d9302508eaa88cf7eea"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/sys_user_auth",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "54a01a41e34a38291b3b83668367d8ce5462c7a1fd52ae89b6ee2268b821750a",
+        "entry_sha256": "67b57d59b4ddda798b43de4d2a41fbaffe85fdc63e09f39d679e0811deddae62"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/user_like",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "eefc0f4febc7febc2578fd5e382a7ab003b43e2b8467f4a3e2d95d63a311a91a",
+        "entry_sha256": "c08f6e03b506b00ea34f01dfe1724fbca5cb257f48d3b0c022a9809e14b618ac"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/video",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "4e2c437ac66bfa3b7038ade7427ff8a82b9e41e5db8fb9ce303a73fb6d397b7f",
+        "entry_sha256": "a2f7717e2018b58cde5eaabc0e2ffd3baf860bf0c583e4afa67ecf307288ccf0"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/video_category",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "a56cb9b7b16d8219172bf03ee3801c7602ec9f957bcdf7f9df678000328727a3",
+        "entry_sha256": "bcfabfad18b4e2443d5673d52635dbcf79b9daefc6748405793118252d6b2050"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/video_stats",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "e55d9358e73ab29c269b96c83611b71898b3707d565550292c20921a6199b77d",
+        "entry_sha256": "1aca8b50da6a4e6e1f6c1fa58beef10e88982798e6eb15c30c4ee7ccced01f5a"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/video_transcode_task",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "d99515079c8640d7aa9dcfda56da86a52c1251800d87a61a8b582ff82bed09e3",
+        "entry_sha256": "eb9161bfe1463008782934f00192cce215215e81f9ac4dd54c9e48735fb4a29d"
+      },
+      {
+        "object_ref": "database://bilibili-mysql/bilibili/video_view_event",
+        "source_id": "bilibili-mysql",
+        "evidence_version": "database-evidence/v1",
+        "table_evidence_sha256": "fb9109d8d199767f35aa37b25286416f5fab3c835d4abb8c23eed8e74e5ba5ed",
+        "entry_sha256": "c0ce931899ee19b568fe5f346b9c04da0c79c7e1c15149d1c2fc07175316a54f"
+      }
+    ]
   }
 }
