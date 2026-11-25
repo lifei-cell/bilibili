@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-18T15:31:50Z",
-  "updated_at": "2026-11-25T01:47:10Z",
+  "updated_at": "2026-11-25T02:02:26Z",
   "files": {
     ".env.prod.example": {
       "role": "index",
@@ -71,9 +71,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "21224300d283525794f0be9f0d5165731c11a39f30ea450509ea97f263bfd7e6",
-      "size": 128906,
-      "normalized_sha256": "21224300d283525794f0be9f0d5165731c11a39f30ea450509ea97f263bfd7e6"
+      "sha256": "e69afc244c5779c61ae4e394ecd9e49210c820334f7c6dd66a063e9aacaee052",
+      "size": 128952,
+      "normalized_sha256": "e69afc244c5779c61ae4e394ecd9e49210c820334f7c6dd66a063e9aacaee052"
     },
     "aoci.database.txt": {
       "role": "index",
@@ -2813,9 +2813,9 @@
     },
     "docker-compose.e2e.yml": {
       "role": "index",
-      "sha256": "bc0ddf91e8e006fac5cec59c0a2aed348e09b04234f586aa4c2e1fe409fe7adf",
-      "size": 1128,
-      "normalized_sha256": "bc0ddf91e8e006fac5cec59c0a2aed348e09b04234f586aa4c2e1fe409fe7adf"
+      "sha256": "c019bb882c41ddec63fbc68707397390843ee4408377a6aa371e893559de3f5a",
+      "size": 1274,
+      "normalized_sha256": "c019bb882c41ddec63fbc68707397390843ee4408377a6aa371e893559de3f5a"
     },
     "docker-compose.gpu.intel.yml": {
       "role": "index",

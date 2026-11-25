@@ -6,7 +6,7 @@
 .gitignore[FV3T]: F:排除本地构建产物、环境文件、日志与机器绑定的Codex配置 | R:- | A:.codex/config.toml,.env,.env.local | S:Git忽略规则不改变已跟踪文件的状态
 AGENTS.md[SC5S]: F:约定本仓库 Agent 对 AOCI 认知的加载、分块、认证、条目创作与收尾要求 | R:- | A:aoci_rules,aoci_overview,aoci_maintain,aoci_update_entry | S:首次构建或修复不完整索引时跟随实时Guide，完整交付的Attestation不做语义重试
 README.md[SG6L]: F:说明视频平台的服务拓扑、运行条件、快速启动、接口和可靠性验收入口 | R:code:docs/PROJECT_DELIVERY.md,code:docs/MEDIA_GOVERNANCE_RUNBOOK.md,code:docker-compose.yml | A:快速启动,API调试,测试 | S:Nginx在当前文档路径仅代理API，Vite前端单独启动
-docker-compose.e2e.yml[OQ4T]: F:为真实链路测试覆盖MinIO镜像、软件编码及短间隔调度 | R:code:docker-compose.service.yml | A:MINIO_TEST_IMAGE,VIDEO_TRANSCODE_ENCODER | S:同一MinIO覆盖变量也供Testcontainers使用，Canal应用消费尝试设为1
+docker-compose.e2e.yml[OQ4T]: F:为真实验收覆盖MinIO镜像和CORS、软件编码及短间隔调度 | R:code:docker-compose.service.yml,code:bilibili-web/playwright.config.ts | A:MINIO_TEST_IMAGE,MINIO_CORS_ALLOW_ORIGIN,VIDEO_TRANSCODE_ENCODER | S:默认放行Playwright的127.0.0.1来源，Canal消费尝试为1
 docker-compose.gpu.intel.yml[OH3T]: F:为视频API及独立转码Worker映射Intel渲染设备 | R:- | A:/dev/dri,VIDEO_TRANSCODE_ENCODER | S:保留auto探测
 docker-compose.gpu.nvidia.yml[OH3T]: F:给视频API与专用Worker分配NVIDIA设备并选NVENC | R:- | A:gpus,VIDEO_TRANSCODE_ENCODER | S:需要宿主容器GPU支持
 docker-compose.p1.yml[OR4T]: F:为可靠性演练隔离转码消费者、缩短租约并加入第二Canal实例 | R:code:docker-compose.service.yml | A:bilibili-canal-service-2,VIDEO_TRANSCODE_LEASE_SECONDS | S:用30秒租期，第二实例宿主端口8087

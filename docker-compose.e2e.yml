@@ -1,6 +1,8 @@
 services:
   minio:
     image: ${MINIO_TEST_IMAGE:-quay.io/minio/minio:RELEASE.2024-12-13T22-19-12Z}
+    environment:
+      MINIO_API_CORS_ALLOW_ORIGIN: ${MINIO_CORS_ALLOW_ORIGIN:-http://127.0.0.1:5173,http://localhost:5173,http://localhost:8080}
 
   bilibili-video-service:
     environment:
