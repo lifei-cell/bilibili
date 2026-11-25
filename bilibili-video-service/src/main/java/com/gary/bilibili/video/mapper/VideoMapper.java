@@ -14,6 +14,19 @@ import java.util.List;
 public interface VideoMapper extends BaseMapper<Video> {
 
     @Select("""
+            <script>
+            select id, title, description, cover_url, tags, status, audit_remark, update_time
+            from video
+            where user_id = #{userId} and deleted = 0
+            <if test="status != null">and status = #{status}</if>
+            order by update_time desc, id desc
+            limit #{offset}, #{size}
+            </script>
+            """)
+    List<Video> selectCreatorSubmissions(@Param("userId") long userId, @Param("status") Integer status,
+                                         @Param("offset") long offset, @Param("size") int size);
+
+    @Select("""
             select v.id, v.title, v.description, v.cover_url, v.duration, v.category_id, v.tags,
                    u.id as author_id, u.nickname as author_nickname, u.avatar as author_avatar,
                    coalesce(s.view_count, 0) as view_count,

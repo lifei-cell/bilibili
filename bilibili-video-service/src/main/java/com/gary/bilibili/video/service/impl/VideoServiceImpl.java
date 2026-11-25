@@ -21,6 +21,7 @@ import com.gary.bilibili.video.message.VideoViewMessage;
 import com.gary.bilibili.video.model.VideoDetailRow;
 import com.gary.bilibili.video.model.VideoListRow;
 import com.gary.bilibili.video.model.VideoPage;
+import com.gary.bilibili.video.model.VideoTags;
 import com.gary.bilibili.video.model.MediaTranscodeResult;
 import com.gary.bilibili.video.service.VideoBloomFilter;
 import com.gary.bilibili.video.service.VideoService;
@@ -44,10 +45,8 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -120,11 +119,11 @@ public class VideoServiceImpl implements VideoService {
         video.setDuration(request.getDuration());
         video.setResolution(request.getResolution().trim().toUpperCase(Locale.ROOT));
         video.setCategoryId(request.getCategoryId());
-        video.setTags(joinTags(request.getTags()));
-        video.setStatus("REJECT".equals(risk.decision())
+        video.setTags(VideoTags.encode(request.getTags()));
+        video.setStatus(risk.rejected()
                 ? VideoConstant.STATUS_REJECTED : VideoConstant.STATUS_AUDITING);
         video.setRiskLevel(risk.level());
-        if ("REJECT".equals(risk.decision())) video.setAuditRemark("风控规则拒绝: " + String.join(",", risk.rules()));
+        video.setAuditRemark(risk.rejectionRemark());
         video.setDeleted(0);
         videoMapper.insert(video);
         contentRiskService.record(userId, video.getId(), risk);
@@ -244,7 +243,7 @@ public class VideoServiceImpl implements VideoService {
             changed = true;
         }
         if (request.getTags() != null) {
-            update.setTags(joinTags(request.getTags()));
+            update.setTags(VideoTags.encode(request.getTags()));
             changed = true;
         }
         if (!changed) {
@@ -330,22 +329,6 @@ public class VideoServiceImpl implements VideoService {
         }
     }
 
-    private String joinTags(List<String> tags) {
-        Set<String> normalizedTags = new LinkedHashSet<>();
-        for (String tag : tags) {
-            String normalizedTag = tag.trim();
-            if (!StringUtils.hasText(normalizedTag) || normalizedTag.contains(",")) {
-                throw new BusinessException("请求参数错误");
-            }
-            normalizedTags.add(normalizedTag);
-        }
-        String value = String.join(",", normalizedTags);
-        if (value.length() > 500) {
-            throw new BusinessException("请求参数错误");
-        }
-        return value;
-    }
-
     private String normalizeSort(String sort) {
         if (!StringUtils.hasText(sort)) {
             return VideoConstant.SORT_DEFAULT;
@@ -379,17 +362,10 @@ public class VideoServiceImpl implements VideoService {
         detail.setCoverUrl(row.getCoverUrl());
         detail.setDuration(row.getDuration());
         detail.setCategoryId(row.getCategoryId());
-        detail.setTags(splitTags(row.getTags()));
+        detail.setTags(VideoTags.decode(row.getTags()));
         detail.setAuthor(author);
         detail.setStats(stats);
         return detail;
-    }
-
-    private List<String> splitTags(String tags) {
-        if (!StringUtils.hasText(tags)) {
-            return Collections.emptyList();
-        }
-        return List.of(tags.split(","));
     }
 
     private VideoDetailVO readDetailCache(Long videoId) {

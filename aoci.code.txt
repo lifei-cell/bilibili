@@ -515,6 +515,7 @@ FileController.java[EB4T]: F:为以文件摘要为中心的兼容流程提供秒
 UploadController.java[EB5T]: F:提供按会话检查、接收分片、合并、查询进度与转码任务的接口 | R:- | A:/api/upload,/check,/chunk,/merge,/progress/{uploadId},/transcode/{taskId} | S:分片请求用multipart表单绑定
 VideoController.java[EB5T]: F:提供视频投稿、详情、播放、列表、作者内容及元数据维护 | R:- | A:/api/video,/publish,/{videoId}/play,/list,/user/{userId} | S:列表只接受default、hot、new三种排序
 VideoOperationsController.java[ER5T]: F:提供人工发布视频和补发高档位转码的运维入口 | R:- | A:/api/admin/video,X-Admin-Token,/{videoId}/publish,/transcode/{taskId}/retry-renditions | S:两种操作都校验管理口令
+CreatorSubmissionController.java[EB5T]: F:为当前作者提供投稿分页和驳回后重提接口 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/CreatorSubmissionService.java | A:/api/creator/submissions,/{videoId}/resubmit | S:列表状态只接受0至3，单页最多100
 
 ===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/dto/===
 AuditActionDTO.java[EB2T]: F:约束视频审核动作与可选审核备注 | R:- | A:APPROVE,REJECT,OFFLINE,RESTORE | S:-
@@ -530,6 +531,7 @@ UploadChunkDTO.java[EB3T]: F:校验会话分片请求的会话ID、两个摘要�
 UploadMergeDTO.java[EB3T]: F:校验按上传会话合并分片所需的文件摘要、名称和片数 | R:- | A:uploadId,fileMd5,fileName,totalChunks | S:-
 VideoPublishDTO.java[EB4T]: F:校验投稿的视频文字元数据、来源对象描述、分类及标签 | R:- | A:title,sourceUrl,fileMd5,fileSize,categoryId,tags | S:来源URL与摘要必填，分类ID要求为正
 VideoUpdateDTO.java[EB3T]: F:校验视频元数据局部更新的标题、介绍、封面、分类与标签 | R:- | A:VideoUpdateDTO | S:提供的标签各自非空且不超过50字符
+VideoResubmitDTO.java[EB3T]: F:承载重提时替换的标题、简介和标签 | R:- | A:title,description,tags | S:简介和标签列表可为空内容，但不能省略
 
 ===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/entity/===
 ContentAuditLog.java[PD3T]: F:映射内容治理动作的目标、操作者、前后状态和备注 | R:- | A:content_audit_log | S:-
@@ -552,7 +554,7 @@ ContentRiskEventMapper.java[PD2T]: F:提供内容风险事件的 MyBatis 持久�
 DirectUploadSessionMapper.java[PD4T]: F:按上传ID读取直传会话并原子确认完成 | R:- | A:selectByUploadId,markCompleted | S:完成更新要求归属正确、状态为0且未过期
 FileChunkMapper.java[PD2T]: F:提供分片登记表的通用持久化操作 | R:- | A:FileChunkMapper | S:-
 VideoCategoryMapper.java[PD3T]: F:从数据库读取启用的分类标识、名称和树形关系 | R:- | A:VideoCategoryMapper | S:按sort再按ID升序
-VideoMapper.java[PD6S]: F:查询公开视频详情和列表、作者与统计投影及后台审核数据 | R:- | A:selectPublishedDetail,selectPublishedList,selectAdminQueue | S:公开查询过滤未发布和软删，热排使用播放数并以发布时间作次序
+VideoMapper.java[PD6S]: F:查询公开视频、作者私有投稿、统计投影和审核队列 | R:database://bilibili-mysql/bilibili/video | A:selectPublishedDetail,selectPublishedList,selectCreatorSubmissions,selectAdminQueue | S:公开查询只取已发布且未删的视频。私有列表按作者隔离，可查非公开状态，按更新时间和ID倒序
 VideoStatsMapper.java[PD3T]: F:对数据库视频播放量应用增量 | R:- | A:incrementViewCount | S:-
 VideoTranscodeTaskMapper.java[PR8S]: F:维护基础转码、补偿档位和清理查询，条件推进所有权及结果 | R:code:bilibili-common/src/main/resources/db/migration/V6__transcode_task_lease.sql,code:bilibili-common/src/main/resources/db/migration/V7__adaptive_rendition_recovery.sql | A:selectDispatchable,markDispatched,markProcessing,markSuccess,markDegradedSuccess,countAttemptReferences | S:持有者写要求代次、令牌和有效数据库租期。分阶段结果可保留围栏，最终结果才清令牌
 
@@ -572,6 +574,7 @@ UploadTask.java[CB3T]: F:保存可恢复分片任务的ID、归属、整文件�
 VideoDetailRow.java[PD2T]: F:承载详情查询拼出的元数据、作者资料和互动计数 | R:- | A:VideoDetailRow | S:-
 VideoListRow.java[PD2T]: F:承载视频列表投影的封面、标题、作者与关键计数 | R:- | A:VideoListRow | S:-
 VideoPage.java[CB2T]: F:组合视频列表当前页数据与总数 | R:- | A:records,total | S:-
+VideoTags.java[DB4T]: F:校验并转换业务标签列表和数据库存储文本 | R:database://bilibili-mysql/bilibili/video | A:encode,decode | S:首现顺序去重，单个标签不能有逗号，存储总长最多500
 
 ===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/producer/===
 VideoTranscodeTaskPublisher.java[AW7S]: F:扫描待派发或租约过期的转码任务，领取新代次并向MQ发消息 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/VideoTranscodeTaskMapper.java | A:dispatchPendingTasks,video.transcode.publisher-enabled | S:Redis短锁只减少争用，数据库代次才决定所有权。发送异常只回退本次安装的代次
@@ -583,7 +586,7 @@ CreatorAnalyticsRepository.java[PA7M]: F:写入播放事实和脏日期，重建
 AdminAuthorizationService.java[AI4T]: F:从登录会话取得用户ID，并按数据库角色校验内容治理管理员 | R:- | A:requireAdmin | S:角色必须为admin
 CategoryService.java[AB2T]: F:定义返回可用视频分类的服务接口 | R:- | A:CategoryService | S:-
 ContentGovernanceService.java[AB7S]: F:受理举报、处理审核队列和举报处置并记录治理审计 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/ContentReportMapper.java,code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/social/VideoInteractionStats.java | A:report,videos,reports,auditVideo,resolveReport | S:发布和恢复要求已有播放URL。举报成立且首次屏蔽评论时同事务扣减视频评论数，结案竞争失败则回滚
-ContentRiskService.java[DB5T]: F:按关键词、标签、投稿频率和重复文本给投稿打分，保存命中与处置 | R:- | A:evaluate,record,RiskDecision | S:规则证据落入内容风险事件，不等同于最终人工审核
+ContentRiskService.java[DB5T]: F:按关键词、标签、频率和重复文本评估投稿及重提，并记录风控命中 | R:database://bilibili-mysql/bilibili/content_risk_event | A:evaluate,record,RiskDecision | S:高风险返回拒绝和规则说明，通过风控的稿件仍需人工审核
 CreatorAnalyticsAggregator.java[AA5T]: F:在事务中锁定作者并替换其指定日期的统计聚合 | R:- | A:rebuildDay | S:用作者级锁协调同作者的重建写入
 CreatorAnalyticsEventService.java[AA5T]: F:记录播放事件及相应作者的脏日期，也接收外部日期重算标记 | R:- | A:recordView,markDirty | S:仅首次插入播放事实时标脏
 CreatorAnalyticsService.java[AA6S]: F:查询当前作者的趋势、合计与视频排行并支持手动区间重建 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/repository/CreatorAnalyticsRepository.java | A:getDashboard,rebuild | S:日期范围不能倒置或超过今天，手动重建使用当前作者身份
@@ -605,11 +608,12 @@ VideoService.java[AB3T]: F:定义视频投稿、内容详情与播放、列表�
 VideoTranscodeLeaseService.java[MR7T]: F:定时续约转码所有权并提供对执行和发布回调的围栏 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/VideoTranscodeTaskMapper.java | A:start,assertHeld,LeaseLostException | S:续约更新不命中时作失租处理，后续断言拒绝继续
 VideoTranscodeResultService.java[AR7T]: F:在一笔事务内提交当前转码任务结果并更新已关联视频播放数据 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/VideoTranscodeTaskMapper.java | A:publish | S:先更新任务围栏，失败抛失租。匹配不到视频行可以是尚未投稿
 VideoTranscodeWorker.java[AB4T]: F:约定转码任务、首档可播回调、租约检查与最终媒体结果 | R:- | A:transcode,VideoTranscodeWorker | S:便捷重载提供空回调，受治理消费应传真实租约断言
+CreatorSubmissionService.java[AB7S]: F:分页查看本人投稿并重新提交驳回作品 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/VideoMapper.java,code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/ContentRiskService.java,database://bilibili-mysql/bilibili/content_audit_log | A:list,resubmit,RESUBMIT | S:写入按作者和未删除行加锁，只允许修改后重提已驳回且有播放地址的投稿。保留原视频与媒体引用，风控和审计随状态变更同事务提交
 
 ===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/service/impl/===
 CategoryServiceImpl.java[AB3T]: F:把启用的数据库分类投影映射为API分类数据 | R:- | A:listEnabled | S:无分类时返回空列表
 UploadServiceImpl.java[AB7M]: F:编排秒传判断、分片校验与存储、进度及兼容文件API | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/upload/UploadSessionManager.java,code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/upload/UploadMergeService.java | A:check,uploadChunk,getProgress,checkFile,mergeFile | S:旧接口转换到同一会话流程。已存在分片应校验归属及摘要后复用
-VideoServiceImpl.java[AB8L]: F:管理投稿、可见详情与播放、分页以及作者元数据更新和软删 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/VideoMapper.java,code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/ContentRiskService.java | A:publish,getDetail,getPlayInfo,getList,update,delete | S:投稿只认已完成转码任务的URL，不能信任客户端来源。写操作失效列表，播放事件记入Outbox
+VideoServiceImpl.java[AB8L]: F:管理初次投稿、公开详情与播放、分页以及作者元数据更新和软删 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/VideoMapper.java,code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/ContentRiskService.java,code:bilibili-video-service/src/main/java/com/gary/bilibili/video/model/VideoTags.java | A:publish,getDetail,getPlayInfo,getList,update,delete | S:投稿从已完成转码任务取得媒体URL。写操作失效列表，播放事件写入Outbox
 
 ===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/service/upload/===
 UploadChunkRepository.java[PD5T]: F:登记和查询上传分片，校验合并顺序、完整性及会话归属 | R:- | A:saveChunk,loadAndValidateChunks,findUploadedChunks | S:重复分片的摘要应一致，合并要求序号连续
@@ -644,6 +648,7 @@ VideoPublishVO.java[EB2T]: F:返回投稿生成的视频ID及审核或发布状�
 VideoQualityVO.java[EB2T]: F:携带某一视频清晰度和可访问的媒体URL | R:- | A:quality,url | S:-
 VideoStatsVO.java[EB2T]: F:展示视频播放、点赞、收藏、弹幕和评论的计数 | R:- | A:VideoStatsVO | S:-
 VideoTranscodeStatusVO.java[ER3T]: F:返回转码任务基本与档位状态、重试时间、故障信息及输出 | R:- | A:VideoTranscodeStatusVO | S:-
+CreatorSubmissionVO.java[EB3T]: F:返回作者投稿列表的可编辑文字、封面、状态和审核说明 | R:- | A:CreatorSubmissionVO | S:仅包含管理页面字段，不提供原始文件或播放地址
 
 ===/<repository>/bilibili-video-service/src/main/resources/===
 application-dev.yml[FC3T]: F:配置开发视频服务的宿主数据库、Redis、Nacos、MQ和MinIO地址 | R:- | A:dev | S:MinIO内部和公开地址在开发默认都指本机
@@ -724,14 +729,15 @@ styles.css[FU3S]: F:提供站点色彩、字体、响应式导航、通用按钮
 
 ===/<repository>/bilibili-web/src/api/===
 http.ts[II7S]: F:处理统一 API 包装、请求访问令牌及401后的刷新和重放 | R:code:bilibili-web/src/stores/auth.ts | A:apiRequest,refreshClient,observeAuthSession | S:访问令牌保存在模块内存，同一批401共享刷新请求，原请求最多重放一次
-index.ts[IB5T]: F:把前端用户、视频、弹幕、上传、治理与统计操作映射到网关 API | R:code:bilibili-web/src/api/http.ts | A:userApi,videoApi,danmuApi,uploadApi,governanceApi,creatorApi | S:-
+index.ts[IB5T]: F:把前端账号、视频、互动、上传和创作者操作映射到网关API | R:code:bilibili-web/src/api/http.ts | A:userApi,videoApi,danmuApi,uploadApi,governanceApi,creatorApi | S:-
 
 ===/<repository>/bilibili-web/src/components/===
 EmptyState.vue[CU2T]: F:渲染可配置标题和说明的列表空状态 | R:- | A:title,description | S:-
 VideoCard.vue[CU3T]: F:渲染带封面、播放计数和发布时间的视频卡片并跳转详情 | R:- | A:video,/video/{id} | S:-
+SubmissionResubmitForm.vue[EU4T]: F:编辑已驳回投稿的标题、简介和标签并提交表单数据 | R:code:bilibili-web/src/types/api.ts | A:submission,saving,submit,cancel | S:中英文逗号都作为标签分隔符，提交时检查每个标签的长度
 
 ===/<repository>/bilibili-web/src/router/===
-index.ts[EI5T]: F:注册页面路由并在访问受保护路由时先恢复会话及检查管理员角色 | R:code:bilibili-web/src/stores/auth.ts | A:beforeEach,meta.auth,meta.admin | S:未登录跳认证页并保留返回位置
+index.ts[EI5T]: F:注册公开和受保护的页面路由并恢复登录会话 | R:code:bilibili-web/src/stores/auth.ts | A:beforeEach,meta.auth,meta.admin,/creator/submissions | S:未登录跳认证页并保留目标位置，管理员路由额外检查角色
 
 ===/<repository>/bilibili-web/src/services/===
 chunkUpload.ts[AB5T]: F:检查秒传及已存在分片并按5 MiB补传后请求合并 | R:code:bilibili-web/src/api/index.ts | A:uploadSmallVideo | S:只上传未完成片，合并使用同一uploadId
@@ -741,7 +747,7 @@ danmuConnection.ts[IN6T]: F:为视频建 WebSocket 连接，领取票据、解�
 auth.ts[AI5T]: F:维护前端登录会话资料并处理刷新恢复、退出和清理 | R:code:bilibili-web/src/api/http.ts | A:useAuthStore,hydrate,logout,clear | S:并发恢复共享同一在途请求
 
 ===/<repository>/bilibili-web/src/types/===
-api.ts[CB4M]: F:定义前端接收的统一响应、会话、视频、互动、上传和治理类型 | R:- | A:ApiResult,LoginResult,VideoDetail,DanmuItem,UploadMerge | S:-
+api.ts[CB4M]: F:定义前端使用的响应、会话、视频、互动和审核重提类型 | R:- | A:ApiResult,VideoDetail,UploadMerge,CreatorSubmission,VideoResubmission | S:-
 
 ===/<repository>/bilibili-web/src/utils/===
 format.ts[CU3T]: F:提供分类回退、计数和时长格式、相对时间及头像回退 | R:- | A:replaceCategories,formatCount,formatDuration,relativeTime,avatarFallback | S:后端分类列表为空时保留默认分类
@@ -752,10 +758,11 @@ AuthView.vue[EI4T]: F:呈现密码登录、验证码登录及注册，处理验�
 CreatorAnalyticsView.vue[EA4S]: F:展示创作者合计、趋势、排行和日期筛选并发起重建 | R:- | A:CreatorAnalyticsView.vue | S:起始范围为最近7个本地日期
 HomeView.vue[EU4S]: F:展示推荐视频、分类与排序切换，并加载热词 | R:- | A:HomeView.vue | S:热词接口异常时使用静态回退
 NotFoundView.vue[EU1T]: F:在未知路由显示404和返回首页入口 | R:- | A:NotFoundView.vue | S:-
-ProfileView.vue[EU4T]: F:展示创作者资料及投稿，并为本人提供编辑资料和退出 | R:- | A:ProfileView.vue | S:本人额外请求私有资料，缺少目标身份时跳登录
+ProfileView.vue[EU4S]: F:展示创作者资料和公开作品，提供本人资料编辑和投稿管理入口 | R:code:bilibili-web/src/views/CreatorSubmissionsView.vue | A:ProfileView.vue | S:仅本人可见投稿管理入口，缺少目标身份时跳登录
 SearchView.vue[EU4S]: F:用路由查询串同步搜索词、筛选及排序，展示分页结果 | R:- | A:SearchView.vue | S:每页12条，切换查询条件通过路由驱动
-UploadView.vue[EB6S]: F:选择视频、计算MD5、完成直传或分片，轮询转码并提交投稿 | R:code:bilibili-web/src/services/chunkUpload.ts | A:startUpload,waitForTranscode,publish | S:文件达到20 MiB走签名直传。离页终止轮询，未完成转码不能进入投稿阶段
+UploadView.vue[EB6S]: F:选择视频、计算MD5、直传或分片并等待转码后提交初稿 | R:code:bilibili-web/src/services/chunkUpload.ts,code:bilibili-web/src/views/CreatorSubmissionsView.vue | A:startUpload,waitForTranscode,publish | S:达到20 MiB走签名直传，离页终止轮询。根据服务端投稿状态显示待审或风控未通过
 VideoView.vue[EU7L]: F:组合HLS播放、清晰度切换、实时弹幕、评论、互动和举报 | R:code:bilibili-web/src/services/danmuConnection.ts,code:bilibili-web/src/api/index.ts | A:load,changeQuality,sendDanmu,attachSource | S:切视频时废弃上一加载并关闭其连接。切换清晰度保留时间与播放状态，卸载释放HLS及弹幕套接字
+CreatorSubmissionsView.vue[EU5S]: F:按审核状态分页查看本人投稿、阅读审核说明并提交驳回后的改稿 | R:code:bilibili-web/src/api/index.ts,code:bilibili-web/src/components/SubmissionResubmitForm.vue | A:load,resubmit,/creator/submissions | S:重提后切到服务器返回的状态并重新加载，只给已发布投稿提供公开查看入口
 
 ===/<repository>/docker/canal/===
 instance.properties[FD4T]: F:配置 Canal 的 MySQL 主库连接、实例ID和 binlog 表过滤 | R:- | A:canal.instance.master.address,canal.instance.filter.regex | S:采集bilibili库，过滤mysql复制元数据表
@@ -795,7 +802,7 @@ broker.conf[FM3T]: F:配置开发 RocketMQ 主Broker、主题创建、刷盘和�
 minio.Dockerfile[OQ4T]: F:固定版本源码编译供故障矩阵使用的 MinIO 镜像 | R:- | A:docker/test/minio.Dockerfile | S:固定提交构建，最终用scratch承载无CGO二进制
 
 ===/<repository>/docs/===
-MEDIA_GOVERNANCE_RUNBOOK.md[SB4T]: F:描述媒资上传、转码档位、审核和内容举报的演示闭环 | R:- | A:闭环,演示,生产配置,自动回归 | S:创作者提交后经审核才进入公开入口
+MEDIA_GOVERNANCE_RUNBOOK.md[SB4T]: F:说明媒资处理、审核、驳回重提和举报的演示及验收步骤 | R:code:scripts/e2e/browser-e2e.ps1 | A:闭环,演示,生产配置,自动回归 | S:重提复用已转码的原视频，须重新经过风控和人工审核
 PROJECT_DELIVERY.md[SG5T]: F:记录项目交付范围、各层验收入口及V12互动计数升级 | R:code:.github/workflows/ci.yml,code:scripts/verification/release-validation.ps1 | A:验收入口,V12 互动计数升级,CI收尾 | S:完整发布需Linux或WSL的媒体工具，升级前停旧版社交写入和视频举报处置
 
 ===/<repository>/docs/architecture/===

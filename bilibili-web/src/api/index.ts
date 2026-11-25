@@ -3,6 +3,7 @@ import type {
   CollectionFolder, CommentItem, CurrentUser, DanmuItem, LoginResult, SearchVideo,
   AdminVideo, ContentReport, DirectUploadInit, GovernancePage, UploadCheck, UploadMerge, UploadTranscodeTask,
   CreatorAnalytics, UserProfile, VideoCategory, VideoDetail, VideoListItem, VideoPlay,
+  CreatorSubmission, SubmissionStatus, VideoResubmission,
 } from '@/types/api'
 
 export const userApi = {
@@ -83,6 +84,10 @@ export const governanceApi = {
 }
 
 export const creatorApi = {
+  submissions: (params: { status?: SubmissionStatus; page: number; size: number }) =>
+    apiRequest<GovernancePage<CreatorSubmission>>({ method: 'GET', url: '/creator/submissions', params }),
+  resubmit: (videoId: number, data: VideoResubmission) =>
+    apiRequest<{ videoId: number; status: SubmissionStatus }>({ method: 'POST', url: `/creator/submissions/${videoId}/resubmit`, data }),
   analytics: (params: { startDate: string; endDate: string; limit?: number }) =>
     apiRequest<CreatorAnalytics>({ method: 'GET', url: '/creator/analytics', params }),
   rebuildAnalytics: (params: { startDate: string; endDate: string; limit?: number }) =>

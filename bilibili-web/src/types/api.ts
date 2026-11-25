@@ -172,6 +172,21 @@ export interface AdminVideo {
   id: number; userId: number; authorName: string; title: string; coverUrl: string; playUrl: string
   status: number; auditRemark: string; riskLevel: 'LOW' | 'MEDIUM' | 'HIGH'; createTime: string
 }
+
+export type SubmissionStatus = 0 | 1 | 2 | 3
+
+export interface CreatorSubmission {
+  id: number
+  title: string
+  description: string | null
+  coverUrl: string | null
+  tags: string[]
+  status: SubmissionStatus
+  auditRemark: string | null
+  updateTime: string
+}
+
+export type VideoResubmission = { title: string; description: string; tags: string[] }
 export interface ContentReport {
   id: number; reporterId: number; reporterName: string; targetType: string; targetId: number
   reasonCode: string; description: string; evidenceUrl: string; status: number; createTime: string

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-18T15:31:50Z",
-  "updated_at": "2026-11-25T02:02:26Z",
+  "updated_at": "2026-11-25T03:18:10Z",
   "files": {
     ".env.prod.example": {
       "role": "index",
@@ -71,9 +71,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "e69afc244c5779c61ae4e394ecd9e49210c820334f7c6dd66a063e9aacaee052",
-      "size": 128952,
-      "normalized_sha256": "e69afc244c5779c61ae4e394ecd9e49210c820334f7c6dd66a063e9aacaee052"
+      "sha256": "eea94b4096948279eb90efb44ec3d696cd63493e362385c1ff488e9054315c8c",
+      "size": 131485,
+      "normalized_sha256": "eea94b4096948279eb90efb44ec3d696cd63493e362385c1ff488e9054315c8c"
     },
     "aoci.database.txt": {
       "role": "index",
@@ -1671,6 +1671,12 @@
       "size": 2006,
       "normalized_sha256": "d939fd6e17213509ffc228d26931048c8228522c0c390c643b6df68ac32871e6"
     },
+    "bilibili-video-service/src/main/java/com/gary/bilibili/video/controller/CreatorSubmissionController.java": {
+      "role": "index",
+      "sha256": "52567c1c9c6b55362b268cbf7de576b68b2bb786f76a4c69046856762aed14de",
+      "size": 1984,
+      "normalized_sha256": "52567c1c9c6b55362b268cbf7de576b68b2bb786f76a4c69046856762aed14de"
+    },
     "bilibili-video-service/src/main/java/com/gary/bilibili/video/controller/DirectUploadController.java": {
       "role": "index",
       "sha256": "778516daddb88d69cc617b3f377e7f6df96a18b19efc2dcd3e5d84ecb8312237",
@@ -1772,6 +1778,12 @@
       "sha256": "bf9efb56ebfecbd261b49fc72e77c070bf36160453797f8a10adda5f13f67e6a",
       "size": 974,
       "normalized_sha256": "bf9efb56ebfecbd261b49fc72e77c070bf36160453797f8a10adda5f13f67e6a"
+    },
+    "bilibili-video-service/src/main/java/com/gary/bilibili/video/dto/VideoResubmitDTO.java": {
+      "role": "index",
+      "sha256": "722cfc9c455ad4ecb05915696823cf5288de9541ed960bca64b44d2e73b01b3c",
+      "size": 405,
+      "normalized_sha256": "722cfc9c455ad4ecb05915696823cf5288de9541ed960bca64b44d2e73b01b3c"
     },
     "bilibili-video-service/src/main/java/com/gary/bilibili/video/dto/VideoUpdateDTO.java": {
       "role": "index",
@@ -1877,9 +1889,9 @@
     },
     "bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/VideoMapper.java": {
       "role": "index",
-      "sha256": "f2f924e54720575173328e6593c53533789e03ce4b412ce60d70b1f78d58fc9a",
-      "size": 5255,
-      "normalized_sha256": "f2f924e54720575173328e6593c53533789e03ce4b412ce60d70b1f78d58fc9a"
+      "sha256": "409a2c8149d9d74ec7b5aa88f63707cd4c6c396cd4a0c1d2852ba8be2f65ccf5",
+      "size": 5854,
+      "normalized_sha256": "409a2c8149d9d74ec7b5aa88f63707cd4c6c396cd4a0c1d2852ba8be2f65ccf5"
     },
     "bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/VideoStatsMapper.java": {
       "role": "index",
@@ -1971,6 +1983,12 @@
       "size": 229,
       "normalized_sha256": "2b812f0c4b5cc571c7767d90340f6df91ca55975c0bcd54c36dcd7bdf2de9adc"
     },
+    "bilibili-video-service/src/main/java/com/gary/bilibili/video/model/VideoTags.java": {
+      "role": "index",
+      "sha256": "b13aae378b78ec62afc5e0078fe479c80813fb9f9523789c7cb74b7c7f83a4df",
+      "size": 1045,
+      "normalized_sha256": "b13aae378b78ec62afc5e0078fe479c80813fb9f9523789c7cb74b7c7f83a4df"
+    },
     "bilibili-video-service/src/main/java/com/gary/bilibili/video/producer/VideoTranscodeTaskPublisher.java": {
       "role": "index",
       "sha256": "850c21841370d1ca423f276138ca15a2c4bc72522ea93cb6fc3ec956e71444d3",
@@ -2003,9 +2021,9 @@
     },
     "bilibili-video-service/src/main/java/com/gary/bilibili/video/service/ContentRiskService.java": {
       "role": "index",
-      "sha256": "86d7317fc8ccb9a1981e3fcb81f43052b430f9427deaf42aff0bf92bd4176941",
-      "size": 2744,
-      "normalized_sha256": "86d7317fc8ccb9a1981e3fcb81f43052b430f9427deaf42aff0bf92bd4176941"
+      "sha256": "63eaa60db63faa0313f627c9fd559c4203ad647a8c54af322b3ba492cebb14f8",
+      "size": 3107,
+      "normalized_sha256": "63eaa60db63faa0313f627c9fd559c4203ad647a8c54af322b3ba492cebb14f8"
     },
     "bilibili-video-service/src/main/java/com/gary/bilibili/video/service/CreatorAnalyticsAggregator.java": {
       "role": "index",
@@ -2024,6 +2042,12 @@
       "sha256": "293091b2fbd736d999eb6c43779638e642c72c4b8fc5bffaf94fffa640705cdf",
       "size": 5155,
       "normalized_sha256": "293091b2fbd736d999eb6c43779638e642c72c4b8fc5bffaf94fffa640705cdf"
+    },
+    "bilibili-video-service/src/main/java/com/gary/bilibili/video/service/CreatorSubmissionService.java": {
+      "role": "index",
+      "sha256": "88a0026dfa8c06991547342254cf0e4647a8bcbc0d57be51b71ee3ab032f2cf9",
+      "size": 5533,
+      "normalized_sha256": "88a0026dfa8c06991547342254cf0e4647a8bcbc0d57be51b71ee3ab032f2cf9"
     },
     "bilibili-video-service/src/main/java/com/gary/bilibili/video/service/DirectUploadService.java": {
       "role": "index",
@@ -2147,9 +2171,9 @@
     },
     "bilibili-video-service/src/main/java/com/gary/bilibili/video/service/impl/VideoServiceImpl.java": {
       "role": "index",
-      "sha256": "9b4b25b8c74ef356abef1ecd628437fc1c9522d415437691dfe9125cae918a69",
-      "size": 19928,
-      "normalized_sha256": "9b4b25b8c74ef356abef1ecd628437fc1c9522d415437691dfe9125cae918a69"
+      "sha256": "4686b935c2455745c200165da45c2b0165d6aa590e3dcaea3c2f481beb92f852",
+      "size": 19054,
+      "normalized_sha256": "4686b935c2455745c200165da45c2b0165d6aa590e3dcaea3c2f481beb92f852"
     },
     "bilibili-video-service/src/main/java/com/gary/bilibili/video/service/upload/UploadChunkRepository.java": {
       "role": "index",
@@ -2216,6 +2240,12 @@
       "sha256": "a7a3d2bd0232e55dbea086568feabe185938aeec3e88120445f6ebf08ad5b62a",
       "size": 256,
       "normalized_sha256": "a7a3d2bd0232e55dbea086568feabe185938aeec3e88120445f6ebf08ad5b62a"
+    },
+    "bilibili-video-service/src/main/java/com/gary/bilibili/video/vo/CreatorSubmissionVO.java": {
+      "role": "index",
+      "sha256": "681addaf7d1ce48574891e5f0a132bfeb5a6153dcde6a6aa6feed56a80d3b7e3",
+      "size": 285,
+      "normalized_sha256": "681addaf7d1ce48574891e5f0a132bfeb5a6153dcde6a6aa6feed56a80d3b7e3"
     },
     "bilibili-video-service/src/main/java/com/gary/bilibili/video/vo/CreatorTopVideoVO.java": {
       "role": "index",
@@ -2561,9 +2591,9 @@
     },
     "bilibili-web/e2e/journey.real.spec.ts": {
       "role": "observe",
-      "sha256": "e13642c05944960e747127fd6e81fc805e1bc7dfdabc81dea1237a75ef70118e",
-      "size": 4984,
-      "normalized_sha256": "e13642c05944960e747127fd6e81fc805e1bc7dfdabc81dea1237a75ef70118e"
+      "sha256": "14c660cb4b7d7ac0bb7ac842e9d7bf77476f78230e99a2e02ad53346593dcb05",
+      "size": 7654,
+      "normalized_sha256": "14c660cb4b7d7ac0bb7ac842e9d7bf77476f78230e99a2e02ad53346593dcb05"
     },
     "bilibili-web/e2e/journey.spec.ts": {
       "role": "observe",
@@ -2627,9 +2657,9 @@
     },
     "bilibili-web/src/api/index.ts": {
       "role": "index",
-      "sha256": "fbd80ea5eb79e1ce9fdeefe105141ac113e96827f130a1ff08f1164181c8ef34",
-      "size": 6838,
-      "normalized_sha256": "c45cd1857ba39e2d97df3fcca65f838c8d09743db79e13bf3821b48f24878cd2"
+      "sha256": "719224d196c88701bbcc4bc1e052a073f800d1d8150181de3c77397feaddc81e",
+      "size": 7290,
+      "normalized_sha256": "af0522116f3747fff1624e8b5fa9d7527465b2527be42c7ea3d4a29b1b8a2eb2"
     },
     "bilibili-web/src/components/EmptyState.test.ts": {
       "role": "observe",
@@ -2642,6 +2672,12 @@
       "sha256": "3f631675548e72972562bfc912cc095d69eaa1e1481f67bbdc1ee943972d7a37",
       "size": 380,
       "normalized_sha256": "1e49fd29991acfbb3d00ff1ad3c1a233bbd3df92a12ca7dce3c4a27b2475112a"
+    },
+    "bilibili-web/src/components/SubmissionResubmitForm.vue": {
+      "role": "index",
+      "sha256": "52aa21d528f5eaeb9b633b420b18cae9988350589e2ec52dc0aebdb6a42ca200",
+      "size": 1885,
+      "normalized_sha256": "52aa21d528f5eaeb9b633b420b18cae9988350589e2ec52dc0aebdb6a42ca200"
     },
     "bilibili-web/src/components/VideoCard.vue": {
       "role": "index",
@@ -2663,9 +2699,9 @@
     },
     "bilibili-web/src/router/index.ts": {
       "role": "index",
-      "sha256": "12d074c9dddb1970ad4ac8554b09680a4091213c8cc086057fb9881b87515f7f",
-      "size": 1497,
-      "normalized_sha256": "c59a12ffabbcebbe54cb37c48a04f91eea06407b3e79d71af5e525a8ce977842"
+      "sha256": "0ec685728d9836dbf70d3cd701ed960c2568cb323d3c571877e304e26a0bdcaa",
+      "size": 1649,
+      "normalized_sha256": "f79c44988492625d2f74c35385c052f6337b492edcdd1d58590ba867c7bb7d91"
     },
     "bilibili-web/src/services/chunkUpload.test.ts": {
       "role": "observe",
@@ -2705,9 +2741,9 @@
     },
     "bilibili-web/src/types/api.ts": {
       "role": "index",
-      "sha256": "2ead52bf748b20664ab9a103431adfd5a6b9d8787e3274cdf44b8a67b8d9b51f",
-      "size": 4314,
-      "normalized_sha256": "7588e41d92d9304db09ec670461785239ac8b6fc9d11c421badca68294cf2bc7"
+      "sha256": "19355614bedc6e731ca8ad1f7f26b33385cf7ccbb884cd28894e03243add1f54",
+      "size": 4681,
+      "normalized_sha256": "61a7debbcd013f347bdf82ab260165404425a7ef8393dbba7529ec5b5b55f83d"
     },
     "bilibili-web/src/utils/format.test.ts": {
       "role": "observe",
@@ -2739,6 +2775,12 @@
       "size": 8064,
       "normalized_sha256": "d2213b4e23223d01f08fa0953558eeb6f79bdc8663f471e7e2a0a73e4bfc25a9"
     },
+    "bilibili-web/src/views/CreatorSubmissionsView.vue": {
+      "role": "index",
+      "sha256": "d8f9a26363870517653432797f2411fccccee68b8192bae7fc6a6da8f457da0c",
+      "size": 7034,
+      "normalized_sha256": "d8f9a26363870517653432797f2411fccccee68b8192bae7fc6a6da8f457da0c"
+    },
     "bilibili-web/src/views/HomeView.vue": {
       "role": "index",
       "sha256": "8ad9bba24bd1a4c0552b9866b99535d2cf6be6d3ac0f4ad301cb5c3ee344e02c",
@@ -2753,9 +2795,9 @@
     },
     "bilibili-web/src/views/ProfileView.vue": {
       "role": "index",
-      "sha256": "71d503c66503a6d61cb95c69070aa0c09367286f557141ced9eaab57ff5a6508",
-      "size": 10642,
-      "normalized_sha256": "a9e466d7e2e5570d9de6515a0b1933aa80ac1420c196e113277d3f33cf089629"
+      "sha256": "a92c932422d48a563dd7aa26c144f6244de7e145e2e0a334fbbba90df8f69009",
+      "size": 10964,
+      "normalized_sha256": "1ff8daeb5359543d1bf474c4469a5bd0177a863a72338776540ee43294353bce"
     },
     "bilibili-web/src/views/SearchView.vue": {
       "role": "index",
@@ -2765,9 +2807,9 @@
     },
     "bilibili-web/src/views/UploadView.vue": {
       "role": "index",
-      "sha256": "a516b2b9262fc9eed784238b59996fcec1a81285f4b0ba4187935a28328aa269",
-      "size": 15609,
-      "normalized_sha256": "faa5989425b03d090f312efb4db448b687a97ad6e5f013bc25e2f4fdc8d9548b"
+      "sha256": "54bf78cc26816e3e40a7ca3dc32545e76d760fe22ce9e2a24153d1ff02029eda",
+      "size": 15741,
+      "normalized_sha256": "54bf78cc26816e3e40a7ca3dc32545e76d760fe22ce9e2a24153d1ff02029eda"
     },
     "bilibili-web/src/views/VideoView.vue": {
       "role": "index",
@@ -2963,9 +3005,9 @@
     },
     "docs/MEDIA_GOVERNANCE_RUNBOOK.md": {
       "role": "index",
-      "sha256": "c9a8ad2ad5d2e4ec24baf92fe969190f661f86fefd46fb4f587bfd09c2ac8070",
-      "size": 3199,
-      "normalized_sha256": "c9a8ad2ad5d2e4ec24baf92fe969190f661f86fefd46fb4f587bfd09c2ac8070"
+      "sha256": "98f72c34e32798eeb8a332e6d4a6dc9d8f44ea07519f04a98b0713cb921f9750",
+      "size": 3704,
+      "normalized_sha256": "98f72c34e32798eeb8a332e6d4a6dc9d8f44ea07519f04a98b0713cb921f9750"
     },
     "docs/PROJECT_DELIVERY.md": {
       "role": "index",

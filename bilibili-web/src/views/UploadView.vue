@@ -18,7 +18,8 @@ const duration = ref(0)
 const resolution = ref('1080P')
 let pageActive = true
 const form = ref({ title: '', description: '', coverUrl: '', categoryId: categories[0]?.id || 0, tags: '' })
-const statusText = computed(() => ({ idle: '等待选择', hashing: '正在校验文件', uploading: '正在上传', transcoding: '正在转码', ready: '文件已就绪', publishing: '正在提交', done: '已提交审核' })[phase.value])
+const rejected = ref(false)
+const statusText = computed(() => ({ idle: '等待选择', hashing: '正在校验文件', uploading: '正在上传', transcoding: '正在转码', ready: '文件已就绪', publishing: '正在提交', done: rejected.value ? '审核未通过' : '已提交审核' })[phase.value])
 
 onBeforeUnmount(() => { pageActive = false })
 
@@ -120,7 +121,8 @@ async function publish() {
   phase.value = 'publishing'
   error.value = ''
   try {
-    await videoApi.publish({ title: form.value.title, description: form.value.description, coverUrl: form.value.coverUrl || undefined, sourceUrl: sourceUrl.value, fileMd5: fileMd5.value, fileSize: file.value.size, duration: duration.value, resolution: resolution.value, categoryId: form.value.categoryId, tags })
+    const { data } = await videoApi.publish({ title: form.value.title, description: form.value.description, coverUrl: form.value.coverUrl || undefined, sourceUrl: sourceUrl.value, fileMd5: fileMd5.value, fileSize: file.value.size, duration: duration.value, resolution: resolution.value, categoryId: form.value.categoryId, tags })
+    rejected.value = data.status === 2
     phase.value = 'done'
   } catch (e) { error.value = e instanceof Error ? e.message : '发布失败'; phase.value = 'ready' }
 }
@@ -131,7 +133,7 @@ function clearFile() { file.value = undefined; sourceUrl.value = ''; fileMd5.val
 
 <template>
   <div class="page-shell upload-page">
-    <header class="upload-head"><div><span><Sparkles :size="15" /> CREATOR STUDIO</span><h1>发布新作品</h1><p>让你的灵感，被更多人看见。</p></div><div class="step-track"><span class="active"><b>1</b>上传文件</span><i></i><span :class="{ active: phase === 'ready' || phase === 'publishing' || phase === 'done' }"><b>2</b>填写信息</span><i></i><span :class="{ active: phase === 'done' }"><b>3</b>发布完成</span></div></header>
+    <header class="upload-head"><div><span><Sparkles :size="15" /> CREATOR STUDIO</span><h1>发布新作品</h1><p>让你的灵感，被更多人看见。</p></div><div class="step-track"><span class="active"><b>1</b>上传文件</span><i></i><span :class="{ active: phase === 'ready' || phase === 'publishing' || phase === 'done' }"><b>2</b>填写信息</span><i></i><span :class="{ active: phase === 'done' }"><b>3</b>提交审核</span></div></header>
 
     <div class="upload-layout">
       <section class="upload-card">
@@ -140,7 +142,7 @@ function clearFile() { file.value = undefined; sourceUrl.value = ''; fileMd5.val
           <input ref="fileInput" type="file" accept="video/*" hidden @change="chooseFile(($event.target as HTMLInputElement).files?.[0])" />
         </div>
         <div v-else class="file-progress">
-          <div class="file-row"><div class="file-icon"><FileVideo :size="25" /></div><div><strong>{{ file.name }}</strong><p>{{ (file.size / 1024 / 1024).toFixed(1) }} MB · {{ resolution }} · {{ Math.floor(duration / 60) }}:{{ String(duration % 60).padStart(2,'0') }}</p></div><button v-if="phase === 'idle'" @click="clearFile"><X :size="18" /></button><span v-else :class="{ success: phase === 'ready' || phase === 'done' }"><Check v-if="phase === 'ready' || phase === 'done'" :size="16" /><LoaderCircle v-else :size="16" class="spin" />{{ statusText }}</span></div>
+          <div class="file-row"><div class="file-icon"><FileVideo :size="25" /></div><div><strong>{{ file.name }}</strong><p>{{ (file.size / 1024 / 1024).toFixed(1) }} MB · {{ resolution }} · {{ Math.floor(duration / 60) }}:{{ String(duration % 60).padStart(2,'0') }}</p></div><button v-if="phase === 'idle'" @click="clearFile"><X :size="18" /></button><span v-else :class="{ success: phase === 'ready' || (phase === 'done' && !rejected) }"><X v-if="phase === 'done' && rejected" :size="16" /><Check v-else-if="phase === 'ready' || phase === 'done'" :size="16" /><LoaderCircle v-else :size="16" class="spin" />{{ statusText }}</span></div>
           <div class="progress-track"><i :style="{ width: `${progress}%` }"></i></div><div class="progress-meta"><span>{{ statusText }}</span><b>{{ progress }}%</b></div>
           <button v-if="phase === 'idle'" class="primary-button" @click="startUpload"><CloudUpload :size="18" />开始上传</button>
           <p v-if="phase === 'hashing'" class="notice">正在计算文件 MD5，用于秒传检测和分片完整性校验。</p>
@@ -153,7 +155,11 @@ function clearFile() { file.value = undefined; sourceUrl.value = ''; fileMd5.val
           <div class="form-grid"><div class="field"><label>内容分区 <span>*</span></label><select v-model="form.categoryId"><option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option></select></div><div class="field"><label>视频标签 <span>*</span></label><input v-model.trim="form.tags" required placeholder="多个标签用逗号分隔" /></div></div>
           <div class="field"><label>封面地址</label><input v-model.trim="form.coverUrl" maxlength="500" type="url" placeholder="转码完成后自动截帧，也可手动替换" /><img v-if="form.coverUrl" class="cover-preview" :src="form.coverUrl" alt="自动截帧封面" /></div>
           <div v-if="error" class="error-banner">{{ error }}</div>
-          <div v-if="phase === 'done'" class="notice">作品已提交审核；管理员通过后会自动出现在首页和搜索结果中。</div><button class="primary-button publish-button" :disabled="phase !== 'ready'"><LoaderCircle v-if="phase === 'publishing'" :size="17" class="spin" /><Check v-else-if="phase === 'done'" :size="17" />{{ phase === 'publishing' ? '正在提交…' : phase === 'done' ? '已提交审核' : phase === 'transcoding' ? '等待转码完成' : '提交作品' }}</button>
+          <div v-if="phase === 'done'" class="notice" role="status">
+            {{ rejected ? '作品未通过风控。' : '作品已提交审核。' }}
+            <RouterLink to="/creator/submissions">查看我的投稿</RouterLink>
+          </div>
+          <button v-else class="primary-button publish-button" :disabled="phase !== 'ready'"><LoaderCircle v-if="phase === 'publishing'" :size="17" class="spin" />{{ phase === 'publishing' ? '正在提交…' : phase === 'transcoding' ? '等待转码完成' : '提交作品' }}</button>
         </form>
       </section>
 

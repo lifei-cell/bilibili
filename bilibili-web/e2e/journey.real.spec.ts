@@ -9,10 +9,11 @@ async function result(response: APIResponse) {
 }
 
 // Uses only real HTTP, WebSocket and media responses. Run against an isolated demo stack.
-test('real login → chunk upload → transcode → publish → approve → play → comment', async ({ page, request }, testInfo) => {
+test('real upload → reject → author resubmits → approve → search, play and comment', async ({ page, request }, testInfo) => {
   const videoPath = process.env.E2E_VIDEO_PATH
   if (!videoPath) throw new Error('E2E_VIDEO_PATH must point to a fresh playable test video')
   const title = `browser-e2e-${Date.now()}`
+  const approvedTitle = `${title}-revised`
   let videoId: number | undefined
   let creatorToken = ''
   let commentId: number | undefined
@@ -50,18 +51,58 @@ test('real login → chunk upload → transcode → publish → approve → play
     videoId = published.data.videoId
     expect(videoId).toBeTruthy()
     await expect(page.getByText('作品已提交审核', { exact: false })).toBeVisible()
+    expect((await request.get('/api/creator/submissions')).status()).toBe(401)
 
     // Moderation is a separate actor; do not inject admin state into the creator browser.
     const admin = await result(await request.post('/api/user/login', { data: {
       username: process.env.E2E_ADMIN_USERNAME || 'demo_admin',
       password: process.env.E2E_ADMIN_PASSWORD || 'Demo@123', terminal: 'browser-e2e-admin',
     } }))
-    await result(await request.post(`/api/admin/content/videos/${videoId}/audit`, {
-      headers: { satoken: admin.token }, data: { action: 'APPROVE', remark: 'Browser E2E review' },
-    }))
+    const adminHeaders = { satoken: admin.token }
+    const auditUrl = `/api/admin/content/videos/${videoId}/audit`
+    const resubmitUrl = `/api/creator/submissions/${videoId}/resubmit`
+    const rejection = '请补充清晰的作品标题'
+    await result(await request.post(auditUrl, { headers: adminHeaders, data: { action: 'REJECT', remark: rejection } }))
+
+    const otherSubmissions = await result(await request.get('/api/creator/submissions', { headers: adminHeaders }))
+    expect(otherSubmissions.records).not.toContainEqual(expect.objectContaining({ id: videoId }))
+    const denied = await request.post(resubmitUrl, {
+      headers: adminHeaders, data: { title: approvedTitle, description: '', tags: [] },
+    })
+    expect((await denied.json()).success).toBe(false)
+
+    await page.getByRole('link', { name: '查看我的投稿' }).click()
+    await expect(page.getByRole('heading', { name: '投稿管理' })).toBeVisible()
+    const submission = page.locator('article').filter({ hasText: title })
+    await expect(submission).toContainText(rejection)
+    await expect(submission).toContainText('已驳回')
+    await submission.getByRole('button', { name: '修改并重提' }).click()
+    await submission.getByLabel('作品标题').fill(`${title} 赌博`)
+    await submission.getByRole('button', { name: '重新提交审核' }).click()
+    await expect(submission).toContainText('风控规则拒绝')
+    await expect(submission).toContainText('已驳回')
+
+    await submission.getByRole('button', { name: '修改并重提' }).click()
+    await submission.getByLabel('作品标题').fill(approvedTitle)
+    await submission.getByRole('button', { name: '重新提交审核' }).click()
+    await expect(page.getByText('已重新提交审核', { exact: true })).toBeVisible()
+    await expect(submission).toContainText('待审核')
+    await expect(submission).toContainText(approvedTitle)
+    await expect(submission).not.toContainText(rejection)
+    expect((await (await request.get(`/api/video/${videoId}`)).json()).success).toBe(false)
+
+    const duplicate = await request.post(resubmitUrl, {
+      headers: { satoken: creatorToken }, data: { title: `${title}-duplicate`, description: '', tags: [] },
+    })
+    expect((await duplicate.json()).success).toBe(false)
+    await result(await request.post(auditUrl, { headers: adminHeaders, data: { action: 'APPROVE', remark: 'Browser E2E review' } }))
+    await expect.poll(async () => {
+      const matches = await result(await request.get('/api/search', { params: { keyword: approvedTitle } }))
+      return matches.some((item: { id: number; title: string }) => item.id === videoId && item.title === approvedTitle)
+    }, { timeout: 45_000 }).toBe(true)
 
     await page.goto(`/video/${videoId}`)
-    await expect(page.getByRole('heading', { name: title })).toBeVisible()
+    await expect(page.getByRole('heading', { name: approvedTitle, exact: true })).toBeVisible()
     await expect.poll(() => page.locator('video').evaluate(element => {
       const video = element as HTMLVideoElement
       return video.readyState >= 2 && video.videoWidth > 0 && video.currentTime > 0
