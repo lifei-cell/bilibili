@@ -8,9 +8,9 @@ repo_full_name: "lifei-cell/bilibili"
 repo_url: "git@github.com:lifei-cell/bilibili.git"
 code_host_provider: "github"
 source_repo_path: "D:\\projects-2\\bilibili"
-generated_at: "2026-11-03T03:09:00.930Z"
+generated_at: "2026-11-25T08:22:41.966Z"
 build_mode: "lightweight"
-local_head: "5f2196e04e2e041f62171049fae51809d04e2c5c"
+local_head: "bbcf1bae53ba6bc62350960c9b939c64f0859c4d"
 local_branch: "master"
 working_tree_state: "clean"
 trust_state: "draft"
@@ -30,7 +30,7 @@ raw:
 This repository documents a Java 21/Spring microservice and Vue 3 demonstration video platform. It covers account access, video upload and playback, danmu, social interactions, search, and operational reliability. This is a lightweight, document-derived map, not a claim that every documented flow has been executed at this snapshot. See [README](../README.md).
 
 - Repository: `lifei-cell/bilibili`
-- Snapshot HEAD: `5f2196e04e2e041f62171049fae51809d04e2c5c` on `master`
+- Snapshot HEAD: `bbcf1bae53ba6bc62350960c9b939c64f0859c4d` on `master`
 - Working tree: clean at incremental detection; local commit entries are anchored to the SHA above.
 - Build mode: `lightweight`; representative source and CI were not inspected.
 
@@ -70,7 +70,7 @@ This wiki gives a repository map and local history. Task-learned repair rules fr
 
 ## Provider Context
 
-- [Local commits](./resources/commits.md): 58 entries through the snapshot ancestry: 19 original facets in `raw/git-commits.json` and 39 incremental sections citing local Git evidence.
+- [Local commits](./resources/commits.md): 68 entries through the snapshot ancestry: 19 original facets in `raw/git-commits.json` and 49 incremental sections citing local Git evidence.
 - [PRs/MRs](./resources/prs.md) and [issues](./resources/issues.md): unavailable because `gh` was installed but unauthenticated; no absence claim is made.
 - Preparation and provider status: `raw/prepare-report.json`.
 
@@ -82,7 +82,7 @@ This wiki gives a repository map and local history. Task-learned repair rules fr
 
 ## Incremental Update Scope
 
-- Processed 5 local commits after `ed2dcb23bfeda3f4d38f216e707f2c87db755746` through the snapshot above under effective history mode `provider`; preserved the previous 53 entries.
-- GitHub provider evidence remains unavailable (`auth_required`), confirmed by `gh auth status`; existing PR/issue resources and raw provider evidence were preserved.
-- Only the commit index and snapshot metadata were refreshed. Architecture pages retain their original lightweight documentation scope. New commit routing covers project interview materials, Outbox fencing, browser CI/backend journeys, and durable message archival with controlled replay.
-- Validation here checks the memory bundle; it does not rerun application tests or establish production behavior.
+- Processed 10 local commits after `5f2196e04e2e041f62171049fae51809d04e2c5c` through the snapshot above under effective history mode `provider`; preserved the previous 58 entries.
+- GitHub provider evidence was unavailable (`auth_required`), confirmed by `gh auth status`. Existing PR/issue resources were retained.
+- New commit routing covers shared modules and upload coordination, transcode fault tests, release gates, AOCI code and schema indexing, interaction-count reconciliation, and creator resubmission.
+- Validation covers the memory bundle. Application behavior needs its own verification.

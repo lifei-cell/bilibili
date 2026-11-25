@@ -1,16 +1,16 @@
 ---
 schema: "repo_memory_commit_resource.v0.1"
 repo_full_name: "lifei-cell/bilibili"
-generated_at: "2026-11-03T03:09:00.930Z"
+generated_at: "2026-11-25T08:22:41.966Z"
 source: "git_commit_facets"
-resource_count: 58
+resource_count: 68
 trust_state: "draft_resource"
 raw_source: "../raw/git-commits.json"
 ---
 
 # Commit Resource Snapshot
 
-The original 19 entries come from local Git ancestry at `2d4767fcd216f734918e9a447a3d57b8cf747236`; 39 incremental entries extend the index to `5f2196e04e2e041f62171049fae51809d04e2c5c`. Titles and paths are historical routing evidence, not current behavior proof. `../raw/git-commits.json` retains the original 19 facets; incremental sections cite local commits directly and include changed paths. No runtime tests were run for this memory update.
+The original 19 entries come from local Git ancestry at `2d4767fcd216f734918e9a447a3d57b8cf747236`; 49 incremental entries extend the index to `bbcf1bae53ba6bc62350960c9b939c64f0859c4d`. Titles and paths are historical routing evidence, not current behavior proof. `../raw/git-commits.json` retains the original 19 facets; incremental sections cite local commits directly and include changed paths. No runtime tests were run for this memory update.
 
 ## Commit 2d4767f: NVIDIA NVENC runtime
 
@@ -686,3 +686,123 @@ The original 19 entries come from local Git ancestry at `2d4767fcd216f734918e9a4
 - Evidence strength: local commit metadata and changed paths; source behavior and application tests were not verified during this memory update.
 - Source: packaged detect-updates local commit delta; `git show 5f2196e04e2e041f62171049fae51809d04e2c5c`; `git diff-tree --no-commit-id --name-only -r 5f2196e04e2e041f62171049fae51809d04e2c5c`.
 - Changed paths: `.github/workflows/ci.yml`, `README.md`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/FailedMessageAdminController.java`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/FailedMessageAdminService.java`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/FailedMessageRepository.java`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/MessageArchiveRepository.java`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/MessageInboxRepository.java`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/MessageLifecyclePolicy.java`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/MessageLifecycleTask.java`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/MessageOperationsErrors.java`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/MessageReplayRequest.java`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/MessageReplayService.java`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/OperationsAuthorization.java`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/OutboxEventPublisher.java`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/OutboxEventRepository.java`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/OutboxOperationsController.java`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/OutboxOperationsRepository.java`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/ReliableMessageExecutor.java`, `bilibili-common/src/main/resources/db/migration/V11__message_lifecycle.sql`, `bilibili-common/src/main/resources/observability.yml`, `bilibili-common/src/test/java/com/gary/bilibili/common/reliability/FailedMessageAdminServiceTest.java`, `bilibili-common/src/test/java/com/gary/bilibili/common/reliability/MessageLifecycleTaskTest.java`, `bilibili-common/src/test/java/com/gary/bilibili/common/reliability/MessageOperationsControllerTest.java`, `bilibili-common/src/test/java/com/gary/bilibili/common/reliability/OutboxEventPublisherTest.java`, `bilibili-user-service/src/test/java/com/gary/bilibili/user/api/UserApiIT.java`, `bilibili-video-service/src/test/java/com/gary/bilibili/video/reliability/MessageArchiveMySqlIT.java`, `bilibili-video-service/src/test/java/com/gary/bilibili/video/reliability/MessageLifecycleMySqlSupport.java`, `bilibili-video-service/src/test/java/com/gary/bilibili/video/reliability/MessageReplayMySqlIT.java`, `bilibili-video-service/src/test/java/com/gary/bilibili/video/reliability/OutboxLeaseMySqlIT.java`, `docker/observability/alerts.yml`, `docker/observability/tests/message-lifecycle.test.yml`, `docs/reports/2026-11-02-message-lifecycle.md`, `docs/runbooks/message-lifecycle.md`, `docs/runbooks/observability-and-reliability.md`.
+
+---
+
+## Commit b50252f: docs: update repo memory through 5f2196e
+
+- SHA: `b50252f1b0210b02345cc72b1c32fd7ddb0b24f6`
+- Author / authored: `monster`, `2026-11-03T11:09:12+08:00`
+- Modules / path modules: repo memory; `.repo_memory`.
+- Description: Refreshes the repository wiki metadata and local commit resource through 5f2196e. Use this entry to locate the preceding memory update and its evidence scope.
+- Evidence strength: local commit metadata and changed paths; application behavior was not revalidated.
+- Source: packaged detect-updates local commit delta; `git show b50252f1b0210b02345cc72b1c32fd7ddb0b24f6`; `git diff-tree --no-commit-id --name-only -r b50252f1b0210b02345cc72b1c32fd7ddb0b24f6`.
+- Changed paths: `.repo_memory/PROFILE.md`, `.repo_memory/resources/commits.md`.
+
+---
+
+## Commit 050e390: refactor: separate shared infrastructure and upload responsibilities
+
+- SHA: `050e39010f8d2fe744352aa7ba62fa56e3c56b7e`
+- Author / authored: `monster`, `2026-11-03T18:18:04+08:00`
+- Modules / path modules: shared infrastructure and upload; `README.md`, `bilibili-canal-service`, `bilibili-common-messaging`, `bilibili-common-observability`, `bilibili-common-reliability`, `bilibili-common-storage`, `bilibili-common-web`, `bilibili-common`, `bilibili-danmu-service`, `bilibili-gateway`, `bilibili-search-service`, `bilibili-social-service`, `bilibili-user-service`, `bilibili-video-service`, `docs`, `pom.xml`.
+- Description: Routes shared dependency boundaries to the reactor POM and the observability, web, reliability, messaging, and storage modules. The architecture guide records the split of UploadServiceImpl into session, chunk validation, storage, merge transaction, and transcode-task responsibilities, with object reuse on retry.
+- Evidence strength: local commit metadata and changed paths; application behavior was not revalidated.
+- Source: packaged detect-updates local commit delta; `git show 050e39010f8d2fe744352aa7ba62fa56e3c56b7e`; `git diff-tree --no-commit-id --name-only -r 050e39010f8d2fe744352aa7ba62fa56e3c56b7e`.
+- Changed paths: `bilibili-common-messaging/pom.xml`, `bilibili-common-messaging/src/main/java/com/gary/bilibili/common/reliability/OutboxEventPublisher.java`, `bilibili-common-observability/pom.xml`, `bilibili-common-reliability/pom.xml`, `bilibili-common-storage/pom.xml`, `bilibili-common-storage/src/main/java/com/gary/bilibili/common/storage/MinioObjectStorage.java`, `bilibili-common-web/pom.xml`, `bilibili-common/pom.xml`, `bilibili-common/src/main/java/com/gary/bilibili/common/reliability/OutboxEventPublisher.java`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/service/impl/UploadServiceImpl.java`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/service/upload/UploadChunkValidator.java`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/service/upload/UploadMergeService.java`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/service/upload/UploadSessionManager.java`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/service/upload/UploadTranscodeTasks.java`, `bilibili-video-service/src/test/java/com/gary/bilibili/video/service/upload/UploadMergeServiceTest.java`, `docs/architecture/shared-modules-and-upload.md`, `pom.xml` (selected from 104 total).
+
+---
+
+## Commit ad0204f: test: verify transcode fault recovery and process cleanup
+
+- SHA: `ad0204fcf225a312a85747b842b6dad1e13119df`
+- Author / authored: `monster`, `2026-11-04T08:49:07+08:00`
+- Modules / path modules: transcode cleanup and fault testing; `.gitattributes`, `.github`, `README.md`, `bilibili-video-service`, `docker`, `docs`, `scripts`.
+- Description: Routes FFmpeg process termination and attempt-scoped HLS cleanup to MediaProcessRunner, FfmpegVideoTranscodeWorker, and their tests. For the fault matrix and isolated MinIO test image, see the transcode fault runbook and E2E scripts.
+- Evidence strength: local commit metadata and changed paths; application behavior was not revalidated.
+- Source: packaged detect-updates local commit delta; `git show ad0204fcf225a312a85747b842b6dad1e13119df`; `git diff-tree --no-commit-id --name-only -r ad0204fcf225a312a85747b842b6dad1e13119df`.
+- Changed paths: `.gitattributes`, `.github/workflows/ci.yml`, `README.md`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/service/FfmpegVideoTranscodeWorker.java`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/service/MediaProcessRunner.java`, `bilibili-video-service/src/test/java/com/gary/bilibili/video/service/HlsAttemptCleanupIT.java`, `bilibili-video-service/src/test/java/com/gary/bilibili/video/service/MediaProcessRunnerTest.java`, `bilibili-video-service/src/test/java/com/gary/bilibili/video/service/TranscodeFaultDatabase.java`, `bilibili-video-service/src/test/java/com/gary/bilibili/video/service/TranscodeFaultMatrixIT.java`, `bilibili-video-service/src/test/java/com/gary/bilibili/video/service/TranscodeFaultMedia.java`, `bilibili-video-service/src/test/java/com/gary/bilibili/video/service/TranscodeFaultProxy.java`, `docker/test/minio.Dockerfile`, `docs/reports/2026-11-04-transcode-fault-matrix.md`, `docs/runbooks/transcode-fault-matrix.md`, `scripts/e2e/prepare-minio-test-image.sh`, `scripts/e2e/transcode-fault-matrix.sh`.
+
+---
+
+## Commit 45d583c: chore: consolidate CI gates and document project delivery
+
+- SHA: `45d583c18d48b83bd1380d412261dd3632b7e98f`
+- Author / authored: `monster`, `2026-11-18T09:17:06+08:00`
+- Modules / path modules: CI and project delivery; `.github`, `README.md`, `docs`.
+- Description: Routes consolidated release gates and the removal of the standalone Playwright workflow to ci.yml. PROJECT_DELIVERY.md, the wrap-up report, and the frontend playback interview note provide the handoff and documented verification paths.
+- Evidence strength: local commit metadata and changed paths; application behavior was not revalidated.
+- Source: packaged detect-updates local commit delta; `git show 45d583c18d48b83bd1380d412261dd3632b7e98f`; `git diff-tree --no-commit-id --name-only -r 45d583c18d48b83bd1380d412261dd3632b7e98f`.
+- Changed paths: `.github/workflows/ci.yml`, `.github/workflows/frontend-browser.yml`, `README.md`, `docs/PROJECT_DELIVERY.md`, `docs/interview/13-frontend-playback.md`, `docs/reports/2026-11-18-project-wrap-up.md`.
+
+---
+
+## Commit 58a8758: chore: initialize AOCI and scan repository baseline
+
+- SHA: `58a87588d6d41624f5e7aa14c7d2871ba8716d14`
+- Author / authored: `monster`, `2026-11-18T23:32:14+08:00`
+- Modules / path modules: AOCI initialization; `.aoci`, `.gitignore`, `AGENTS.md`, `aoci.code.txt`, `aoci.meta.txt`, `aoci.txt`.
+- Description: Routes the first AOCI repository baseline and its managed scope to .aoci/config.json and .aoci/baseline.json. AGENTS.md and the root, meta, and code index files establish the initial repository indexing layout.
+- Evidence strength: local commit metadata and changed paths; application behavior was not revalidated.
+- Source: packaged detect-updates local commit delta; `git show 58a87588d6d41624f5e7aa14c7d2871ba8716d14`; `git diff-tree --no-commit-id --name-only -r 58a87588d6d41624f5e7aa14c7d2871ba8716d14`.
+- Changed paths: `.aoci/.gitignore`, `.aoci/baseline.json`, `.aoci/config.json`, `.gitignore`, `AGENTS.md`, `aoci.code.txt`, `aoci.meta.txt`, `aoci.txt`.
+
+---
+
+## Commit c25605b: docs: build AOCI repository index
+
+- SHA: `c25605b29e41a5a08b5501eae1a66fcae1d08655`
+- Author / authored: `monster`, `2026-11-19T00:02:35+08:00`
+- Modules / path modules: AOCI code index; `.aoci`, `aoci.code.txt`.
+- Description: Builds the code-volume index after initialization and records its baseline in .aoci/baseline.json. Use the commit to find the first populated code index and its historical coverage.
+- Evidence strength: local commit metadata and changed paths; application behavior was not revalidated.
+- Source: packaged detect-updates local commit delta; `git show c25605b29e41a5a08b5501eae1a66fcae1d08655`; `git diff-tree --no-commit-id --name-only -r c25605b29e41a5a08b5501eae1a66fcae1d08655`.
+- Changed paths: `.aoci/baseline.json`, `aoci.code.txt`.
+
+---
+
+## Commit 4785c4a: docs: index Bilibili MySQL schema with AOCI
+
+- SHA: `4785c4a994dab0159993d359046233aa0a346b86`
+- Author / authored: `monster`, `2026-11-19T19:49:41+08:00`
+- Modules / path modules: AOCI database index; `.aoci`, `aoci.database.txt`, `aoci.txt`.
+- Description: Adds a MySQL schema volume in aoci.database.txt and a separate .aoci/database-baseline.json. The root index and AOCI configuration show where the database volume was registered.
+- Evidence strength: local commit metadata and changed paths; application behavior was not revalidated.
+- Source: packaged detect-updates local commit delta; `git show 4785c4a994dab0159993d359046233aa0a346b86`; `git diff-tree --no-commit-id --name-only -r 4785c4a994dab0159993d359046233aa0a346b86`.
+- Changed paths: `.aoci/baseline.json`, `.aoci/config.json`, `.aoci/database-baseline.json`, `aoci.database.txt`, `aoci.txt`.
+
+---
+
+## Commit 48d1a7a: fix: reconcile interaction counts and restore release gates
+
+- SHA: `48d1a7a75d2a73c08263542f99d348d95f6a4fed`
+- Author / authored: `monster`, `2026-11-25T09:47:33+08:00`
+- Modules / path modules: interaction counts and release validation; `.aoci`, `.github`, `aoci.code.txt`, `bilibili-common-reliability`, `bilibili-common`, `bilibili-social-service`, `bilibili-user-service`, `bilibili-video-service`, `docker-compose.e2e.yml`, `docs`, `scripts`.
+- Description: Routes transactional like, collection, and comment counts to VideoInteractionStats, the social service implementations, and the governance deletion path. Flyway V12 reconciles historical counts from source records. VideoInteractionStatsMySqlIT, the E2E Compose overlay, and release-validation.ps1 identify the associated checks.
+- Evidence strength: local commit metadata and changed paths; application behavior was not revalidated.
+- Source: packaged detect-updates local commit delta; `git show 48d1a7a75d2a73c08263542f99d348d95f6a4fed`; `git diff-tree --no-commit-id --name-only -r 48d1a7a75d2a73c08263542f99d348d95f6a4fed`.
+- Changed paths: `.aoci/baseline.json`, `.github/workflows/ci.yml`, `aoci.code.txt`, `bilibili-common-reliability/src/main/java/com/gary/bilibili/common/social/VideoInteractionStats.java`, `bilibili-common/src/main/resources/db/migration/V12__reconcile_video_interaction_stats.sql`, `bilibili-social-service/src/main/java/com/gary/bilibili/social/constant/SocialConstant.java`, `bilibili-social-service/src/main/java/com/gary/bilibili/social/mapper/CommentMapper.java`, `bilibili-social-service/src/main/java/com/gary/bilibili/social/mapper/SocialStatsMapper.java`, `bilibili-social-service/src/main/java/com/gary/bilibili/social/service/SocialStatsService.java`, `bilibili-social-service/src/main/java/com/gary/bilibili/social/service/impl/CollectionServiceImpl.java`, `bilibili-social-service/src/main/java/com/gary/bilibili/social/service/impl/CommentServiceImpl.java`, `bilibili-social-service/src/main/java/com/gary/bilibili/social/service/impl/LikeServiceImpl.java`, `bilibili-social-service/src/main/java/com/gary/bilibili/social/task/SocialStatsSyncTask.java`, `bilibili-social-service/src/main/resources/application.yml`, `bilibili-social-service/src/test/java/com/gary/bilibili/social/service/impl/CollectionServiceImplTest.java`, `bilibili-social-service/src/test/java/com/gary/bilibili/social/service/impl/CommentServiceImplTest.java`, `bilibili-social-service/src/test/java/com/gary/bilibili/social/service/impl/LikeServiceImplTest.java`, `bilibili-social-service/src/test/java/com/gary/bilibili/social/task/SocialStatsSyncTaskTest.java`, `bilibili-user-service/src/test/java/com/gary/bilibili/user/api/UserApiIT.java`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/ContentReportMapper.java`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/service/ContentGovernanceService.java`, `bilibili-video-service/src/test/java/com/gary/bilibili/video/repository/VideoInteractionStatsMySqlIT.java`, `docker-compose.e2e.yml`, `docs/PROJECT_DELIVERY.md`, `docs/interview/07-social-interactions.md`, `scripts/e2e/prepare-minio-test-image.sh`, `scripts/e2e/reliability-e2e.ps1`, `scripts/verification/release-validation.ps1`.
+
+---
+
+## Commit d10da2c: fix: allow real browser media requests in release tests
+
+- SHA: `d10da2c923d23d74b8f33fa25d8c650af7db3451`
+- Author / authored: `monster`, `2026-11-25T10:02:55+08:00`
+- Modules / path modules: real browser E2E and MinIO CORS; `.aoci`, `aoci.code.txt`, `docker-compose.e2e.yml`.
+- Description: Adds a MinIO CORS origin allowlist to the release E2E Compose overlay. Inspect MINIO_CORS_ALLOW_ORIGIN and MINIO_API_CORS_ALLOW_ORIGIN when diagnosing local Playwright cross-origin media requests.
+- Evidence strength: local commit metadata and changed paths; application behavior was not revalidated.
+- Source: packaged detect-updates local commit delta; `git show d10da2c923d23d74b8f33fa25d8c650af7db3451`; `git diff-tree --no-commit-id --name-only -r d10da2c923d23d74b8f33fa25d8c650af7db3451`.
+- Changed paths: `.aoci/baseline.json`, `aoci.code.txt`, `docker-compose.e2e.yml`.
+
+---
+
+## Commit bbcf1ba: feat: manage creator submissions and resubmit rejected videos
+
+- SHA: `bbcf1bae53ba6bc62350960c9b939c64f0859c4d`
+- Author / authored: `monster`, `2026-11-25T11:18:37+08:00`
+- Modules / path modules: creator submissions and review; `.aoci`, `aoci.code.txt`, `bilibili-video-service`, `bilibili-web`, `docs`.
+- Description: Routes creator submission listing and rejected-video resubmission to CreatorSubmissionController, CreatorSubmissionService, ContentRiskService, and the Vue submission views. The runbook describes reusing existing media, repeating risk checks, and returning to admin review. The real Playwright journey identifies resubmission, authorization, duplicate handling, and search-visibility checks.
+- Evidence strength: local commit metadata and changed paths; application behavior was not revalidated.
+- Source: packaged detect-updates local commit delta; `git show bbcf1bae53ba6bc62350960c9b939c64f0859c4d`; `git diff-tree --no-commit-id --name-only -r bbcf1bae53ba6bc62350960c9b939c64f0859c4d`.
+- Changed paths: `.aoci/baseline.json`, `aoci.code.txt`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/controller/CreatorSubmissionController.java`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/dto/VideoResubmitDTO.java`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/VideoMapper.java`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/model/VideoTags.java`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/service/ContentRiskService.java`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/service/CreatorSubmissionService.java`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/service/impl/VideoServiceImpl.java`, `bilibili-video-service/src/main/java/com/gary/bilibili/video/vo/CreatorSubmissionVO.java`, `bilibili-web/e2e/journey.real.spec.ts`, `bilibili-web/src/api/index.ts`, `bilibili-web/src/components/SubmissionResubmitForm.vue`, `bilibili-web/src/router/index.ts`, `bilibili-web/src/types/api.ts`, `bilibili-web/src/views/CreatorSubmissionsView.vue`, `bilibili-web/src/views/ProfileView.vue`, `bilibili-web/src/views/UploadView.vue`, `docs/MEDIA_GOVERNANCE_RUNBOOK.md`.
