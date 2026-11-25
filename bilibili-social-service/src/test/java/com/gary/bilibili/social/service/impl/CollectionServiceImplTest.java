@@ -2,7 +2,6 @@ package com.gary.bilibili.social.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.gary.bilibili.common.analytics.CreatorAnalyticsDirtyPublisher;
-import com.gary.bilibili.social.constant.SocialConstant;
 import com.gary.bilibili.social.dto.CollectionDTO;
 import com.gary.bilibili.social.dto.CollectionFolderCreateDTO;
 import com.gary.bilibili.social.entity.CollectionFolder;
@@ -10,7 +9,7 @@ import com.gary.bilibili.social.mapper.CollectionFolderMapper;
 import com.gary.bilibili.social.mapper.CollectionMapper;
 import com.gary.bilibili.social.model.CollectionPage;
 import com.gary.bilibili.social.model.CollectionRow;
-import com.gary.bilibili.social.service.SocialStatsService;
+import com.gary.bilibili.common.social.VideoInteractionStats;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -32,7 +31,7 @@ class CollectionServiceImplTest {
 
     private CollectionMapper collectionMapper;
     private CollectionFolderMapper collectionFolderMapper;
-    private SocialStatsService socialStatsService;
+    private VideoInteractionStats interactionStats;
     private CreatorAnalyticsDirtyPublisher analyticsDirtyPublisher;
     private CollectionServiceImpl collectionService;
 
@@ -40,10 +39,10 @@ class CollectionServiceImplTest {
     void setUp() {
         collectionMapper = mock(CollectionMapper.class);
         collectionFolderMapper = mock(CollectionFolderMapper.class);
-        socialStatsService = mock(SocialStatsService.class);
+        interactionStats = mock(VideoInteractionStats.class);
         analyticsDirtyPublisher = mock(CreatorAnalyticsDirtyPublisher.class);
         collectionService = new CollectionServiceImpl(
-                collectionMapper, collectionFolderMapper, socialStatsService,
+                collectionMapper, collectionFolderMapper, interactionStats,
                 analyticsDirtyPublisher);
     }
 
@@ -62,8 +61,7 @@ class CollectionServiceImplTest {
             assertThat(collectionService.collect(request).getCollected()).isTrue();
         }
 
-        verify(socialStatsService).increment(
-                10001L, SocialConstant.COLLECT_COUNT_FIELD, 1);
+        verify(interactionStats).changeCollections(10001L, 1);
         verify(analyticsDirtyPublisher).publish(
                 10001L, LocalDate.of(2026, 9, 22));
         verify(collectionFolderMapper, never()).incrementVideoCount(0L, 1L, 1);
@@ -81,8 +79,7 @@ class CollectionServiceImplTest {
             collectionService.collect(request);
         }
 
-        verify(socialStatsService, never()).increment(
-                10001L, SocialConstant.COLLECT_COUNT_FIELD, 1);
+        verify(interactionStats, never()).changeCollections(10001L, 1);
         verify(analyticsDirtyPublisher, never()).publish(anyLong(), any());
     }
 

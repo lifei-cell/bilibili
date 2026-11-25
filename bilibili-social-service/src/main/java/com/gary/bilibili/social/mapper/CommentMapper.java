@@ -69,9 +69,6 @@ public interface CommentMapper extends BaseMapper<Comment> {
     @Select("select role from sys_user where id = #{userId} and status = 0 and deleted = 0 limit 1")
     String selectUserRole(@Param("userId") Long userId);
 
-    @Select("select count(*) from comment where (id = #{commentId} or parent_id = #{commentId}) and status = 0 and deleted = 0")
-    Long countCommentTree(@Param("commentId") Long commentId);
-
     @Select("select date(create_time) from comment where id = #{commentId}")
     LocalDate selectCreatedDate(@Param("commentId") Long commentId);
 

@@ -1,4 +1,7 @@
 services:
+  minio:
+    image: ${MINIO_TEST_IMAGE:-quay.io/minio/minio:RELEASE.2024-12-13T22-19-12Z}
+
   bilibili-video-service:
     environment:
       # CI and ordinary Docker Desktop runners have no GPU device. Keep the
@@ -20,11 +23,6 @@ services:
       DANMU_STATS_SYNC_INITIAL_DELAY: 1000
       OUTBOX_DISPATCH_INTERVAL: 250
       OUTBOX_INITIAL_DELAY: 1000
-
-  bilibili-social-service:
-    environment:
-      SOCIAL_STATS_SYNC_INTERVAL: 1000
-      SOCIAL_STATS_SYNC_INITIAL_DELAY: 1000
 
   bilibili-canal-service:
     environment:

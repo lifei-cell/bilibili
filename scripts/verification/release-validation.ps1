@@ -164,7 +164,7 @@ try {
         Write-Host '[release] Backend verify'
         Push-Location $repositoryRoot
         try {
-            & mvn -s .mvn/settings.xml --batch-mode --no-transfer-progress clean verify
+            & mvn -s .mvn/settings.xml --batch-mode --no-transfer-progress clean verify '-Dtranscode.fault.matrix=true'
             if ($LASTEXITCODE -ne 0) { throw 'Maven clean verify failed' }
             $backendTestSummary = Get-MavenTestSummary
             if ($backendTestSummary.tests -le 0 -or $backendTestSummary.failures -ne 0 `

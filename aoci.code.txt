@@ -6,7 +6,7 @@
 .gitignore[FV3T]: F:排除本地构建产物、环境文件、日志与机器绑定的Codex配置 | R:- | A:.codex/config.toml,.env,.env.local | S:Git忽略规则不改变已跟踪文件的状态
 AGENTS.md[SC5S]: F:约定本仓库 Agent 对 AOCI 认知的加载、分块、认证、条目创作与收尾要求 | R:- | A:aoci_rules,aoci_overview,aoci_maintain,aoci_update_entry | S:首次构建或修复不完整索引时跟随实时Guide，完整交付的Attestation不做语义重试
 README.md[SG6L]: F:说明视频平台的服务拓扑、运行条件、快速启动、接口和可靠性验收入口 | R:code:docs/PROJECT_DELIVERY.md,code:docs/MEDIA_GOVERNANCE_RUNBOOK.md,code:docker-compose.yml | A:快速启动,API调试,测试 | S:Nginx在当前文档路径仅代理API，Vite前端单独启动
-docker-compose.e2e.yml[OQ4T]: F:给真实链路验证覆盖较快的媒体、Outbox、CDC和统计调度参数 | R:code:docker-compose.service.yml | A:docker-compose.e2e.yml | S:固定软件编码，Canal应用端消费尝试设为1
+docker-compose.e2e.yml[OQ4T]: F:为真实链路测试覆盖MinIO镜像、软件编码及短间隔调度 | R:code:docker-compose.service.yml | A:MINIO_TEST_IMAGE,VIDEO_TRANSCODE_ENCODER | S:同一MinIO覆盖变量也供Testcontainers使用，Canal应用消费尝试设为1
 docker-compose.gpu.intel.yml[OH3T]: F:为视频API及独立转码Worker映射Intel渲染设备 | R:- | A:/dev/dri,VIDEO_TRANSCODE_ENCODER | S:保留auto探测
 docker-compose.gpu.nvidia.yml[OH3T]: F:给视频API与专用Worker分配NVIDIA设备并选NVENC | R:- | A:gpus,VIDEO_TRANSCODE_ENCODER | S:需要宿主容器GPU支持
 docker-compose.p1.yml[OR4T]: F:为可靠性演练隔离转码消费者、缩短租约并加入第二Canal实例 | R:code:docker-compose.service.yml | A:bilibili-canal-service-2,VIDEO_TRANSCODE_LEASE_SECONDS | S:用30秒租期，第二实例宿主端口8087
@@ -18,7 +18,7 @@ pom.xml[FV6M]: F:聚合Java 21服务与共享模块，统一Spring依赖及构�
 项目后端.md[SG4L]: F:记录后端初期接口、表结构、部署拓扑、中间件和性能方案 | R:code:README.md | A:数据库设计,接口文档,部署架构 | S:文内早期code字段示例不能替代现行Result响应契约
 
 ===/<repository>/.github/workflows/===
-ci.yml[OV7S]: F:编排后端校验、前端检查、Compose验证及完整发布验收 | R:code:scripts/verification/release-validation.ps1,code:scripts/e2e/prepare-minio-test-image.sh | A:backend,frontend,compose,release-validation | S:PR浏览器回归用模拟网关，真实链路和写路径SLO只在定时或手动触发且前置任务通过后运行
+ci.yml[OV7S]: F:编排后端、前端、Compose及完整发布验收并保存运行证据 | R:code:scripts/verification/release-validation.ps1,code:scripts/e2e/prepare-minio-test-image.sh | A:backend,frontend,compose,release-validation | S:PR浏览器使用模拟网关。定时和手动发布依赖前三项门禁，独立准备FFmpeg和MinIO来执行真实验收
 
 ===/<repository>/.mvn/===
 settings.xml[FV3T]: F:提供 Maven 构建的仓库镜像与项目内依赖缓存配置 | R:- | A:localRepository,mirrorOf | S:镜像ID虽然叫alimaven，实际地址是Maven Central
@@ -188,6 +188,7 @@ V6__transcode_task_lease.sql[PR5T]: F:给转码任务附加代数、令牌和微
 V7__adaptive_rendition_recovery.sql[PR5T]: F:扩展转码任务的高档位独立补偿状态、重试计划和扫描索引 | R:- | A:rendition_status,rendition_retry_count,rendition_next_retry_time,idx_transcode_rendition_recovery | S:档位补偿有独立状态，勿与基础转码状态混用
 V8__creator_analytics.sql[PA5T]: F:创建播放事件明细、作者视频日汇总及脏日期队列 | R:- | A:video_view_event,creator_video_daily_stats,creator_analytics_dirty_day | S:播放事件以request_id唯一去重，重算队列粒度为作者和日期
 V9__inbox_lease_fencing.sql[PR4T]: F:为 Inbox 行增加所有权代数和令牌列 | R:- | A:claim_generation,claim_token | S:既有行的代数初始值为0，令牌可空
+V12__reconcile_video_interaction_stats.sql[PD6T]: F:补齐缺失的视频统计行并按MySQL互动事实重算三项计数 | R:database://bilibili-mysql/bilibili/video_stats,database://bilibili-mysql/bilibili/user_like,database://bilibili-mysql/bilibili/collection,database://bilibili-mysql/bilibili/comment | A:Flyway V12 | S:迁移需停旧社交写入和定时同步及举报处置。点赞限视频目标，评论限正常且未软删，不回放Redis旧增量
 
 ===/<repository>/bilibili-danmu-service/===
 Dockerfile[OV3T]: F:以 Java 21 容器运行弹幕服务的打包产物 | R:- | A:JAR_FILE,8083 | S:-
@@ -343,7 +344,7 @@ pom.xml[FV4S]: F:装配社交服务的Web、Redis、鉴权、MyBatis及共享消
 BilibiliSocialApplication.java[EB3T]: F:启动社交服务并启用数据映射、服务发现与任务调度 | R:- | A:main | S:-
 
 ===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/constant/===
-SocialConstant.java[CB4T]: F:统一互动状态、点赞目标、默认收藏夹及Redis计数键 | R:- | A:TARGET_VIDEO,TARGET_COMMENT,DEFAULT_FOLDER_ID,STATS_PENDING_KEY | S:目标类型1是视频，2是评论，默认夹ID为0
+SocialConstant.java[CB4T]: F:统一互动状态、点赞目标、默认收藏夹及社交缓存键 | R:- | A:TARGET_VIDEO,TARGET_COMMENT,DEFAULT_FOLDER_ID | S:目标1是视频，2是评论，默认收藏夹ID为0
 
 ===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/controller/===
 CollectionController.java[EB5T]: F:提供视频收藏、取消、分页与收藏夹配置端点 | R:- | A:/api/collection,/list,/folder,/folders | S:列表可不传收藏夹，单页上限100
@@ -371,10 +372,9 @@ GlobalExceptionHandler.java[EB3T]: F:将社交业务、认证和请求异常转�
 ===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/mapper/===
 CollectionFolderMapper.java[PD4T]: F:统计虚拟默认夹的收藏数，维护自定义夹拥有者下的计数 | R:- | A:countDefaultFolderVideos,incrementVideoCount | S:更新只作用于未删除且属指定用户的夹，计数下限为0
 CollectionMapper.java[PD5T]: F:按用户、视频和夹增改收藏状态并查询可见的收藏视频投影 | R:- | A:activate,insertActive,deactivate,selectCreatedDate | S:恢复有旧记录时改状态而不新增，列表要求视频已发布且未删
-CommentMapper.java[PD5S]: F:分页读取可见顶层评论和有序回复，并操作点赞数及软删除 | R:- | A:selectTopLevel,selectReplies,countTopLevel | S:顶层用parent_id=0判定，回复按时间和ID正序
+CommentMapper.java[PD5S]: F:分页读取可见顶层评论和有序回复并更新点赞或软删除 | R:database://bilibili-mysql/bilibili/comment | A:selectTopLevel,selectReplies,markDeleted,selectAffectedDates | S:软删仅匹配尚可见评论，返回变化行数供调用方更新视频计数。顶层使用parent_id=0
 FollowMapper.java[PD5T]: F:激活或停用关注边，并查询关注状态、关注和粉丝分页 | R:- | A:activate,insertActive,deactivate,selectFollowing | S:列表只拼接启用且未删用户
 LikeMapper.java[PD5T]: F:条件更新点赞状态及检查可点赞的视频和评论 | R:- | A:activate,insertActive,deactivate,countActive,selectCreatedDate | S:切换基于当前激活状态，旧记录首创日期可供重算
-SocialStatsMapper.java[PD4T]: F:用原子SQL增减视频的点赞、收藏和评论计数 | R:- | A:incrementLikeCount,incrementCollectCount,incrementCommentCount | S:三种计数都限制为非负
 
 ===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/model/===
 CollectionPage.java[CB2T]: F:组合收藏查询页的记录及总数 | R:- | A:records,total | S:-
@@ -389,16 +389,12 @@ CollectionService.java[AB3T]: F:定义收藏状态、视频列表和收藏夹读
 CommentService.java[AB3T]: F:定义按视频创建、分页读取和删除评论的服务接口 | R:- | A:create,getList,delete | S:-
 FollowService.java[AB3T]: F:定义关注关系变更、状态及双方用户分页 | R:- | A:follow,unfollow,getStatus,getFollowing,getFollowers | S:-
 LikeService.java[AB3T]: F:定义点赞、取消与目标相对当前用户的状态查询 | R:- | A:like,unlike,getStatus | S:-
-SocialStatsService.java[MP4T]: F:原子累加社交计数并将视频登记为待同步 | R:- | A:increment | S:单次脚本同时写计数字段和待同步集合
 
 ===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/service/impl/===
-CollectionServiceImpl.java[AB6M]: F:维护用户收藏及收藏夹，查询收藏视频和默认夹汇总 | R:code:bilibili-social-service/src/main/java/com/gary/bilibili/social/mapper/CollectionMapper.java | A:collect,uncollect,getList,createFolder,updateFolder,getFolders | S:仅真实状态变更才更新计数与重算事件。默认夹是虚拟ID 0，其他夹需核对归属
-CommentServiceImpl.java[AB7M]: F:校验并新增评论或回复，组装评论树，按归属授权删除 | R:code:bilibili-social-service/src/main/java/com/gary/bilibili/social/mapper/CommentMapper.java | A:create,getList,delete | S:回复的父节点须是同视频的顶层评论。删除顶层评论可级联软删回复并按受影响日期触发统计重算
+CollectionServiceImpl.java[AB6M]: F:维护收藏关系、收藏夹及分页查询 | R:code:bilibili-social-service/src/main/java/com/gary/bilibili/social/mapper/CollectionMapper.java,code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/social/VideoInteractionStats.java | A:collect,uncollect,getList,createFolder,updateFolder,getFolders | S:仅状态实际变化才在同一事务更新视频计数和创建统计重算事件。虚拟默认夹ID为0，其他夹检查归属
+CommentServiceImpl.java[AB7M]: F:校验并创建评论或回复，组装评论树并按归属授权删除 | R:code:bilibili-social-service/src/main/java/com/gary/bilibili/social/mapper/CommentMapper.java,code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/social/VideoInteractionStats.java | A:create,getList,delete | S:回复仅能绑定同视频顶层评论。评论树按实际软删行数扣视频计数，并按受影响日期标记创作者统计
 FollowServiceImpl.java[AB5S]: F:变更关注关系、维护 Redis 集合并分页查询关系两端 | R:- | A:follow,unfollow,getStatus,getFollowing,getFollowers | S:禁止关注自己，已有未激活边优先恢复
-LikeServiceImpl.java[AB6S]: F:管理视频与评论点赞、缓存状态，按真实动作更新计数和创作者统计 | R:code:bilibili-social-service/src/main/java/com/gary/bilibili/social/mapper/LikeMapper.java | A:like,unlike,getStatus | S:评论更新其数据库计数，视频先走缓存增量，重复操作不重复计数
-
-===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/task/===
-SocialStatsSyncTask.java[AW6S]: F:按视频锁排空点赞、收藏和评论增量，落库后失效详情缓存 | R:code:bilibili-social-service/src/main/java/com/gary/bilibili/social/mapper/SocialStatsMapper.java | A:syncSocialStats | S:Redis只扣已写入的增量，全字段无剩余才从待同步集合移除
+LikeServiceImpl.java[AB6S]: F:维护视频和评论的点赞状态及关系缓存，编排计数与创作者统计 | R:code:bilibili-social-service/src/main/java/com/gary/bilibili/social/mapper/LikeMapper.java,code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/social/VideoInteractionStats.java | A:like,unlike,getStatus | S:数据库状态实际变化才在同一事务更新对应目标计数。只有视频点赞标记创作者统计
 
 ===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/vo/===
 CollectionFolderVO.java[EB2T]: F:返回收藏夹名称、公开状态、说明、封面及视频量 | R:- | A:CollectionFolderVO | S:-
@@ -416,16 +412,13 @@ UserBriefVO.java[EB2T]: F:为关注与粉丝列表输出用户标识和公开资
 application-dev.yml[FC2T]: F:覆盖社交开发环境的本机 MySQL、Redis、Nacos 与 RocketMQ 地址 | R:- | A:dev | S:MySQL与Redis默认使用宿主映射端口3307和6380
 application-docker.yml[FC2T]: F:关闭容器社交服务的 Nacos 注册失败即退出 | R:- | A:spring.cloud.nacos.discovery.fail-fast | S:-
 application-prod.yml[FC4T]: F:通过环境变量提供生产社交服务的连接地址和访问凭据 | R:- | A:prod | S:-
-application.yml[FC4T]: F:声明社交服务端口、外部依赖与Flyway、消息及同步配置 | R:code:bilibili-common-observability/src/main/resources/observability.yml | A:bilibili-social-service,8084 | S:默认为dev
+application.yml[FC4T]: F:声明社交服务的端口、数据库、Flyway、Redis、Nacos与消息连接 | R:code:bilibili-common-observability/src/main/resources/observability.yml | A:bilibili-social-service,8084,spring.flyway | S:默认dev，既有数据库由Flyway以版本0作为基线接管
 
 ===/<repository>/bilibili-social-service/src/test/java/com/gary/bilibili/social/service/impl/===
-CollectionServiceImplTest.java[TB4S]: F:验证默认夹收藏、自定义夹、分页及重复收藏不累加 | R:- | A:CollectionServiceImplTest | S:-
-CommentServiceImplTest.java[TB4S]: F:验证评论发送、限流、回复嵌套及视频作者删除评论树 | R:- | A:CommentServiceImplTest | S:-
+CollectionServiceImplTest.java[TB4S]: F:验证默认夹、自定义夹与分页，断言重复收藏不再次更新视频计数 | R:code:bilibili-social-service/src/main/java/com/gary/bilibili/social/service/impl/CollectionServiceImpl.java | A:shouldNotIncrementCountForRepeatedCollection | S:-
+CommentServiceImplTest.java[TB4S]: F:验证评论创建、限流、回复嵌套及视频作者删除评论树 | R:code:bilibili-social-service/src/main/java/com/gary/bilibili/social/service/impl/CommentServiceImpl.java | A:shouldAllowVideoAuthorToDeleteCommentTree | S:用实际软删的影响行数断言视频评论计数扣减
 FollowServiceImplTest.java[TB4T]: F:验证关注状态与缓存一致、重复关注、自关注拒绝及列表分页 | R:- | A:FollowServiceImplTest | S:-
-LikeServiceImplTest.java[TB4S]: F:验证视频点赞增量只执行一次，评论计数更新与目标存在校验 | R:- | A:LikeServiceImplTest | S:-
-
-===/<repository>/bilibili-social-service/src/test/java/com/gary/bilibili/social/task/===
-SocialStatsSyncTaskTest.java[TW4T]: F:验证社交统计任务可以同步正数与负数增量 | R:- | A:shouldSyncPositiveAndNegativeSocialDeltas | S:-
+LikeServiceImplTest.java[TB4S]: F:验证重复视频点赞不再更新计数、评论点赞及目标存在校验 | R:code:bilibili-social-service/src/main/java/com/gary/bilibili/social/service/impl/LikeServiceImpl.java | A:shouldNotIncrementCountForRepeatedLike,shouldUpdateCommentLikeCountDirectly | S:-
 
 ===/<repository>/bilibili-user-service/===
 .gitignore[FV1T]: F:忽略用户模块的 Maven target 目录和 JAR 产物 | R:- | A:**/target/,*.jar | S:-
@@ -484,7 +477,7 @@ application-prod.yml[FI5T]: F:从环境注入生产用户依赖配置，并启�
 application.yml[FC4T]: F:设置用户服务名、端口、数据库迁移、发现及会话默认配置 | R:code:bilibili-common-observability/src/main/resources/observability.yml | A:bilibili-user-service,8081 | S:默认加载dev
 
 ===/<repository>/bilibili-user-service/src/test/java/com/gary/bilibili/user/api/===
-UserApiIT.java[TI5M]: F:用容器数据库和Redis验证迁移后注册、登录、刷新轮换、退出及指标 | R:- | A:UserApiIT | S:旧刷新Cookie再次使用应为401，禁止把访问令牌放在Cookie
+UserApiIT.java[TI5M]: F:用容器MySQL和Redis验证12次迁移后的注册、登录、刷新、退出及指标 | R:code:bilibili-common/src/main/resources/db/migration/V12__reconcile_video_interaction_stats.sql | A:shouldMigrateRegisterLoginAndReadCurrentUserThroughHttpApi | S:旧刷新Cookie再次使用应为401，访问令牌不写Cookie
 
 ===/<repository>/bilibili-user-service/src/test/java/com/gary/bilibili/user/service/===
 RefreshCookieServiceTest.java[TI3T]: F:测试刷新 Cookie 安全属性、读取和清除 | R:- | A:shouldWriteReadAndClearHardenedCookie | S:-
@@ -554,7 +547,7 @@ GlobalExceptionHandler.java[EB3T]: F:将视频服务业务、未登录、参数�
 
 ===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/===
 ContentAuditLogMapper.java[PD2T]: F:提供内容审核日志的 MyBatis 基础持久化接口 | R:- | A:ContentAuditLogMapper | S:-
-ContentReportMapper.java[PD5T]: F:核对举报目标、按状态分页、更新处置并隐藏违规评论或弹幕 | R:- | A:ContentReportMapper | S:条件处置只允许更新状态0或1，避免重复终结
+ContentReportMapper.java[PD5T]: F:查询举报目标与队列、更新处置状态并屏蔽违规评论或弹幕 | R:database://bilibili-mysql/bilibili/content_report,database://bilibili-mysql/bilibili/comment | A:resolve,blockComment,selectCommentVideoId,blockDanmu | S:举报只在状态0或1时结案。评论只在未删且正常时屏蔽，影响行数用于防止重复扣计数
 ContentRiskEventMapper.java[PD2T]: F:提供内容风险事件的 MyBatis 持久化操作 | R:- | A:ContentRiskEventMapper | S:-
 DirectUploadSessionMapper.java[PD4T]: F:按上传ID读取直传会话并原子确认完成 | R:- | A:selectByUploadId,markCompleted | S:完成更新要求归属正确、状态为0且未过期
 FileChunkMapper.java[PD2T]: F:提供分片登记表的通用持久化操作 | R:- | A:FileChunkMapper | S:-
@@ -589,7 +582,7 @@ CreatorAnalyticsRepository.java[PA7M]: F:写入播放事实和脏日期，重建
 ===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/service/===
 AdminAuthorizationService.java[AI4T]: F:从登录会话取得用户ID，并按数据库角色校验内容治理管理员 | R:- | A:requireAdmin | S:角色必须为admin
 CategoryService.java[AB2T]: F:定义返回可用视频分类的服务接口 | R:- | A:CategoryService | S:-
-ContentGovernanceService.java[AB7S]: F:受理举报、处理审核队列及举报处置并记录治理审计 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/ContentReportMapper.java | A:report,videos,reports,auditVideo,resolveReport | S:发布或恢复需要已有播放URL。状态条件更新防止并发覆盖，视频状态变化后记录操作者与前后值
+ContentGovernanceService.java[AB7S]: F:受理举报、处理审核队列和举报处置并记录治理审计 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/ContentReportMapper.java,code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/social/VideoInteractionStats.java | A:report,videos,reports,auditVideo,resolveReport | S:发布和恢复要求已有播放URL。举报成立且首次屏蔽评论时同事务扣减视频评论数，结案竞争失败则回滚
 ContentRiskService.java[DB5T]: F:按关键词、标签、投稿频率和重复文本给投稿打分，保存命中与处置 | R:- | A:evaluate,record,RiskDecision | S:规则证据落入内容风险事件，不等同于最终人工审核
 CreatorAnalyticsAggregator.java[AA5T]: F:在事务中锁定作者并替换其指定日期的统计聚合 | R:- | A:rebuildDay | S:用作者级锁协调同作者的重建写入
 CreatorAnalyticsEventService.java[AA5T]: F:记录播放事件及相应作者的脏日期，也接收外部日期重算标记 | R:- | A:recordView,markDirty | S:仅首次插入播放事实时标脏
@@ -680,6 +673,7 @@ OutboxLeaseMySqlIT.java[TR5S]: F:用 MySQL 验证 Outbox 并发只有一人领�
 
 ===/<repository>/bilibili-video-service/src/test/java/com/gary/bilibili/video/repository/===
 CreatorAnalyticsMySqlIT.java[TA5S]: F:在 MySQL 验证播放去重、作者隔离、迟到事件与日聚合重建 | R:- | A:aggregationIsIdempotentLateSafeAndCreatorIsolated | S:处理期间新脏版本不得被旧收尾抹去
+VideoInteractionStatsMySqlIT.java[TB5T]: F:用真实MySQL验证历史计数重算、关系与计数回滚以及并发点赞去重 | R:code:bilibili-common/src/main/resources/db/migration/V12__reconcile_video_interaction_stats.sql,code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/social/VideoInteractionStats.java | A:backfillAndTransactionalWritesMatchCommittedInteractionFacts | S:先在V11写入有偏差的旧数据再执行V12，校验播放和弹幕不被重算改变
 
 ===/<repository>/bilibili-video-service/src/test/java/com/gary/bilibili/video/service/===
 ContentRiskServiceTest.java[TB3T]: F:验证禁用关键词直接拒绝及投稿过频进入审核 | R:- | A:ContentRiskServiceTest | S:-
@@ -802,7 +796,7 @@ minio.Dockerfile[OQ4T]: F:固定版本源码编译供故障矩阵使用的 MinIO
 
 ===/<repository>/docs/===
 MEDIA_GOVERNANCE_RUNBOOK.md[SB4T]: F:描述媒资上传、转码档位、审核和内容举报的演示闭环 | R:- | A:闭环,演示,生产配置,自动回归 | S:创作者提交后经审核才进入公开入口
-PROJECT_DELIVERY.md[SG5T]: F:记录项目交付范围及后端、媒体、前端和完整发布的验收入口 | R:code:.github/workflows/ci.yml | A:验收入口,CI收尾 | S:明确区分模拟网关浏览器验证与真实发布验收
+PROJECT_DELIVERY.md[SG5T]: F:记录项目交付范围、各层验收入口及V12互动计数升级 | R:code:.github/workflows/ci.yml,code:scripts/verification/release-validation.ps1 | A:验收入口,V12 互动计数升级,CI收尾 | S:完整发布需Linux或WSL的媒体工具，升级前停旧版社交写入和视频举报处置
 
 ===/<repository>/docs/architecture/===
 shared-modules-and-upload.md[SG4T]: F:记录共享模块依赖方向、上传子职责及兼容接口验证范围 | R:- | A:模块依赖,上传职责 | S:共享消息层依赖可靠性层，可靠性层不依赖MQ SDK
@@ -814,7 +808,7 @@ shared-modules-and-upload.md[SG4T]: F:记录共享模块依赖方向、上传子
 04-auth-session.md[SI4T]: F:解释访问令牌、刷新Cookie轮换及页面并发刷新设计与限制 | R:- | A:核心时序,设计取舍 | S:单页Promise共享不能代表跨标签协调
 05-upload-resume.md[SB4T]: F:说明断点续传、重复分片和直传完成校验，并给出故障案例 | R:- | A:核心时序,故障案例与验证 | S:ETag按MD5比较只适用于所述单PUT场景
 06-danmu-realtime.md[SN3T]: F:讲解弹幕HTTP受理、Redis广播、WebSocket票据与可靠异步落库的分层 | R:- | A:核心时序,故障案例与验证 | S:重连仅恢复后续接收，无断点补消息承诺
-07-social-interactions.md[SB3T]: F:说明社交关系幂等、评论权限与计数增量的工程取舍 | R:- | A:核心时序,设计取舍 | S:数据库回滚不会撤销Redis计数写入
+07-social-interactions.md[SB3T]: F:讲解社交关系幂等、评论权限和MySQL事务计数的取舍 | R:database://bilibili-mysql/bilibili/video_stats | A:重复点赞,设计取舍 | S:数据库事务提交后详情缓存仍等待CDC失效
 08-creator-analytics.md[SA3T]: F:说明创作者看板的日聚合、脏日期重建及统计口径 | R:- | A:核心时序,故障案例与验证 | S:点赞收藏以当前有效关系计入，非源行为历史
 09-content-governance.md[SB3T]: F:介绍内容审核、举报流程、业务状态和审计边界 | R:- | A:核心时序,设计取舍 | S:内容下架不能保证外发媒体地址同步失效
 10-read-cache-search.md[SP3T]: F:介绍短时缓存、版本失效、布隆过滤与搜索层的读路径 | R:- | A:核心时序,设计取舍 | S:布隆可能命中仍需数据源确认
@@ -881,8 +875,8 @@ browser-e2e.ps1[TQ4T]: F:在运行中的视频容器生成唯一本地媒体，�
 compose-helpers.ps1[XQ5S]: F:封装跨平台Compose、curl、业务JSON请求、MySQL标量和等待断言 | R:- | A:Invoke-Compose,Invoke-CurlNoProxy,Invoke-BiliApi,Wait-Until | S:仅在curl调用期间修改无代理环境，HTTP成功仍检查业务success
 fault-drill.ps1[TR4T]: F:在隔离验证中短停MQ、Redis及ES并断言异步恢复和索引对账 | R:- | A:Invoke-ReliabilityFaultDrill | S:MQ故障期间仍核对播放，ES恢复后显式重建并对账
 p1-reliability-drill.ps1[TR6L]: F:运行双转码Worker崩溃接管和双Canal并发切换演练，采样CDC积压 | R:code:docker-compose.p1.yml,code:scripts/e2e/compose-helpers.ps1 | A:CrashAfterPlayable,MeasureIndexCutover | S:用任务所有权、实际HLS可读性及索引一致性做现场断言，可保留首档后故障场景
-prepare-minio-test-image.sh[XQ4T]: F:确保测试用MinIO镜像可用并导出选择结果 | R:code:docker/test/minio.Dockerfile | A:MINIO_TEST_IMAGE | S:先用已有或远端固定镜像，拉取失败才构建本地替代
-reliability-e2e.ps1[TQ6M]: F:运行真实Compose视频完整主链路，校验搜索互动并按选项演练故障 | R:code:docker-compose.e2e.yml,code:scripts/e2e/fault-drill.ps1 | A:SkipBuild,RunFaultDrill,KeepRunning,KeepTestData | S:使用独立测试数据，输出上下文支持后续写压和清理
+prepare-minio-test-image.sh[XQ4T]: F:为Testcontainers和隔离Compose导出可用的MinIO镜像 | R:code:docker/test/minio.Dockerfile | A:MINIO_TEST_IMAGE | S:先用本地或拉取固定镜像，拉取失败才构建固定源码的本地替代
+reliability-e2e.ps1[TQ6M]: F:运行真实Compose视频旅程并校验播放、搜索、互动计数及可选故障演练 | R:code:docker-compose.e2e.yml,code:scripts/e2e/fault-drill.ps1 | A:SkipBuild,RunFaultDrill,KeepRunning,KeepTestData | S:重复点赞后直接核对已提交的数据库计数。输出隔离数据上下文供写压与后续清理
 transcode-fault-matrix.sh[TR5T]: F:检查Linux媒体工具及Docker，运行真实转码故障矩阵并保存报告 | R:code:scripts/e2e/prepare-minio-test-image.sh | A:transcode.fault.matrix,environment.txt,maven.log | S:使用隔离MySQL和MinIO，脚本传播Maven退出状态
 
 ===/<repository>/scripts/loadtest/===
@@ -893,5 +887,8 @@ run-write-slo.ps1[TP6L]: F:运行写路径k6混合场景，融合E2E阶段、应
 test-resource-normalization.ps1[TP3T]: F:校验一核、四核、Cpuset和半载情况下的CPU配额换算 | R:code:scripts/loadtest/resource-normalization.ps1 | A:test-resource-normalization.ps1 | S:-
 
 ===/<repository>/scripts/verification/===
-release-validation.ps1[OV6M]: F:串联环境和CPU检查、后端验证、真实Compose及可选浏览器、写路径SLO和清理 | R:code:scripts/e2e/reliability-e2e.ps1,code:scripts/loadtest/run-write-slo.ps1 | A:RunFaultDrill,RunBrowserE2e,release-validation.json | S:要求干净工作区以绑定报告与当前提交，跳过项由参数显式控制
+release-validation.ps1[OV6M]: F:串联环境检查、完整后端验证、真实Compose、可选浏览器和写路径SLO | R:code:scripts/e2e/reliability-e2e.ps1,code:scripts/loadtest/run-write-slo.ps1 | A:RunFaultDrill,RunBrowserE2e,release-validation.json | S:要求干净工作区以绑定版本，后端显式启用媒体故障矩阵并要求零跳过
 verify-compose-helpers-portability.ps1[TQ4T]: F:验证跨平台curl单路径解析、参数传递不展开通配符及真实请求头 | R:code:scripts/e2e/compose-helpers.ps1 | A:verify-compose-helpers-portability.ps1 | S:使用本地文件和回环监听作探针
+
+===/<repository>/bilibili-common-reliability/src/main/java/com/gary/bilibili/common/social/===
+VideoInteractionStats.java[PD7T]: F:原子更新视频的点赞、收藏及评论计数 | R:database://bilibili-mysql/bilibili/video_stats | A:changeLikes,changeCollections,changeComments | S:必须加入现有业务事务。仅在业务行实际变更后写对应差值，关系或内容回滚时计数一起回滚

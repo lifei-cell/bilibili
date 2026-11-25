@@ -3,13 +3,12 @@ package com.gary.bilibili.social.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import com.gary.bilibili.common.analytics.CreatorAnalyticsDirtyPublisher;
 import com.gary.bilibili.common.exception.BusinessException;
-import com.gary.bilibili.social.constant.SocialConstant;
 import com.gary.bilibili.social.dto.CommentCreateDTO;
 import com.gary.bilibili.social.entity.Comment;
 import com.gary.bilibili.social.mapper.CommentMapper;
 import com.gary.bilibili.social.model.CommentPage;
 import com.gary.bilibili.social.model.CommentRow;
-import com.gary.bilibili.social.service.SocialStatsService;
+import com.gary.bilibili.common.social.VideoInteractionStats;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -33,7 +32,7 @@ class CommentServiceImplTest {
 
     private CommentMapper commentMapper;
     private StringRedisTemplate stringRedisTemplate;
-    private SocialStatsService socialStatsService;
+    private VideoInteractionStats interactionStats;
     private CreatorAnalyticsDirtyPublisher analyticsDirtyPublisher;
     private CommentServiceImpl commentService;
 
@@ -41,12 +40,12 @@ class CommentServiceImplTest {
     void setUp() {
         commentMapper = mock(CommentMapper.class);
         stringRedisTemplate = mock(StringRedisTemplate.class);
-        socialStatsService = mock(SocialStatsService.class);
+        interactionStats = mock(VideoInteractionStats.class);
         analyticsDirtyPublisher = mock(CreatorAnalyticsDirtyPublisher.class);
         when(stringRedisTemplate.execute(
                 any(RedisScript.class), anyList(), any(Object[].class))).thenReturn(1L);
         commentService = new CommentServiceImpl(
-                commentMapper, stringRedisTemplate, socialStatsService,
+                commentMapper, stringRedisTemplate, interactionStats,
                 analyticsDirtyPublisher);
     }
 
@@ -68,8 +67,7 @@ class CommentServiceImplTest {
             assertThat(commentService.create(request).getCommentId()).isEqualTo(80001L);
         }
 
-        verify(socialStatsService).increment(
-                10001L, SocialConstant.COMMENT_COUNT_FIELD, 1);
+        verify(interactionStats).changeComments(10001L, 1);
         verify(analyticsDirtyPublisher).publish(
                 10001L, LocalDate.of(2026, 9, 22));
     }
@@ -137,7 +135,6 @@ class CommentServiceImplTest {
         comment.setParentId(0L);
         when(commentMapper.selectOne(any())).thenReturn(comment);
         when(commentMapper.selectVideoAuthorId(10001L)).thenReturn(1L);
-        when(commentMapper.countCommentTree(80001L)).thenReturn(3L);
         when(commentMapper.selectAffectedDates(80001L, true)).thenReturn(List.of(
                 LocalDate.of(2026, 9, 21), LocalDate.of(2026, 9, 22)));
         when(commentMapper.markDeleted(80001L, true)).thenReturn(3);
@@ -147,8 +144,7 @@ class CommentServiceImplTest {
             commentService.delete(80001L);
         }
 
-        verify(socialStatsService).increment(
-                10001L, SocialConstant.COMMENT_COUNT_FIELD, -3L);
+        verify(interactionStats).changeComments(10001L, -3);
         verify(analyticsDirtyPublisher).publish(10001L, LocalDate.of(2026, 9, 21));
         verify(analyticsDirtyPublisher).publish(10001L, LocalDate.of(2026, 9, 22));
     }

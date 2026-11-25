@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-18T15:31:50Z",
-  "updated_at": "2026-11-19T11:49:08Z",
+  "updated_at": "2026-11-25T01:47:10Z",
   "files": {
     ".env.prod.example": {
       "role": "index",
@@ -17,9 +17,9 @@
     },
     ".github/workflows/ci.yml": {
       "role": "index",
-      "sha256": "e29e9434fff29ac154f8997ba778578f2e06071d61ebc91a303edab9acba3098",
-      "size": 5362,
-      "normalized_sha256": "e29e9434fff29ac154f8997ba778578f2e06071d61ebc91a303edab9acba3098"
+      "sha256": "b6535b70d3655f866ee23a661e3924ab706a2f5d24b0d6c22bcf38282d4e6d29",
+      "size": 5488,
+      "normalized_sha256": "b6535b70d3655f866ee23a661e3924ab706a2f5d24b0d6c22bcf38282d4e6d29"
     },
     ".gitignore": {
       "role": "index",
@@ -71,9 +71,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "659523adf721e806d26b9ade8697b583ec7a6507bbff7f30b6d5971903fd2aa2",
-      "size": 126879,
-      "normalized_sha256": "659523adf721e806d26b9ade8697b583ec7a6507bbff7f30b6d5971903fd2aa2"
+      "sha256": "21224300d283525794f0be9f0d5165731c11a39f30ea450509ea97f263bfd7e6",
+      "size": 128906,
+      "normalized_sha256": "21224300d283525794f0be9f0d5165731c11a39f30ea450509ea97f263bfd7e6"
     },
     "aoci.database.txt": {
       "role": "index",
@@ -429,6 +429,12 @@
       "size": 7142,
       "normalized_sha256": "06938be347069019d5a49f12e20f4f68fc74e22885adeba828248709947467c3"
     },
+    "bilibili-common-reliability/src/main/java/com/gary/bilibili/common/social/VideoInteractionStats.java": {
+      "role": "index",
+      "sha256": "b995dd8003ffee65894a43b6c4ccc455a2512416d88aff734271ec96d13148f4",
+      "size": 1171,
+      "normalized_sha256": "b995dd8003ffee65894a43b6c4ccc455a2512416d88aff734271ec96d13148f4"
+    },
     "bilibili-common-reliability/src/test/java/com/gary/bilibili/common/analytics/CreatorAnalyticsDirtyPublisherTest.java": {
       "role": "index",
       "sha256": "ff84515b0f818b9a36e825c0154916826389d8338eddb12ecd286d97b5b6e744",
@@ -542,6 +548,12 @@
       "sha256": "c970d0dc4a491cde6b0ab49aa657d4862809b36b19d23c50d9adfe1fcc4165b0",
       "size": 1359,
       "normalized_sha256": "c970d0dc4a491cde6b0ab49aa657d4862809b36b19d23c50d9adfe1fcc4165b0"
+    },
+    "bilibili-common/src/main/resources/db/migration/V12__reconcile_video_interaction_stats.sql": {
+      "role": "index",
+      "sha256": "17a2fce8f8110994099621e31628203023f119a44a0ea3fe22db259d07009f6b",
+      "size": 887,
+      "normalized_sha256": "17a2fce8f8110994099621e31628203023f119a44a0ea3fe22db259d07009f6b"
     },
     "bilibili-common/src/main/resources/db/migration/V1__baseline.sql": {
       "role": "index",
@@ -1037,9 +1049,9 @@
     },
     "bilibili-social-service/src/main/java/com/gary/bilibili/social/constant/SocialConstant.java": {
       "role": "index",
-      "sha256": "7644ecc0710c9e276f51edd3c8466cd68c61ed14cf769ef461b5f830c1f99085",
-      "size": 1232,
-      "normalized_sha256": "7644ecc0710c9e276f51edd3c8466cd68c61ed14cf769ef461b5f830c1f99085"
+      "sha256": "9a033bd057498ed142d32cc58dd5a75d93727f75dc540488b4690ecff22bdb2e",
+      "size": 711,
+      "normalized_sha256": "9a033bd057498ed142d32cc58dd5a75d93727f75dc540488b4690ecff22bdb2e"
     },
     "bilibili-social-service/src/main/java/com/gary/bilibili/social/controller/CollectionController.java": {
       "role": "index",
@@ -1145,9 +1157,9 @@
     },
     "bilibili-social-service/src/main/java/com/gary/bilibili/social/mapper/CommentMapper.java": {
       "role": "index",
-      "sha256": "05676d49d32cdf81342916e3c2ccf7a4bf031078cc31a30332ff74c1dff3226e",
-      "size": 4342,
-      "normalized_sha256": "05676d49d32cdf81342916e3c2ccf7a4bf031078cc31a30332ff74c1dff3226e"
+      "sha256": "7a384b324cf49edce3f82b0f1677e30bdcff8174a09370e42041d6c27a95cc98",
+      "size": 4149,
+      "normalized_sha256": "7a384b324cf49edce3f82b0f1677e30bdcff8174a09370e42041d6c27a95cc98"
     },
     "bilibili-social-service/src/main/java/com/gary/bilibili/social/mapper/FollowMapper.java": {
       "role": "index",
@@ -1235,15 +1247,15 @@
     },
     "bilibili-social-service/src/main/java/com/gary/bilibili/social/service/impl/CollectionServiceImpl.java": {
       "role": "index",
-      "sha256": "b0f9a92922b634425e89c63a700048fe3baf86bd20d8ed6aa1b59f6bc17c2fe1",
-      "size": 10211,
-      "normalized_sha256": "b0f9a92922b634425e89c63a700048fe3baf86bd20d8ed6aa1b59f6bc17c2fe1"
+      "sha256": "337089af83393352a3b008c56babeddf99f5e8ecc36f10ef43d120ddfc022f9d",
+      "size": 10181,
+      "normalized_sha256": "337089af83393352a3b008c56babeddf99f5e8ecc36f10ef43d120ddfc022f9d"
     },
     "bilibili-social-service/src/main/java/com/gary/bilibili/social/service/impl/CommentServiceImpl.java": {
       "role": "index",
-      "sha256": "b42c8814dd7d7dbef8a1c8704ec85abbd989f9fd96d5e2fcd819c32c07cab7a5",
-      "size": 10014,
-      "normalized_sha256": "b42c8814dd7d7dbef8a1c8704ec85abbd989f9fd96d5e2fcd819c32c07cab7a5"
+      "sha256": "cc14408d92c0b1208eb5c8eecb3268c59bdec3ba1479fc869b1db0944881c01f",
+      "size": 9815,
+      "normalized_sha256": "cc14408d92c0b1208eb5c8eecb3268c59bdec3ba1479fc869b1db0944881c01f"
     },
     "bilibili-social-service/src/main/java/com/gary/bilibili/social/service/impl/FollowServiceImpl.java": {
       "role": "index",
@@ -1253,9 +1265,9 @@
     },
     "bilibili-social-service/src/main/java/com/gary/bilibili/social/service/impl/LikeServiceImpl.java": {
       "role": "index",
-      "sha256": "e1abc808e2c2dcac42a92be577b4911712dc32245f69f1c0f207453b7334003b",
-      "size": 5396,
-      "normalized_sha256": "e1abc808e2c2dcac42a92be577b4911712dc32245f69f1c0f207453b7334003b"
+      "sha256": "cd863a5c66ee86365f5ea3ade15f1d9670126507b5757276e1b1b1e1a56c8a37",
+      "size": 5363,
+      "normalized_sha256": "cd863a5c66ee86365f5ea3ade15f1d9670126507b5757276e1b1b1e1a56c8a37"
     },
     "bilibili-social-service/src/main/java/com/gary/bilibili/social/task/SocialStatsSyncTask.java": {
       "role": "index",
@@ -1343,21 +1355,21 @@
     },
     "bilibili-social-service/src/main/resources/application.yml": {
       "role": "index",
-      "sha256": "94d74f24897b1953095957940540b4cfec669eb68ddcf43f8d21d6fef80caebf",
-      "size": 1479,
-      "normalized_sha256": "b20f4151ae348dad917a6b54bfca0ddb83989fdbd9d5232e3ac6e89baa105a30"
+      "sha256": "02ed308135180f53ecf6e2f8107ce0e4401fff01529b9f3aca03b14fbe94a5c8",
+      "size": 1341,
+      "normalized_sha256": "2de97599590e50097226152dd48cb8f10a8ce365fdfca7ce13e2403bd0f5dc9e"
     },
     "bilibili-social-service/src/test/java/com/gary/bilibili/social/service/impl/CollectionServiceImplTest.java": {
       "role": "index",
-      "sha256": "ce3113f88c077f776a7c412af6b46cb1b0c7899bfa6ae255b0b48c021a600f25",
-      "size": 6630,
-      "normalized_sha256": "ce3113f88c077f776a7c412af6b46cb1b0c7899bfa6ae255b0b48c021a600f25"
+      "sha256": "966787dab55f3808e3543708331ff68b75f278d11ab2bc109f3db9609e263e15",
+      "size": 6481,
+      "normalized_sha256": "966787dab55f3808e3543708331ff68b75f278d11ab2bc109f3db9609e263e15"
     },
     "bilibili-social-service/src/test/java/com/gary/bilibili/social/service/impl/CommentServiceImplTest.java": {
       "role": "index",
-      "sha256": "570691b2218eace4dba5dd59c4bebf664ef39d02539f50751d72a8c2e907da37",
-      "size": 6816,
-      "normalized_sha256": "570691b2218eace4dba5dd59c4bebf664ef39d02539f50751d72a8c2e907da37"
+      "sha256": "da5b0cd613c96c036f92b41d60b511089401cee167bf83514eee3e40dc22cb2c",
+      "size": 6591,
+      "normalized_sha256": "da5b0cd613c96c036f92b41d60b511089401cee167bf83514eee3e40dc22cb2c"
     },
     "bilibili-social-service/src/test/java/com/gary/bilibili/social/service/impl/FollowServiceImplTest.java": {
       "role": "index",
@@ -1367,9 +1379,9 @@
     },
     "bilibili-social-service/src/test/java/com/gary/bilibili/social/service/impl/LikeServiceImplTest.java": {
       "role": "index",
-      "sha256": "c5dad44213dc2518a802eaa9b84ac0116303536ffa3da3b68f8dd38cdd2db897",
-      "size": 4973,
-      "normalized_sha256": "c5dad44213dc2518a802eaa9b84ac0116303536ffa3da3b68f8dd38cdd2db897"
+      "sha256": "a2e70fc6a29744e7581ba0b5e4efa66979d4c7dc562a99d7e7f7afa1c215d855",
+      "size": 4818,
+      "normalized_sha256": "a2e70fc6a29744e7581ba0b5e4efa66979d4c7dc562a99d7e7f7afa1c215d855"
     },
     "bilibili-social-service/src/test/java/com/gary/bilibili/social/task/SocialStatsSyncTaskTest.java": {
       "role": "index",
@@ -1559,9 +1571,9 @@
     },
     "bilibili-user-service/src/test/java/com/gary/bilibili/user/api/UserApiIT.java": {
       "role": "index",
-      "sha256": "078955fcbd7bbae26640cae7c8bca44889540ac0582a51e760a00499a4e2b008",
+      "sha256": "c764b0f3bed3dd2633f0df49549d1cc56fd2f9e55f91290960432e625c6f63f9",
       "size": 9671,
-      "normalized_sha256": "078955fcbd7bbae26640cae7c8bca44889540ac0582a51e760a00499a4e2b008"
+      "normalized_sha256": "c764b0f3bed3dd2633f0df49549d1cc56fd2f9e55f91290960432e625c6f63f9"
     },
     "bilibili-user-service/src/test/java/com/gary/bilibili/user/service/RefreshCookieServiceTest.java": {
       "role": "index",
@@ -1835,9 +1847,9 @@
     },
     "bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/ContentReportMapper.java": {
       "role": "index",
-      "sha256": "754c0170af8c4f0d4778c9dc275241ca7ce0e88eff9dedd24892d66dad8b68ea",
-      "size": 1940,
-      "normalized_sha256": "754c0170af8c4f0d4778c9dc275241ca7ce0e88eff9dedd24892d66dad8b68ea"
+      "sha256": "a77dbab81be9c3e815bfac5e8a2b4c81b122effa8507fe15f2728376cb00ef73",
+      "size": 2070,
+      "normalized_sha256": "a77dbab81be9c3e815bfac5e8a2b4c81b122effa8507fe15f2728376cb00ef73"
     },
     "bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/ContentRiskEventMapper.java": {
       "role": "index",
@@ -1985,9 +1997,9 @@
     },
     "bilibili-video-service/src/main/java/com/gary/bilibili/video/service/ContentGovernanceService.java": {
       "role": "index",
-      "sha256": "ffc280562e671ef50419c00a9cbd86f9ecc3228d89d4c10dd809bd676eb1e5af",
-      "size": 7409,
-      "normalized_sha256": "ffc280562e671ef50419c00a9cbd86f9ecc3228d89d4c10dd809bd676eb1e5af"
+      "sha256": "8d83b47c6336f965b36bfa9f694636917f659212a6f74a53dd044c945adbd7b7",
+      "size": 7823,
+      "normalized_sha256": "8d83b47c6336f965b36bfa9f694636917f659212a6f74a53dd044c945adbd7b7"
     },
     "bilibili-video-service/src/main/java/com/gary/bilibili/video/service/ContentRiskService.java": {
       "role": "index",
@@ -2409,6 +2421,12 @@
       "size": 5257,
       "normalized_sha256": "200bf3a85dea5f600d5906718d6bfb2963fc70122fadb895a97014cc5b319eaa"
     },
+    "bilibili-video-service/src/test/java/com/gary/bilibili/video/repository/VideoInteractionStatsMySqlIT.java": {
+      "role": "index",
+      "sha256": "477116c1bd151c43119c11edbf4f3592a23388d11bc172d0cb31dc7bc054fbc4",
+      "size": 4674,
+      "normalized_sha256": "477116c1bd151c43119c11edbf4f3592a23388d11bc172d0cb31dc7bc054fbc4"
+    },
     "bilibili-video-service/src/test/java/com/gary/bilibili/video/service/ContentRiskServiceTest.java": {
       "role": "index",
       "sha256": "1d63acf241aeeb0b5b474a03f11e47d27ca216e5ab5f66326dff388341b3b1bc",
@@ -2795,9 +2813,9 @@
     },
     "docker-compose.e2e.yml": {
       "role": "index",
-      "sha256": "65b6f036fd8307ef49c34682d8a1ab19ecbe01074765b658bdb782b64e954753",
-      "size": 1165,
-      "normalized_sha256": "65b6f036fd8307ef49c34682d8a1ab19ecbe01074765b658bdb782b64e954753"
+      "sha256": "bc0ddf91e8e006fac5cec59c0a2aed348e09b04234f586aa4c2e1fe409fe7adf",
+      "size": 1128,
+      "normalized_sha256": "bc0ddf91e8e006fac5cec59c0a2aed348e09b04234f586aa4c2e1fe409fe7adf"
     },
     "docker-compose.gpu.intel.yml": {
       "role": "index",
@@ -2951,9 +2969,9 @@
     },
     "docs/PROJECT_DELIVERY.md": {
       "role": "index",
-      "sha256": "17b8d9e94b467a38bbec42f950c7f6584c63c5f3037fa42bdaad4f57c5d738bd",
-      "size": 3221,
-      "normalized_sha256": "17b8d9e94b467a38bbec42f950c7f6584c63c5f3037fa42bdaad4f57c5d738bd"
+      "sha256": "3ed5bf068c9da22d69ed0c27ff70c16266209a7bc9ed59dfa5aa92c12b0368ae",
+      "size": 3949,
+      "normalized_sha256": "3ed5bf068c9da22d69ed0c27ff70c16266209a7bc9ed59dfa5aa92c12b0368ae"
     },
     "docs/architecture/shared-modules-and-upload.md": {
       "role": "index",
@@ -2999,9 +3017,9 @@
     },
     "docs/interview/07-social-interactions.md": {
       "role": "index",
-      "sha256": "ddda88ec456c0d8b6854a771c5fe95de5543472b148e04df297a5ab814efd9a9",
-      "size": 4517,
-      "normalized_sha256": "ddda88ec456c0d8b6854a771c5fe95de5543472b148e04df297a5ab814efd9a9"
+      "sha256": "57a853619fd5677badba2b51534c4683f8f281ca4fce346b3cda1145f8e8049f",
+      "size": 4113,
+      "normalized_sha256": "57a853619fd5677badba2b51534c4683f8f281ca4fce346b3cda1145f8e8049f"
     },
     "docs/interview/08-creator-analytics.md": {
       "role": "index",
@@ -3519,15 +3537,15 @@
     },
     "scripts/e2e/prepare-minio-test-image.sh": {
       "role": "index",
-      "sha256": "25d2bc673030df2b51e33b9c7688d737c4600404c551e851587d2c56bb30faba",
-      "size": 688,
-      "normalized_sha256": "25d2bc673030df2b51e33b9c7688d737c4600404c551e851587d2c56bb30faba"
+      "sha256": "c812185b1631670a1e01530dd35b1f738a82faf835e051ad360526a4edd24fd6",
+      "size": 680,
+      "normalized_sha256": "c812185b1631670a1e01530dd35b1f738a82faf835e051ad360526a4edd24fd6"
     },
     "scripts/e2e/reliability-e2e.ps1": {
       "role": "index",
-      "sha256": "abd4af8ad46f362027e6644980b3db14ed54d1290ffa42b69ed8c4584306ffa2",
-      "size": 21415,
-      "normalized_sha256": "abd4af8ad46f362027e6644980b3db14ed54d1290ffa42b69ed8c4584306ffa2"
+      "sha256": "34b2ca7c21abf26bf07be3469922d3bf5951acc7a2d46dd8b2eda05f63cc1ae8",
+      "size": 21805,
+      "normalized_sha256": "34b2ca7c21abf26bf07be3469922d3bf5951acc7a2d46dd8b2eda05f63cc1ae8"
     },
     "scripts/e2e/transcode-fault-matrix.sh": {
       "role": "index",
@@ -3567,9 +3585,9 @@
     },
     "scripts/verification/release-validation.ps1": {
       "role": "index",
-      "sha256": "7274f61c14fb54c26feadb5db18dde80a11f94bdb0db048e95d7177d95e42a08",
-      "size": 10090,
-      "normalized_sha256": "7274f61c14fb54c26feadb5db18dde80a11f94bdb0db048e95d7177d95e42a08"
+      "sha256": "e027441da2497f66c197246e7d246cbd895e19fb1a636093ac40ce21cb45f3d8",
+      "size": 10122,
+      "normalized_sha256": "e027441da2497f66c197246e7d246cbd895e19fb1a636093ac40ce21cb45f3d8"
     },
     "scripts/verification/verify-compose-helpers-portability.ps1": {
       "role": "index",

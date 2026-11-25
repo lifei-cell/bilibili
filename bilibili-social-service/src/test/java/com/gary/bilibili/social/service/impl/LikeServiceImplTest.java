@@ -3,10 +3,9 @@ package com.gary.bilibili.social.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import com.gary.bilibili.common.analytics.CreatorAnalyticsDirtyPublisher;
 import com.gary.bilibili.common.exception.BusinessException;
-import com.gary.bilibili.social.constant.SocialConstant;
 import com.gary.bilibili.social.dto.LikeDTO;
 import com.gary.bilibili.social.mapper.LikeMapper;
-import com.gary.bilibili.social.service.SocialStatsService;
+import com.gary.bilibili.common.social.VideoInteractionStats;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -29,7 +28,7 @@ class LikeServiceImplTest {
 
     private LikeMapper likeMapper;
     private SetOperations<String, String> setOperations;
-    private SocialStatsService socialStatsService;
+    private VideoInteractionStats interactionStats;
     private CreatorAnalyticsDirtyPublisher analyticsDirtyPublisher;
     private LikeServiceImpl likeService;
 
@@ -39,11 +38,11 @@ class LikeServiceImplTest {
         likeMapper = mock(LikeMapper.class);
         StringRedisTemplate stringRedisTemplate = mock(StringRedisTemplate.class);
         setOperations = mock(SetOperations.class);
-        socialStatsService = mock(SocialStatsService.class);
+        interactionStats = mock(VideoInteractionStats.class);
         analyticsDirtyPublisher = mock(CreatorAnalyticsDirtyPublisher.class);
         when(stringRedisTemplate.opsForSet()).thenReturn(setOperations);
         likeService = new LikeServiceImpl(
-                likeMapper, stringRedisTemplate, socialStatsService, analyticsDirtyPublisher);
+                likeMapper, stringRedisTemplate, interactionStats, analyticsDirtyPublisher);
     }
 
     @Test
@@ -61,8 +60,7 @@ class LikeServiceImplTest {
             assertThat(likeService.like(request).getLiked()).isTrue();
         }
 
-        verify(socialStatsService).increment(
-                10001L, SocialConstant.LIKE_COUNT_FIELD, 1);
+        verify(interactionStats).changeLikes(10001L, 1);
         verify(analyticsDirtyPublisher).publish(
                 10001L, LocalDate.of(2026, 9, 22));
         verify(setOperations).add("like:1:10001", "1");
@@ -80,8 +78,7 @@ class LikeServiceImplTest {
             likeService.like(request);
         }
 
-        verify(socialStatsService, never()).increment(
-                10001L, SocialConstant.LIKE_COUNT_FIELD, 1);
+        verify(interactionStats, never()).changeLikes(10001L, 1);
         verify(analyticsDirtyPublisher, never()).publish(anyLong(), any());
     }
 

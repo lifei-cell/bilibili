@@ -4,6 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.gary.bilibili.common.exception.BusinessException;
+import com.gary.bilibili.common.social.VideoInteractionStats;
 import com.gary.bilibili.video.constant.VideoConstant;
 import com.gary.bilibili.video.dto.AuditActionDTO;
 import com.gary.bilibili.video.dto.ContentReportDTO;
@@ -34,12 +35,13 @@ public class ContentGovernanceService {
     private final VideoBloomFilter videoBloomFilter;
     private final VideoListCache videoListCache;
     private final StringRedisTemplate redisTemplate;
+    private final VideoInteractionStats interactionStats;
 
     public ContentGovernanceService(VideoMapper videoMapper, ContentReportMapper reportMapper,
                                     ContentAuditLogMapper auditLogMapper,
                                     AdminAuthorizationService authorizationService,
                                     VideoBloomFilter videoBloomFilter, VideoListCache videoListCache,
-                                    StringRedisTemplate redisTemplate) {
+                                    StringRedisTemplate redisTemplate, VideoInteractionStats interactionStats) {
         this.videoMapper = videoMapper;
         this.reportMapper = reportMapper;
         this.auditLogMapper = auditLogMapper;
@@ -47,6 +49,7 @@ public class ContentGovernanceService {
         this.videoBloomFilter = videoBloomFilter;
         this.videoListCache = videoListCache;
         this.redisTemplate = redisTemplate;
+        this.interactionStats = interactionStats;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -94,11 +97,17 @@ public class ContentGovernanceService {
         boolean upheld = "UPHOLD".equals(request.getAction());
         if (upheld) {
             if ("VIDEO".equals(report.getTargetType())) moderateVideo(report.getTargetId(), "OFFLINE", request.getRemark(), adminId);
-            else if ("COMMENT".equals(report.getTargetType())) reportMapper.blockComment(report.getTargetId());
+            else if ("COMMENT".equals(report.getTargetType())) blockComment(report.getTargetId());
             else reportMapper.blockDanmu(report.getTargetId());
         }
         if (reportMapper.resolve(reportId, upheld ? 2 : 3, adminId, request.getRemark()) != 1)
             throw new BusinessException("举报状态已变化");
+    }
+
+    private void blockComment(long commentId) {
+        if (reportMapper.blockComment(commentId) == 1) {
+            interactionStats.changeComments(reportMapper.selectCommentVideoId(commentId), -1);
+        }
     }
 
     private void moderateVideo(long videoId, String action, String remark, long adminId) {

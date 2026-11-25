@@ -273,6 +273,11 @@ try {
     }
     Assert-True $like.data.liked 'Like interaction failed'
     Complete-E2eSloStage -Name 'interaction' -Stopwatch $interactionStopwatch
+    Invoke-BiliApi -Method POST -Uri 'http://localhost:8080/api/like' -Headers $authHeaders -Body @{
+        targetType = 1; targetId = $videoId
+    } | Out-Null
+    $counts = Get-MySqlScalar "select concat_ws(',', like_count, comment_count) from video_stats where video_id=$videoId"
+    Assert-True ($counts -eq '1,1') 'Committed like and comment counts must agree after a duplicate like'
 
     $danmuStopwatch = [Diagnostics.Stopwatch]::StartNew()
     $danmu = Invoke-BiliApi -Method POST -Uri 'http://localhost:8080/api/danmu/send' -Headers $authHeaders -Body @{

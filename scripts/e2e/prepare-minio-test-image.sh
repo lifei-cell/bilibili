@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Source this file to export the selected test image; never replaces demo images.
+# Source this file before Testcontainers or the isolated Compose E2E run.
 export MINIO_TEST_IMAGE="${MINIO_TEST_IMAGE:-quay.io/minio/minio:RELEASE.2024-12-13T22-19-12Z}"
 if ! docker image inspect "$MINIO_TEST_IMAGE" >/dev/null 2>&1 && ! docker pull "$MINIO_TEST_IMAGE"; then
   export MINIO_TEST_IMAGE=bilibili-test-minio:68b004a48f41

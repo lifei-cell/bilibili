@@ -4,6 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.gary.bilibili.common.analytics.CreatorAnalyticsDirtyPublisher;
 import com.gary.bilibili.common.exception.BusinessException;
+import com.gary.bilibili.common.social.VideoInteractionStats;
 import com.gary.bilibili.social.constant.SocialConstant;
 import com.gary.bilibili.social.dto.CollectionDTO;
 import com.gary.bilibili.social.dto.CollectionFolderCreateDTO;
@@ -14,7 +15,6 @@ import com.gary.bilibili.social.mapper.CollectionMapper;
 import com.gary.bilibili.social.model.CollectionPage;
 import com.gary.bilibili.social.model.CollectionRow;
 import com.gary.bilibili.social.service.CollectionService;
-import com.gary.bilibili.social.service.SocialStatsService;
 import com.gary.bilibili.social.vo.CollectionFolderVO;
 import com.gary.bilibili.social.vo.CollectionListVO;
 import com.gary.bilibili.social.vo.CollectionVO;
@@ -30,16 +30,16 @@ public class CollectionServiceImpl implements CollectionService {
 
     private final CollectionMapper collectionMapper;
     private final CollectionFolderMapper collectionFolderMapper;
-    private final SocialStatsService socialStatsService;
+    private final VideoInteractionStats interactionStats;
     private final CreatorAnalyticsDirtyPublisher analyticsDirtyPublisher;
 
     public CollectionServiceImpl(CollectionMapper collectionMapper,
                                  CollectionFolderMapper collectionFolderMapper,
-                                 SocialStatsService socialStatsService,
+                                 VideoInteractionStats interactionStats,
                                  CreatorAnalyticsDirtyPublisher analyticsDirtyPublisher) {
         this.collectionMapper = collectionMapper;
         this.collectionFolderMapper = collectionFolderMapper;
-        this.socialStatsService = socialStatsService;
+        this.interactionStats = interactionStats;
         this.analyticsDirtyPublisher = analyticsDirtyPublisher;
     }
 
@@ -181,7 +181,7 @@ public class CollectionServiceImpl implements CollectionService {
         if (folderId != SocialConstant.DEFAULT_FOLDER_ID) {
             collectionFolderMapper.incrementVideoCount(folderId, userId, delta);
         }
-        socialStatsService.increment(videoId, SocialConstant.COLLECT_COUNT_FIELD, delta);
+        interactionStats.changeCollections(videoId, delta);
     }
 
     private void publishChange(Long userId, Long videoId, long folderId) {
