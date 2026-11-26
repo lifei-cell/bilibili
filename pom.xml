@@ -13,6 +13,11 @@
 
     <modules>
         <module>bilibili-common</module>
+        <module>bilibili-common-observability</module>
+        <module>bilibili-common-web</module>
+        <module>bilibili-common-reliability</module>
+        <module>bilibili-common-messaging</module>
+        <module>bilibili-common-storage</module>
         <module>bilibili-gateway</module>
         <module>bilibili-user-service</module>
         <module>bilibili-video-service</module>
@@ -107,6 +112,31 @@
             <dependency>
                 <groupId>com.gary.bilibili</groupId>
                 <artifactId>bilibili-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.gary.bilibili</groupId>
+                <artifactId>bilibili-common-observability</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.gary.bilibili</groupId>
+                <artifactId>bilibili-common-web</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.gary.bilibili</groupId>
+                <artifactId>bilibili-common-reliability</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.gary.bilibili</groupId>
+                <artifactId>bilibili-common-messaging</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.gary.bilibili</groupId>
+                <artifactId>bilibili-common-storage</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

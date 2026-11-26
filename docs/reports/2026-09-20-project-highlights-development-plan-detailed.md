@@ -71,10 +71,10 @@ MySQL 事务只能保证任务表和视频表一致，不能同时事务性提�
 
 ### 当前实现
 
-- [OutboxEventService](../../bilibili-common/src/main/java/com/gary/bilibili/common/reliability/OutboxEventService.java) 和 [OutboxEventPublisher](../../bilibili-common/src/main/java/com/gary/bilibili/common/reliability/OutboxEventPublisher.java) 负责事务 Outbox 与异步投递。
-- [MessageInboxRepository](../../bilibili-common/src/main/java/com/gary/bilibili/common/reliability/MessageInboxRepository.java) 记录消费身份，避免重复副作用。
-- [ReliableMessageExecutor](../../bilibili-common/src/main/java/com/gary/bilibili/common/reliability/ReliableMessageExecutor.java) 统一有限重试、Inbox 和失败落库。
-- [FailedMessageAdminService](../../bilibili-common/src/main/java/com/gary/bilibili/common/reliability/FailedMessageAdminService.java) 提供应用 DLQ 查询和重放入口。
+- [OutboxEventService](../../bilibili-common-reliability/src/main/java/com/gary/bilibili/common/reliability/OutboxEventService.java) 和 [OutboxEventPublisher](../../bilibili-common-messaging/src/main/java/com/gary/bilibili/common/reliability/OutboxEventPublisher.java) 负责事务 Outbox 与异步投递。
+- [MessageInboxRepository](../../bilibili-common-reliability/src/main/java/com/gary/bilibili/common/reliability/MessageInboxRepository.java) 记录消费身份，避免重复副作用。
+- [ReliableMessageExecutor](../../bilibili-common-reliability/src/main/java/com/gary/bilibili/common/reliability/ReliableMessageExecutor.java) 统一有限重试、Inbox 和失败落库。
+- [FailedMessageAdminService](../../bilibili-common-reliability/src/main/java/com/gary/bilibili/common/reliability/FailedMessageAdminService.java) 提供应用 DLQ 查询和重放入口。
 - 视频转码使用独立的持久化任务状态机，因为它还需要长租约、心跳、进度和媒体结果提交，不能被通用 Outbox 简化掉。
 
 ### 架构取舍
@@ -156,7 +156,7 @@ MySQL 命名锁复用了已有基础设施，适合当前单数据库部署；�
 
 ## 6. 亮点五：可观测性与故障恢复入口
 
-[RequestObservabilityFilter](../../bilibili-common/src/main/java/com/gary/bilibili/common/observability/RequestObservabilityFilter.java) 统一传递或生成 Request ID，返回 Trace ID，把相关字段写入 MDC，并记录 `bilibili.api.duration`。Prometheus、Grafana、Loki、Tempo、Promtail 和 RocketMQ Exporter 组成指标、日志、Trace 与消息积压观察面。
+[RequestObservabilityFilter](../../bilibili-common-web/src/main/java/com/gary/bilibili/common/observability/RequestObservabilityFilter.java) 统一传递或生成 Request ID，返回 Trace ID，把相关字段写入 MDC，并记录 `bilibili.api.duration`。Prometheus、Grafana、Loki、Tempo、Promtail 和 RocketMQ Exporter 组成指标、日志、Trace 与消息积压观察面。
 
 这套能力的价值不是“搭了监控组件”，而是让故障演练有可判定的恢复条件：请求错误率、延迟、资源配额、MQ 积压、Outbox/Inbox 状态和索引对账都能成为门禁。当前仍缺真实告警触发、通知、值班确认和恢复复盘形成的闭环证据。
 

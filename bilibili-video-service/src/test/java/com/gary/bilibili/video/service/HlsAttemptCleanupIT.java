@@ -10,6 +10,7 @@ import io.minio.Result;
 import io.minio.messages.Item;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
@@ -32,11 +33,13 @@ class HlsAttemptCleanupIT {
 
     @Container
     static final GenericContainer<?> MINIO = new GenericContainer<>(
-            DockerImageName.parse("quay.io/minio/minio:RELEASE.2024-12-13T22-19-12Z"))
+            DockerImageName.parse(System.getenv().getOrDefault("MINIO_TEST_IMAGE",
+                    "quay.io/minio/minio:RELEASE.2024-12-13T22-19-12Z")))
             .withEnv("MINIO_ROOT_USER", "minioadmin")
             .withEnv("MINIO_ROOT_PASSWORD", "minioadmin")
             .withCommand("server", "/data")
-            .withExposedPorts(9000);
+            .withExposedPorts(9000)
+            .waitingFor(Wait.forHttp("/minio/health/ready").forPort(9000));
 
     @Test
     void deletesOrphanButPreservesReferencedPackageInRealMinio() throws Exception {

@@ -6,6 +6,7 @@ import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +31,12 @@ public class DanmuBatchPersistService {
     }
 
     public void persist(DanmuPersistMessage message) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            // Inbox ownership and the insert must commit together on the consumer thread.
+            // A background flush cannot participate in that transaction.
+            danmuMapper.insertBatch(List.of(message));
+            return;
+        }
         PendingMessage pending = new PendingMessage(message);
         try {
             if (!queue.offer(pending, 1, TimeUnit.SECONDS)) {

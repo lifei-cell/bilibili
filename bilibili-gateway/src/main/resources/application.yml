@@ -105,7 +105,7 @@ spring:
             - id: bilibili-video-service
               uri: lb://bilibili-video-service
               predicates:
-                - Path=/api/video/**,/api/upload/**,/api/file/**,/api/category/**,/api/report/**
+                - Path=/api/video/**,/api/upload/**,/api/file/**,/api/category/**,/api/report/**,/api/creator/**
               filters:
                 - name: RequestRateLimiter
                   args:

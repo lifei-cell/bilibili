@@ -1,4 +1,9 @@
 services:
+  minio:
+    image: ${MINIO_TEST_IMAGE:-quay.io/minio/minio:RELEASE.2024-12-13T22-19-12Z}
+    environment:
+      MINIO_API_CORS_ALLOW_ORIGIN: ${MINIO_CORS_ALLOW_ORIGIN:-http://127.0.0.1:5173,http://localhost:5173,http://localhost:8080}
+
   bilibili-video-service:
     environment:
       # CI and ordinary Docker Desktop runners have no GPU device. Keep the
@@ -10,6 +15,8 @@ services:
       OUTBOX_INITIAL_DELAY: 1000
       VIDEO_STATS_SYNC_INTERVAL: 1000
       VIDEO_STATS_SYNC_INITIAL_DELAY: 1000
+      CREATOR_ANALYTICS_REBUILD_INTERVAL: 1000
+      CREATOR_ANALYTICS_REBUILD_INITIAL_DELAY: 1000
 
   bilibili-danmu-service:
     environment:
@@ -18,11 +25,6 @@ services:
       DANMU_STATS_SYNC_INITIAL_DELAY: 1000
       OUTBOX_DISPATCH_INTERVAL: 250
       OUTBOX_INITIAL_DELAY: 1000
-
-  bilibili-social-service:
-    environment:
-      SOCIAL_STATS_SYNC_INTERVAL: 1000
-      SOCIAL_STATS_SYNC_INITIAL_DELAY: 1000
 
   bilibili-canal-service:
     environment:

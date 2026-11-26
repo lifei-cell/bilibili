@@ -1,0 +1,57 @@
+rule_files:
+  - ../alerts.yml
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'bilibili_outbox_exhausted{application="video", owner="video", instance="test"}'
+        values: '1x30'
+      - series: 'bilibili_lifecycle_enabled{application="disabled", instance="test"}'
+        values: '0x30'
+      - series: 'bilibili_lifecycle_last_success_seconds{application="disabled", instance="test"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: OutboxRetriesExhausted
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: OutboxRetriesExhausted
+        exp_alerts:
+          - exp_labels:
+              application: video
+              owner: video
+              severity: critical
+            exp_annotations:
+              summary: Outbox dispatch retries exhausted
+              description: Query /api/admin/mq/outbox/exhausted, repair the cause and submit an audited replay.
+      - eval_time: 25m
+        alertname: MessageLifecycleStalled
+        exp_alerts: []
+  - interval: 1m
+    input_series:
+      - series: 'bilibili_lifecycle_enabled{application="video", instance="test"}'
+        values: '1x30'
+      - series: 'bilibili_lifecycle_last_success_seconds{application="video", instance="test"}'
+        values: '0x30'
+      - series: 'bilibili_lifecycle_failures_total{application="video", instance="test"}'
+        values: '0 1x30'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: MessageLifecycleFailing
+        exp_alerts:
+          - exp_labels:
+              application: video
+              instance: test
+              severity: warning
+            exp_annotations:
+              summary: Message archival batch failed
+              description: Inspect database and lifecycle logs; transactions retain source rows on failure.
+      - eval_time: 22m
+        alertname: MessageLifecycleStalled
+        exp_alerts:
+          - exp_labels:
+              application: video
+              instance: test
+              severity: warning
+            exp_annotations:
+              summary: Message archival has not completed a batch for 15 minutes

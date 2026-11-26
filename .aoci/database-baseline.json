@@ -1,0 +1,376 @@
+{
+  "version": "database-evidence-baseline/v1",
+  "sources": [
+    {
+      "source_id": "bilibili-mysql",
+      "engine": "mysql",
+      "database": "bilibili",
+      "namespaces": [
+        "bilibili"
+      ],
+      "include_namespaces": [],
+      "exclude_namespaces": [],
+      "include_tables": [],
+      "exclude_tables": [],
+      "case_semantics": {
+        "identifier_case": "server_lower_case_table_names",
+        "lower_case_table_names": 0
+      },
+      "evidence_version": "database-evidence/v1",
+      "source_snapshot_sha256": "0e09ee686aa5d3d2f83a53df2f9ad4ba3d40172545dccea9161bb92c30656a6d",
+      "tables": [
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/collection",
+          "table_evidence_sha256": "dd36002d7f352c5c5aad5fa6f6c2be0afe786b9f07c39713db14850cce62546b",
+          "component_hashes": {
+            "columns": "dd0d5dd4ebcf426214557ba75639d1b1d953231e66951ad3caa28b90449fa9d4",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "ad75041ca9c303f703652713de8f54b80f7ed261c336417bd820af0df9c06a1e",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "0305a368a484bd2be51b2090719b1bdf4da245e9908227cd607cfaf240f6f6f1",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/collection_folder",
+          "table_evidence_sha256": "75c2e85201805da5705cf97d85c8256dbded8945c176317562ff422ce2224b2f",
+          "component_hashes": {
+            "columns": "8fe7a64e3cf9de146a7cdc4081556a04b9fb05392bc94489dd01899eb5431d5f",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "20ad6f1f67b0f1be1eeb2b17b15487403adf7e993410d4f14daa84887f3aef7d",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/comment",
+          "table_evidence_sha256": "4068c0f8a1c6095e45ce42e9ed4fab72bbdc88c16566a1156683ec90a9764b71",
+          "component_hashes": {
+            "columns": "bab6a65e5ff65da1b26dfff25b01c68720901c7143b6b6691ebbe48f5ec78ac5",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "ee4671e67c2f644c3dab52386b3ebe4c14eb540ed8d33d6d67ac26bd16d8e8c4",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/content_audit_log",
+          "table_evidence_sha256": "aa1a1831d24a61d86cfacd9f416d8ad9837dee600cd5aa6a6d435f37470c8532",
+          "component_hashes": {
+            "columns": "cffb7788ff5b01355c707675b7439074953a13dcef0ba7db8da7d6ead6ce04b4",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "2b87b0bbc8896d3179a8d72c34c9da54b8467cbee087dc0c06a7239c8cc523ca",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/content_report",
+          "table_evidence_sha256": "705f7f83f7e3fa318116e5a24f3b4cbefe6421923b2bf6a8cef31622e238a278",
+          "component_hashes": {
+            "columns": "96d96ddce6cce5e90390097919514d3f44d979d9215a231f8817ac92fce2ca90",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "7ce51234013b5b019cc0a00b147959173b4fb5d95f1b85998fa163cb06402c17",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "da618002d7804392ee07b28effd1d237af983a22603cd93e03587d9ca9fae72c",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/content_risk_event",
+          "table_evidence_sha256": "d8fa5d480f70a1ee9783a98c63148b700cc597e0d981dc02c31a8d8b66ce37d5",
+          "component_hashes": {
+            "columns": "2184c530e38ea8e59229114834ba5f56a2c90e399b4c6c0a6a63598d4b3d472f",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "18b4bec52b79cf90487fcd1aee3a67fe1fe8d73da829f82508580bf7fad81476",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/creator_analytics_dirty_day",
+          "table_evidence_sha256": "a8f479c481962f09836422e5067402d555ebef12e5d54fca25260c863dcb058f",
+          "component_hashes": {
+            "columns": "5d0107845ef37ba65a984c7a8bb1215ef96a7f0c15d7f4c71fc1977ad357f912",
+            "primary_key": "2150f5d46206e113f93e8ac884b9117d8a8c44896f080230b8a6370cca26bab7",
+            "unique_constraints": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "80b9db5eb1ca02e560f7478b9b884a440c53229a789b8cad0b29632e2f902f7c",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/creator_video_daily_stats",
+          "table_evidence_sha256": "43f3548236948a09a642b4bacfc4065fbd87d2e37434dad3386671bb219243e9",
+          "component_hashes": {
+            "columns": "4d4386440a19ca4af0f44d01377366f1c24d301649334a84e2bcad3d8c70f489",
+            "primary_key": "544890d02f895dd6e468088ea3c5b2aab8061b8adf521984761e42972c069e5f",
+            "unique_constraints": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "3c81f0c0c789e6ad7b29c928e04bbc2bf7b6b785712f1d71dc08db7355bb67ba",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/danmu",
+          "table_evidence_sha256": "8b27f753cd365bd0b4e1ce0e0f4a07fa4f53c367f2e07b6bedd7aaf2a67eae98",
+          "component_hashes": {
+            "columns": "289bfce773a698103492022fb90eb19421e0d30ca6e80557701ed0064f93c20f",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "ecc64952a11c706607d243b63b3111fed03b34d3ee80a9d30b0168f3431d858c",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/direct_upload_session",
+          "table_evidence_sha256": "eb6a632dbe79c0cd891893aac8b71a013301ab9b4beec19284e628b1d231d5fb",
+          "component_hashes": {
+            "columns": "397521240ddb8c65533968ce210d1ff15b3ae56d8e47b89a9a7dc04750fb8ffb",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "6b68ad623c26ee78d337c19dd6f149819e4de83d5cc61215f240f147455f7569",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "2a16d2ab12bfa6ab439b6f206321951026be962923bddc1f8898eacf4211ae81",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/file_chunk",
+          "table_evidence_sha256": "a53648c073decabe23bd731eaf907ab7420366a8a986f6c3d71a7367aa49c3ee",
+          "component_hashes": {
+            "columns": "787d3eeb34fd776e21fd2ea08581b7c642680c47c92a5562a86f05ed10368c0a",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "3cf4e4a187e0a8124d4eaa0d30126abe448d12d84d4f374f63e36660f674c131",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "7ba546ebc69552652a88b09a07b687c61c9279441a2418e7e0cff9f817f9ee01",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/flyway_schema_history",
+          "table_evidence_sha256": "2b8ff63325d41ec19832d3c8e5ce1fb1b92799b822ebf877ac3b79f4565ad39f",
+          "component_hashes": {
+            "columns": "9c03d3b24f750fe51727a38de843008d24c824fc87c43ecc2cd9ec10cdea3bc1",
+            "primary_key": "0637f11fc12a9aea8012cf20472bdf2af4339dd77db003030e66e1a8f1e2f374",
+            "unique_constraints": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "2f749d252234e64510c79d7d5abe6af3d8025c4c07ec66113b921874ae938e8e",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/follow",
+          "table_evidence_sha256": "0784a2ac3b703a276a88ead52b0f140685de11114822e51f70c51dde3d5ce5d8",
+          "component_hashes": {
+            "columns": "ac29c3f584edd75a5d562da453ed039a956544f909073a2bb43769bad6f591f0",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "73634cc7879d408100623d8fbe6ceda9d6e35eff23d321a7c598a1e81cda5691",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "f42628a5058e7ef897aec9d10c6c1b302d23120dbc93af38200f06c0fedce48d",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/mq_consumed_message",
+          "table_evidence_sha256": "1d98d858806c45b2067caafc25e67a3bfed525948d36fab80896f31ab05c81ed",
+          "component_hashes": {
+            "columns": "d968d9a122a8294e3a6b2b7fc8922dd964accf2e600ccaa56fb0f4256a19f1c0",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "0976d19d69912fa0b2d45330af24c7c0fca8a86b4696d9a40a6b6261abcf3a5c",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "04a93439ae0752572c1a1bd5c53db9c9ce2b3feb1bf71124ad333d11875c5dea",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/mq_failed_message",
+          "table_evidence_sha256": "995c36667869da95b93ecd932ce455145ccb4238fa45f238c30858fa60e7e5b9",
+          "component_hashes": {
+            "columns": "8e25bd75d504df0660bb1034718f8fd33e8920af3e66202e975458928185602a",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "149920adcbde5468f91608975679a68cfc00da0814cf7a30be8909fdf63cf635",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "13dae55d52afd40c64da0cd22696fa0204ed61fd549e8225e0584f686d110fd0",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/mq_inbox_receipt",
+          "table_evidence_sha256": "1ee70e104fc1ec4e3dbd22e1c068575837d6eaaf38dd41fbae059c02a670e16a",
+          "component_hashes": {
+            "columns": "cddbfa1ef42964bca4011fa3a0776aaad87f53e66a4be3a7f14107754883e2c4",
+            "primary_key": "d54a4868d4000b425355fca1f4987070210eb01ccd04d7538e95604a4b1dcfc3",
+            "unique_constraints": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "667f8324fd0b804a65fa8b695bae07bc3e561b9a4169ecb21efc7521773d8f14",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/mq_replay_audit",
+          "table_evidence_sha256": "2165ced8944c697f4aec981bdd55aec3fdafdae9faa67408aa39b51e47a12d06",
+          "component_hashes": {
+            "columns": "ed693376345152d3ddfaf98dc2443449024fae93d5dce5c62ccb3320d96e35f7",
+            "primary_key": "7fb1c3da856c756ba42222ee849f6a0fd02ca19a13b1a2e0767022d51a4153f4",
+            "unique_constraints": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "8919499e97c48dcb697b7f0ea0ad7b43b6925ce2bfa163a86dd363afa3e936ba",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/reliable_event_outbox",
+          "table_evidence_sha256": "a2a537325d55ad4a71cd10b2435eed8985cfc67390f6bab16a7440ef49ecdfe1",
+          "component_hashes": {
+            "columns": "1e69f74db09ec3e8f723697dd0c22fc182bdedc3e16c7368e952719174a2b9ef",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "b01ba6b7ba55c6784c930f1067f52ef98650c976c755a0ea1eaee67b5adb3c80",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "77623fc06986de148f1197f6bf739d94054e799793a1d355e258d9bc91c92eab",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/reliable_event_outbox_archive",
+          "table_evidence_sha256": "a6592aeccc7056be1b5927f4b30168a48fa452086d38caae0d39b18c743813d3",
+          "component_hashes": {
+            "columns": "61e0871f08a6c3ecd53dfb58d7b433af4ba86ecc2cd4496defa31200a8dc3fbc",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "b01ba6b7ba55c6784c930f1067f52ef98650c976c755a0ea1eaee67b5adb3c80",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "77623fc06986de148f1197f6bf739d94054e799793a1d355e258d9bc91c92eab",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/sys_user",
+          "table_evidence_sha256": "8c57c90b77d686fbfbc832a90768075a0f090c95e37443b74fadc307bdb3af7f",
+          "component_hashes": {
+            "columns": "578ca4f1387684c248d26229c9b53d9c487194aa494a3eb6be886a3e3eb50164",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "0178e296cee85c1ff41e45fa8db6558c4b7bf366fdc22d2ee7b878b3ae33e010",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "81e8cec583a631ef21d342d2bce954c5195147ac98dc22eca0cbc8ec57da17a4",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/sys_user_auth",
+          "table_evidence_sha256": "54a01a41e34a38291b3b83668367d8ce5462c7a1fd52ae89b6ee2268b821750a",
+          "component_hashes": {
+            "columns": "5ef1159ae4c69fd1eb7a35fa850c5b9dfe52bfdde42655ed5aee9475c8a41ec8",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "6175cf506592ec3bf2eda43dc840248a2d78c4fc27d903cb174d46b25235cd32",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "6746c673638a3a17f151df5480bf63fb11cb9207c39faba7f22ce01373f3895a",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/user_like",
+          "table_evidence_sha256": "eefc0f4febc7febc2578fd5e382a7ab003b43e2b8467f4a3e2d95d63a311a91a",
+          "component_hashes": {
+            "columns": "568111e109c9809b4c61ad57ca064ca323d02901f27e524e2689e3b704a5f3f1",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "354c5157eff808ec7b829dc54a3da4bd5bb1c3b38d2e57c9ea75c4e4799f5c36",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "8286a9bc77ea547e39bdb9cb0d2d90e8827ec0b2b6d81b373b3d87a115e9c477",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/video",
+          "table_evidence_sha256": "4e2c437ac66bfa3b7038ade7427ff8a82b9e41e5db8fb9ce303a73fb6d397b7f",
+          "component_hashes": {
+            "columns": "163eaec6c40576fcdf4a5fe5196df1145e457a8a8367ab5a795ced40144c233a",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "3f31bcd1f671077e4fb1224f172145b039a8fb0f010b88fc0ebc42227a037565",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/video_category",
+          "table_evidence_sha256": "a56cb9b7b16d8219172bf03ee3801c7602ec9f957bcdf7f9df678000328727a3",
+          "component_hashes": {
+            "columns": "fb4c89a32e406a5fb0e91e2c260c06de48bc250d210cd4a3eb0fd49a881a21e2",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "866e3060575aeab6f2d907d5c5da3350a2b5a6ffe60bd2667452f8b2ed8228c8",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/video_stats",
+          "table_evidence_sha256": "e55d9358e73ab29c269b96c83611b71898b3707d565550292c20921a6199b77d",
+          "component_hashes": {
+            "columns": "f58d6a530a8237136d4a325c3c2275e60d0ea58ff0849bbbafdae0ce867cdb1e",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "ff490d3669ecee47357718f0c7b59688c65079f2ffef1e0e077ce11ad8de0218",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "40f76a52de1c3005cf09a8e2389384032f8d3961335c082e8bae6fbdcdceb960",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/video_transcode_task",
+          "table_evidence_sha256": "d99515079c8640d7aa9dcfda56da86a52c1251800d87a61a8b582ff82bed09e3",
+          "component_hashes": {
+            "columns": "ee6950775e082dcdcf94c0f7bec27f8126f739ee361e9fc88aa59541a0eda87c",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "32e26960f0ae780a888ecd2dfe8005637e901028034fb1a375ead27b5d83d1d4",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "1d3212868ee8e8081fdb77930dd75a89adcd7b81610365e6ae1a3c4c583c7741",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        },
+        {
+          "object_ref": "database://bilibili-mysql/bilibili/video_view_event",
+          "table_evidence_sha256": "fb9109d8d199767f35aa37b25286416f5fab3c835d4abb8c23eed8e74e5ba5ed",
+          "component_hashes": {
+            "columns": "6266327ab49108e2265582cfef89a3175470bc0fefe06a46662f876ce49869c2",
+            "primary_key": "a407ef26b2af65b8b6886f127b983f29bd30b8c145a372e68592e1b5211c64eb",
+            "unique_constraints": "28543bc4974cfeb84c96827ec1ef9dd47a4cb7e41a4e2e701172589c3ef90ecc",
+            "foreign_keys": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "checks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "indexes": "a7b96c9d0bddc247ebe7469c3f5b793ab21f6b37567c92985732e2f053136445",
+            "partition": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+          }
+        }
+      ]
+    }
+  ]
+}

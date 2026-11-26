@@ -14,7 +14,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /** Produces an adaptive HLS package and an automatically extracted cover. */
@@ -196,7 +195,7 @@ public class FfmpegVideoTranscodeWorker implements VideoTranscodeWorker {
         Process process = new ProcessBuilder(ffprobePath, "-v", "error", "-select_streams", "v:0",
                 "-show_entries", "stream=width,height", "-of", "csv=p=0", input.toString())
                 .redirectError(logFile.toFile()).redirectOutput(output.toFile()).start();
-        if (!process.waitFor(60, TimeUnit.SECONDS) || process.exitValue() != 0)
+        if (MediaProcessRunner.await(process, 60, "读取视频分辨率超时") != 0)
             throw new BusinessException("无法读取视频分辨率");
         String[] values = Files.readString(output).trim().split(",");
         if (values.length < 2) throw new BusinessException("视频轨道不存在");
@@ -208,7 +207,7 @@ public class FfmpegVideoTranscodeWorker implements VideoTranscodeWorker {
         Process process = new ProcessBuilder(ffprobePath, "-v", "error", "-select_streams", "a:0",
                 "-show_entries", "stream=index", "-of", "csv=p=0", input.toString())
                 .redirectError(logFile.toFile()).redirectOutput(output.toFile()).start();
-        if (!process.waitFor(60, TimeUnit.SECONDS) || process.exitValue() != 0) {
+        if (MediaProcessRunner.await(process, 60, "读取视频音频轨道超时") != 0) {
             throw new BusinessException("无法读取视频音频轨道");
         }
         return StringUtils.hasText(Files.readString(output));
@@ -216,16 +215,8 @@ public class FfmpegVideoTranscodeWorker implements VideoTranscodeWorker {
 
     private void run(List<String> command, Path logFile, String errorPrefix) throws Exception {
         Process process = new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(logFile.toFile()).start();
-        try {
-            boolean completed = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-            if (!completed) {
-                throw new BusinessException("FFmpeg 转码超时");
-            }
-            if (process.exitValue() != 0) throw new BusinessException(errorPrefix + ": " + summarizeLog(logFile));
-        } finally {
-            if (process.isAlive()) {
-                process.destroyForcibly();
-            }
+        if (MediaProcessRunner.await(process, timeoutSeconds, "FFmpeg 转码超时") != 0) {
+            throw new BusinessException(errorPrefix + ": " + summarizeLog(logFile));
         }
     }
 

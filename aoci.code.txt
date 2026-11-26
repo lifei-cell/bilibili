@@ -1,0 +1,901 @@
+#AOCI-CODE-VOLUME: 1
+
+===/<repository>/===
+.env.prod.example[FC5T]: F:列出生产环境的依赖连接、密钥注入、会话、连接池、消息重试和媒资生命周期参数 | R:- | A:SPRING_PROFILES_ACTIVE,OPERATIONS_ADMIN_TOKEN,MINIO_CORS_ALLOW_ORIGIN | S:仅在网关只能经可信反代到达时开启转发头信任
+.gitattributes[FV2T]: F:让 Git 对仓库内的 Shell 脚本统一使用 LF | R:- | A:*.sh text eol=lf | S:-
+.gitignore[FV3T]: F:排除本地构建产物、环境文件、日志与机器绑定的Codex配置 | R:- | A:.codex/config.toml,.env,.env.local | S:Git忽略规则不改变已跟踪文件的状态
+AGENTS.md[SC5S]: F:约定本仓库 Agent 对 AOCI 认知的加载、分块、认证、条目创作与收尾要求 | R:- | A:aoci_rules,aoci_overview,aoci_maintain,aoci_update_entry | S:首次构建或修复不完整索引时跟随实时Guide，完整交付的Attestation不做语义重试
+README.md[SG6L]: F:说明视频平台的服务拓扑、运行条件、快速启动、接口和可靠性验收入口 | R:code:docs/PROJECT_DELIVERY.md,code:docs/MEDIA_GOVERNANCE_RUNBOOK.md,code:docker-compose.yml | A:快速启动,API调试,测试 | S:Nginx在当前文档路径仅代理API，Vite前端单独启动
+docker-compose.e2e.yml[OQ4T]: F:为真实验收覆盖MinIO镜像和CORS、软件编码及短间隔调度 | R:code:docker-compose.service.yml,code:bilibili-web/playwright.config.ts | A:MINIO_TEST_IMAGE,MINIO_CORS_ALLOW_ORIGIN,VIDEO_TRANSCODE_ENCODER | S:默认放行Playwright的127.0.0.1来源，Canal消费尝试为1
+docker-compose.gpu.intel.yml[OH3T]: F:为视频API及独立转码Worker映射Intel渲染设备 | R:- | A:/dev/dri,VIDEO_TRANSCODE_ENCODER | S:保留auto探测
+docker-compose.gpu.nvidia.yml[OH3T]: F:给视频API与专用Worker分配NVIDIA设备并选NVENC | R:- | A:gpus,VIDEO_TRANSCODE_ENCODER | S:需要宿主容器GPU支持
+docker-compose.p1.yml[OR4T]: F:为可靠性演练隔离转码消费者、缩短租约并加入第二Canal实例 | R:code:docker-compose.service.yml | A:bilibili-canal-service-2,VIDEO_TRANSCODE_LEASE_SECONDS | S:用30秒租期，第二实例宿主端口8087
+docker-compose.p2.yml[OP4T]: F:为容量基线将转码专用Worker与视频API分离 | R:code:docker-compose.service.yml | A:VIDEO_TRANSCODE_CONSUMER_ENABLED,VIDEO_TRANSCODE_LEASE_SECONDS | S:使用120秒租期，软件预设可外部覆盖
+docker-compose.service.yml[OV6M]: F:部署网关与各业务服务，定义资源、健康检查、环境和独立转码Worker | R:code:docker-compose.yml | A:transcode-scale,bilibili-transcode-worker | S:Worker属可选profile且不参与转码派发，网关通过内网Netty地址转发弹幕
+docker-compose.yml[OR6M]: F:编排数据库、缓存、注册、消息、搜索、对象存储、Canal及观测设施 | R:- | A:mysql,rocketmq-broker,elasticsearch,minio,bilibili-net | S:MySQL使用ROW和FULL binlog以提供CDC前后镜像，配置含本地演示默认值
+pom.xml[FV6M]: F:聚合Java 21服务与共享模块，统一Spring依赖及构建质量插件 | R:- | A:dependencyManagement,maven-failsafe-plugin,jacoco-maven-plugin | S:Failsafe纳入IT命名集成测试，统一覆盖率门槛由模块配置继承
+开发手册.md[SG4L]: F:汇总视频平台架构、公共约定、数据库及各业务接口的开发设计 | R:code:README.md | A:数据库设计,用户与登录接口设计,视频播放与上传接口设计 | S:设计规格应结合当前控制器与部署配置核对
+项目后端.md[SG4L]: F:记录后端初期接口、表结构、部署拓扑、中间件和性能方案 | R:code:README.md | A:数据库设计,接口文档,部署架构 | S:文内早期code字段示例不能替代现行Result响应契约
+
+===/<repository>/.github/workflows/===
+ci.yml[OV7S]: F:编排后端、前端、Compose及完整发布验收并保存运行证据 | R:code:scripts/verification/release-validation.ps1,code:scripts/e2e/prepare-minio-test-image.sh | A:backend,frontend,compose,release-validation | S:PR浏览器使用模拟网关。定时和手动发布依赖前三项门禁，独立准备FFmpeg和MinIO来执行真实验收
+
+===/<repository>/.mvn/===
+settings.xml[FV3T]: F:提供 Maven 构建的仓库镜像与项目内依赖缓存配置 | R:- | A:localRepository,mirrorOf | S:镜像ID虽然叫alimaven，实际地址是Maven Central
+
+===/<repository>/.repo_memory/===
+PROFILE.md[SG3T]: F:作为仓库记忆入口，给出绑定提交、模块职责和媒体、可靠性及验收调查路径 | R:code:README.md,code:.repo_memory/resources/commits.md | A:Major Areas,Provider Context,Incremental Update Scope | S:轻量地图源于文档。快照未取得PR和Issue证据，不能据此判定当前行为或远端记录
+
+===/<repository>/.repo_memory/resources/===
+commits.md[SG2L]: F:按本地Git提交组织改动摘要、相关模块、路径和验证入口 | R:code:.repo_memory/PROFILE.md | A:Commit Resource Snapshot,git_commit_facets | S:基于原始提交条目和增量Git证据，止于文内记录的快照提交，未执行应用验收
+
+===/<repository>/.vite/deps/===
+_metadata.json[XV1T]: F:保存 Vite 依赖预构建的失效指纹与优化产物清单 | R:- | A:configHash,lockfileHash,optimized,chunks | S:该快照的优化与分块清单为空
+package.json[XV1T]: F:将 Vite 依赖缓存目录下的 JavaScript 声明为 ES 模块 | R:- | A:type=module | S:-
+
+===/<repository>/bilibili-canal-service/===
+Dockerfile[OV3T]: F:提供运行 Canal 服务打包产物的 Java 21 容器镜像 | R:code:bilibili-canal-service/pom.xml | A:JAR_FILE,8086 | S:构建上下文中须已有可运行的目标JAR
+pom.xml[FV4S]: F:声明 Canal 增量同步服务、共享消息设施、Redis、ES、JDBC及Flyway的依赖和打包 | R:code:pom.xml,code:bilibili-common-messaging/pom.xml,code:bilibili-common-web/pom.xml | A:bilibili-canal-service,spring-boot-maven-plugin:repackage | S:-
+
+===/<repository>/bilibili-canal-service/src/main/java/com/gary/bilibili/canal/===
+BilibiliCanalApplication.java[ED4T]: F:启动 Canal 服务并启用服务发现与定时任务 | R:- | A:main | S:组件扫描覆盖 com.gary.bilibili，包含共享模块
+
+===/<repository>/bilibili-canal-service/src/main/java/com/gary/bilibili/canal/config/===
+CanalConfig.java[ID4T]: F:以主机、端口、实例名和凭据创建单实例 CanalConnector | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/config/CanalProperties.java | A:canalConnector | S:-
+CanalProperties.java[FC4T]: F:绑定 Canal 服务连接、订阅过滤和批量拉取配置 | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/listener/CanalSyncListener.java | A:canal.server | S:默认只订阅视频、视频统计、用户、关注和点赞五张表
+
+===/<repository>/bilibili-canal-service/src/main/java/com/gary/bilibili/canal/constant/===
+CanalConstant.java[CD4T]: F:定义 Canal 消费主题、表路由、视频搜索别名与缓存键前缀 | R:- | A:CACHE_SYNC_TOPIC,VIDEO_INDEX,LEGACY_VIDEO_INDEX,VIDEO_BLOOM_FILTER_KEY | S:VIDEO_INDEX 指向搜索别名，历史旧实体索引使用另一个名称
+
+===/<repository>/bilibili-canal-service/src/main/java/com/gary/bilibili/canal/consumer/===
+CacheSyncConsumer.java[AM8S]: F:消费 CDC 事件，失效视频和用户缓存并更新搜索投影、关注及点赞集合 | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/service/PublishedVideoSource.java,code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/service/VideoIndexWriteGate.java | A:cache-sync,onMessage | S:视频及统计事件在共用MySQL锁内重查已提交的状态，以免乱序消息复活下架视频。缺事件ID时用表、操作、主键组成消费键
+
+===/<repository>/bilibili-canal-service/src/main/java/com/gary/bilibili/canal/controller/===
+ReliabilityOperationsController.java[ER6T]: F:暴露索引对账、重建和回滚的管理接口 | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/service/SearchIndexMaintenanceService.java | A:/api/admin/reliability/cdc/reconcile,/api/admin/reliability/es/rebuild,/api/admin/reliability/es/rollback,X-Admin-Token | S:prod遇默认管理口令时构造失败，运行期缺少或不匹配口令返回401
+
+===/<repository>/bilibili-canal-service/src/main/java/com/gary/bilibili/canal/document/===
+VideoDocument.java[PD5T]: F:定义 Elasticsearch 视频投影的字段类型、多字段标签和时间格式 | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/service/VideoIndexAlias.java | A:video_search,tags.keyword,createTime | S:实体禁用自动建索引，物理索引和别名由独立维护器建立
+
+===/<repository>/bilibili-canal-service/src/main/java/com/gary/bilibili/canal/listener/===
+CanalSyncListener.java[IM7S]: F:定时拉取 Canal 行变更，将增删改转换成投递到 cache-sync 的 Outbox 事件 | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/message/CacheSyncEvent.java | A:pullChanges,canal.server.pull-interval | S:全部行写入后才确认批次，失败回滚并断开。以binlog文件、偏移和行序号生成可重放ID，删除取变更前镜像
+
+===/<repository>/bilibili-canal-service/src/main/java/com/gary/bilibili/canal/message/===
+CacheSyncEvent.java[CM4T]: F:承载 CDC 投影同步所需的事件身份、数据库、表、操作和行数据 | R:- | A:eventId,eventType,data | S:data 保持列名到字符串值的映射，数据库NULL可保留为空值
+
+===/<repository>/bilibili-canal-service/src/main/java/com/gary/bilibili/canal/repository/===
+VideoDocumentRepository.java[PD3T]: F:提供视频搜索文档的 Spring Data Elasticsearch CRUD | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/document/VideoDocument.java | A:VideoDocumentRepository | S:写入目标由实体上的搜索别名决定
+
+===/<repository>/bilibili-canal-service/src/main/java/com/gary/bilibili/canal/service/===
+MySqlNamedLock.java[MR6T]: F:用 MySQL 命名锁协调多实例索引操作并记录等待与持锁耗时 | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/service/VideoIndexWriteGate.java | A:execute,get_lock,release_lock | S:取得和释放操作使用同一连接，未取到锁则不执行回调
+PublishedVideoSource.java[PD7T]: F:从 MySQL 读取可搜索视频，把分类、标签及计数映射为 ES 文档 | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/document/VideoDocument.java,code:docker/mysql/init/02-schema.sql | A:page,publishedIds,findById | S:查询只纳入已发布且未软删的视频，统计缺失补零，批量扫描按ID游标前进
+SearchIndexMaintenanceService.java[AR8M]: F:构建、对账和回滚视频搜索物理索引，校验后切换别名 | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/service/PublishedVideoSource.java,code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/service/VideoIndexAlias.java,code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/service/VideoIndexWriteGate.java | A:rebuild,rollback,reconcile | S:预填目标索引时查询仍走旧别名。切换时先锁住CDC写入，再回填、清孤儿并验证，发现别名或数据漂移就终止
+VideoBloomFilter.java[KP4T]: F:把视频 ID 用五个哈希写入 Redis 位图供布隆过滤判断 | R:- | A:put,video:bloom:id | S:位图大小和哈希参数必须与服务侧读取逻辑一致
+VideoIndexAlias.java[IR7S]: F:初始化搜索别名并为重建、回滚提供物理索引创建和原子切换 | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/document/VideoDocument.java | A:initialize,activeIndex,createIndex,switchTo | S:初始化优先复用旧实体索引。别名必须只指向一个索引，移除旧指向与添加新指向在同一请求内
+VideoIndexWriteGate.java[MR6T]: F:在 Canal 实例内串行化索引切换与 CDC 写入 | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/service/MySqlNamedLock.java | A:withCdcWrite,withCutover,DISTRIBUTED_LOCK_NAME | S:公平读写锁只管进程内，跨实例须配合相同名字的MySQL锁
+
+===/<repository>/bilibili-canal-service/src/main/resources/===
+application-dev.yml[FC3T]: F:把 Canal 服务的 ES、Redis、Nacos、RocketMQ 和 Canal 本地调试地址覆盖为回环地址 | R:- | A:dev | S:本地Redis默认使用宿主机映射端口6380
+application-docker.yml[FC2T]: F:在 Docker 配置中关闭 Canal 服务的 Nacos 发现失败即退出行为 | R:- | A:spring.cloud.nacos.discovery.fail-fast | S:-
+application-prod.yml[FC5T]: F:以部署环境变量接入 Canal 服务的数据库、搜索、缓存、发现与消息设施 | R:code:.env.prod.example | A:prod,CANAL_SERVER_HOST,CANAL_USERNAME,CANAL_PASSWORD | S:生产连接凭据无开发默认值
+application.yml[FC5T]: F:定义 Canal 服务名、依赖连接、Flyway 和行变更拉取参数 | R:code:bilibili-common-observability/src/main/resources/observability.yml | A:canal.server,rocketmq.producer.group,spring.flyway | S:默认配置为dev，基线迁移版本为0
+
+===/<repository>/bilibili-canal-service/src/test/java/com/gary/bilibili/canal/consumer/===
+CacheSyncConsumerTest.java[TM5S]: F:验证 CDC 消费器按当前数据库状态更新 ES、视频布隆位图及关注点赞缓存 | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/consumer/CacheSyncConsumer.java | A:delayedDeleteEventCannotRemoveRepublishedVideo | S:延迟删除在视频已重发时应保存当前投影
+
+===/<repository>/bilibili-canal-service/src/test/java/com/gary/bilibili/canal/listener/===
+CanalSyncListenerTest.java[TM4T]: F:验证 Binlog 行更新形成稳定 ID 的 CDC Outbox 负载并确认 Canal 批次 | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/listener/CanalSyncListener.java | A:shouldPublishRowChangesAndAckCanalBatch | S:-
+
+===/<repository>/bilibili-canal-service/src/test/java/com/gary/bilibili/canal/service/===
+MySqlNamedLockTest.java[TR4T]: F:验证索引命名锁连接生命周期、等待超时与争用路径的指标 | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/service/MySqlNamedLock.java | A:holdsTheSameConnectionUntilTheActionCompletes,rejectsAContendedLockWithoutRunningTheAction | S:争用时没有持锁计时
+SearchIndexMaintenanceServiceTest.java[TR5S]: F:验证影子索引分页填充、失败时保持旧别名、拒绝回滚到无关索引 | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/service/SearchIndexMaintenanceService.java | A:rebuildUsesPagesAndSwitchesOnlyAfterVerified | S:测试校验对账的多取查询带ID路由
+
+===/<repository>/bilibili-common-messaging/===
+pom.xml[FV3T]: F:构建共享 RocketMQ 投递适配层并依赖可靠消息模块 | R:code:bilibili-common-reliability/pom.xml | A:bilibili-common-messaging | S:本模块配置跳过JaCoCo
+
+===/<repository>/bilibili-common-messaging/src/main/java/com/gary/bilibili/common/reliability/===
+OutboxEventPublisher.java[IM7S]: F:按本服务 owner 定时回收和领取 Outbox 事件，再同步投递给 RocketMQ | R:code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/reliability/OutboxEventRepository.java | A:dispatch,bilibili.outbox.publish,bilibili.outbox.exhausted | S:发送原始JSON字符串以保留线格式，只有租约完成更新被接受才计入成功或失败
+
+===/<repository>/bilibili-common-messaging/src/test/java/com/gary/bilibili/common/reliability/===
+OutboxEventPublisherTest.java[TM5T]: F:验证 Outbox 投递保留 UTF-8 JSON 线格式，完成和失败指标服从当前租约 | R:code:bilibili-common-messaging/src/main/java/com/gary/bilibili/common/reliability/OutboxEventPublisher.java | A:rocketMqWireBodyPreservesStoredJsonWithoutDoubleEncoding | S:-
+
+===/<repository>/bilibili-common-observability/===
+pom.xml[FV3T]: F:为共享可观测模块声明 Jackson 时间、Prometheus、Brave 和 Zipkin 依赖 | R:code:pom.xml | A:bilibili-common-observability | S:-
+
+===/<repository>/bilibili-common-observability/src/main/java/com/gary/bilibili/common/config/===
+Jackson2Config.java[CO3T]: F:在缺少 Jackson 2 ObjectMapper 时提供支持 Java 时间类型的实例 | R:- | A:jackson2ObjectMapper | S:关闭日期数值时间戳编码
+
+===/<repository>/bilibili-common-observability/src/main/resources/===
+observability.yml[FO6S]: F:统一服务的 Actuator、Prometheus、追踪、连接池、日志及消息可靠性配置 | R:code:.env.prod.example | A:management,reliability,performance,operations,sa-token | S:Access Token不从Cookie或请求体读取，浏览器Cookie只承载不透明刷新令牌
+
+===/<repository>/bilibili-common-reliability/===
+pom.xml[FV4T]: F:定义 JDBC 可靠消息基础模块依赖并执行模块边界校验 | R:code:bilibili-common-web/pom.xml,code:pom.xml | A:enforce-module-boundary | S:传递依赖中也禁用RocketMQ和MinIO
+
+===/<repository>/bilibili-common-reliability/src/main/java/com/gary/bilibili/common/analytics/===
+CreatorAnalyticsDirtyPublisher.java[AA5T]: F:发出某视频某天的创作者统计重算事件，支持随业务事务写入和独立追加 | R:code:bilibili-common/src/main/java/com/gary/bilibili/common/analytics/CreatorAnalyticsDirtyMessage.java | A:publish,publishStandalone | S:缺失统计日期时取当天，每次生成独立事件ID
+
+===/<repository>/bilibili-common-reliability/src/main/java/com/gary/bilibili/common/reliability/===
+FailedMessage.java[CM3T]: F:表示消息消费失败记录，包括原始载荷、追踪标识、状态和重放次数 | R:- | A:FailedMessage | S:-
+FailedMessageAdminController.java[ER5T]: F:向运维开放失败消息列表、受控重放及重放审计查询 | R:code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/reliability/FailedMessageAdminService.java | A:/api/admin/mq/failures,X-Admin-Token | S:查询审计时使用DLQ来源类型
+FailedMessageAdminService.java[AR4T]: F:规范化失败消息检索条件并转发重放请求 | R:code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/reliability/MessageReplayService.java | A:find,replay | S:不支持的状态落回FAILED，页大小限制在1至100
+FailedMessageRepository.java[PR6S]: F:写入、查询和标记解决失败消息记录 | R:code:bilibili-common/src/main/resources/db/migration/V2__mq_failed_message.sql | A:saveFailure,findFailures,markResolved | S:按主题、消费组和消息键的指纹归并错误记录，已重放的失败也可被成功处理标记解决
+MessageArchiveRepository.java[PR7T]: F:归档过期已发送 Outbox 行，并将旧成功 Inbox 行压缩为去重回执 | R:code:bilibili-common/src/main/resources/db/migration/V11__message_lifecycle.sql | A:archivePublished,compactInbox | S:每批跳过已锁行，在同一事务锁内复制再删除，保留Inbox历史消费时间
+MessageInboxLease.java[CR4T]: F:表示一次 Inbox 所有权的不可变身份 | R:- | A:MessageInboxLease | S:接管会同时更换代数和令牌
+MessageInboxLeaseGuard.java[MR7T]: F:在独立事务中获取当前 Inbox 租约行锁后才执行业务回调 | R:code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/reliability/MessageInboxRepository.java | A:run | S:回调写入须加入该事务，不能脱离事务异步写，否则不受行锁和完成标记保护
+MessageInboxLeaseLostException.java[CR3T]: F:用专用异常通知调用方 Inbox 租约已失效 | R:- | A:MessageInboxLeaseLostException | S:诊断消息携带消费组与消息键
+MessageInboxRepository.java[PR8S]: F:提供 Inbox 首领、过期接管、成功去重和当前租约条件更新 | R:code:bilibili-common/src/main/resources/db/migration/V9__inbox_lease_fencing.sql,code:bilibili-common/src/main/resources/db/migration/V11__message_lifecycle.sql | A:acquire,isSucceeded,lockCurrent,markSucceeded,markFailed | S:插入后用当前读重查归档回执，覆盖并发压缩。业务行锁要求事务，完成写须同时匹配代数、令牌及未过期租约
+MessageLifecyclePolicy.java[FR4T]: F:绑定消息归档、Inbox压缩、重放次数及冷却策略 | R:- | A:reliability.lifecycle | S:保留期与重放参数必须为正，批量上限1000
+MessageLifecycleTask.java[AR5T]: F:定时按策略归档已投递 Outbox、压缩成功 Inbox 并报告最近成功和失败指标 | R:code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/reliability/MessageArchiveRepository.java | A:bilibili.lifecycle.archived,bilibili.lifecycle.failures,bilibili.lifecycle.last.success.seconds | S:需同时配置数据源和生产者组才加载
+MessageOperationsErrors.java[ER4T]: F:把消息管理接口的授权、输入与并发状态异常转为 HTTP 错误 | R:- | A:authorization,invalid,conflict | S:ControllerAdvice只作用于失败消息与Outbox管理接口
+MessageReplayRequest.java[ER4T]: F:约束重放请求的幂等身份、期望版本与人工原因 | R:- | A:requestId,expectedReplayCount,reason | S:原因去空格后至少10字符，ID使用16至64位限定字符
+MessageReplayService.java[AR8S]: F:对耗尽 Outbox 或失败消费记录进行事务化、可审计的受控重放 | R:code:bilibili-common/src/main/resources/db/migration/V11__message_lifecycle.sql | A:replayOutbox,replayFailure,ReplayReceipt | S:源行锁与期望重放次数阻止重复推进，已有相同请求返回原收据。DLQ经Outbox重投，审计和状态一起提交
+OperationsAuthorization.java[ES5T]: F:校验消息运维管理口令并将授权失败映射为401 | R:code:bilibili-common-observability/src/main/resources/observability.yml | A:authorize,operations.admin-token | S:任何环境禁止空口令，prod额外拒绝开发默认值
+OutboxEvent.java[CM3T]: F:承载 Outbox 事件身份、归属、聚合键、JSON 载荷和投递尝试信息 | R:- | A:OutboxEvent | S:-
+OutboxEventLease.java[CR3T]: F:标识某条 Outbox 事件的一次投递领取 | R:- | A:OutboxEventLease | S:租约过期后不得复用token
+OutboxEventRepository.java[PR8S]: F:把 Outbox 事件写入数据库并处理可投递筛选、租约领取、完成和耗尽 | R:code:bilibili-common/src/main/resources/db/migration/V10__outbox_lease_fencing.sql,code:bilibili-common/src/main/resources/db/migration/V11__message_lifecycle.sql | A:insert,findDispatchable,claim,markPublished,markFailed,exhaust | S:完成和失败更新要求领取令牌相符且租约未过期。写入前后查询归档，防止历史已投递事件被再次追加
+OutboxEventService.java[AM7T]: F:序列化消息到当前服务的 Outbox，返回自动生成或调用方指定的事件ID | R:code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/reliability/OutboxEventRepository.java | A:append,appendStandalone | S:append必须加入已有业务事务，独立追加用appendStandalone
+OutboxOperationsController.java[ER5T]: F:提供耗尽及归档 Outbox 查询、重放和审计接口 | R:- | A:/api/admin/mq/outbox,X-Admin-Token | S:通过请求路径区分耗尽和归档列表
+OutboxOperationsRepository.java[PR4T]: F:从消息库分页读取耗尽或归档记录并查询重放审计 | R:- | A:find,audit | S:列表返回摘要而非原始消息载荷
+ReliableMessageExecutor.java[AR8S]: F:借助 Inbox 租约做消费去重、应用重试、成功标记和失败归档 | R:code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/reliability/MessageInboxLeaseGuard.java | A:execute,bilibili.mq.consume | S:忙碌租约要求重投，只有已成功的重复投递才直接确认。租约丢失时停止重试且不写失败记录
+
+===/<repository>/bilibili-common-reliability/src/test/java/com/gary/bilibili/common/analytics/===
+CreatorAnalyticsDirtyPublisherTest.java[TA3T]: F:验证创作者日期重算事件的事务内和独立投递契约 | R:- | A:CreatorAnalyticsDirtyPublisherTest | S:未指定日期的单测期望当天
+
+===/<repository>/bilibili-common-reliability/src/test/java/com/gary/bilibili/common/reliability/===
+FailedMessageAdminServiceTest.java[TR3T]: F:验证失败消息筛选分页与重放委托 | R:- | A:FailedMessageAdminServiceTest | S:-
+MessageLifecycleTaskTest.java[TR3T]: F:验证归档失败计数、停止后续Inbox压缩及非法保留策略拒绝 | R:- | A:MessageLifecycleTaskTest | S:-
+MessageOperationsControllerTest.java[TR4T]: F:验证消息运维端点鉴权、提交体错误、重放冲突和DLQ审计契约 | R:- | A:MessageOperationsControllerTest | S:MockMvc覆盖读写接口的401，不实际发MQ
+OutboxEventServiceTest.java[TM3T]: F:验证 Outbox 服务将事件身份、owner及序列化载荷传给仓储 | R:- | A:OutboxEventServiceTest | S:-
+ReliableMessageExecutorTest.java[TR5S]: F:验证可靠消费的重复投递、忙碌租约、过期令牌、成功和重试耗尽分支 | R:code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/reliability/ReliableMessageExecutor.java | A:ReliableMessageExecutorTest | S:持有者丢失租约后不能继续业务或改写他人失败状态
+
+===/<repository>/bilibili-common-storage/===
+pom.xml[FV3T]: F:声明共享对象存储模块的 Spring 装配、MinIO SDK 和测试依赖 | R:- | A:bilibili-common-storage | S:-
+
+===/<repository>/bilibili-common-storage/src/main/java/com/gary/bilibili/common/storage/===
+MinioObjectStorage.java[IB5T]: F:将对象写入、存在性探测及合并委托给 MinIO | R:code:bilibili-common-storage/src/main/java/com/gary/bilibili/common/storage/ObjectStorage.java | A:put,exists,compose | S:只把NoSuchKey和NoSuchObject当成不存在，其他错误上抛
+ObjectStorage.java[CB4T]: F:定义仅依赖JDK类型的对象存储端口 | R:- | A:put,exists,compose | S:输入流由调用方负责关闭
+
+===/<repository>/bilibili-common-storage/src/test/java/com/gary/bilibili/common/storage/===
+MinioObjectStorageTest.java[TB3T]: F:验证 MinIO 对象缺失识别与其他存储错误透传 | R:- | A:MinioObjectStorageTest | S:-
+
+===/<repository>/bilibili-common-web/===
+pom.xml[FV3T]: F:为 Servlet Web 共享层装配校验、MyBatis、观测和通用契约依赖 | R:- | A:bilibili-common-web | S:-
+
+===/<repository>/bilibili-common-web/src/main/java/com/gary/bilibili/common/observability/===
+RequestObservabilityFilter.java[MO6S]: F:为 Servlet 请求生成或传播请求与追踪标识，并统计关键接口耗时 | R:- | A:X-Request-Id,X-Trace-Id,bilibili.api.duration | S:使用受限格式的外部请求ID，过滤器退出时恢复线程原有MDC
+SlowQueryInterceptor.java[MO4T]: F:拦截 MyBatis 查询和更新，记录SQL耗时并在超阈值时告警 | R:- | A:performance.slow-sql-threshold | S:通过finally覆盖执行失败路径
+
+===/<repository>/bilibili-common/===
+pom.xml[FV4T]: F:构建通用契约模块并验证它不携带业务基础设施依赖 | R:code:pom.xml | A:bilibili-common,maven-enforcer-plugin | S:传递依赖也禁止Spring、MyBatis、RocketMQ与MinIO
+
+===/<repository>/bilibili-common/src/main/java/com/gary/bilibili/common/analytics/===
+CreatorAnalyticsDirtyMessage.java[CA3T]: F:表示某视频统计日期需要重算的消息体 | R:- | A:creator-analytics-dirty,eventId,videoId,statDate | S:-
+
+===/<repository>/bilibili-common/src/main/java/com/gary/bilibili/common/exception/===
+BusinessException.java[CG2T]: F:承载业务校验失败的运行时异常说明 | R:- | A:BusinessException | S:-
+
+===/<repository>/bilibili-common/src/main/java/com/gary/bilibili/common/result/===
+Result.java[CG5T]: F:用成功标记、错误说明、数据和可选总数统一接口响应体 | R:- | A:ok,fail,success,errorMsg,data,total | S:-
+
+===/<repository>/bilibili-common/src/main/resources/db/migration/===
+V10__outbox_lease_fencing.sql[PR5T]: F:为 Outbox 增加领取令牌和毫秒级租约截止时间 | R:- | A:claim_token,locked_until | S:旧处理中行仍按locked_at超时回收
+V11__message_lifecycle.sql[PR6T]: F:建立 Outbox 归档表、Inbox 永久回执、重放审计及清理索引 | R:- | A:reliable_event_outbox_archive,mq_inbox_receipt,mq_replay_audit | S:删除永久回执会让历史重投重新执行业务
+V1__baseline.sql[PD6M]: F:创建账号、视频、媒资任务、弹幕和社交功能的初始表结构 | R:- | A:sys_user,video,video_stats,file_chunk,video_transcode_task | S:分片唯一性由upload_id与chunk_index组合键保证
+V2__mq_failed_message.sql[PR4T]: F:定义持久化失败消息表和运维查询索引 | R:- | A:mq_failed_message,uk_mq_failed_fingerprint | S:同一失败指纹只能对应一行
+V3__read_path_indexes.sql[PP4T]: F:为视频公开列表、分类和用户过滤及播放热度排序补充索引 | R:- | A:idx_video_public_new,idx_video_category_public,idx_video_user_public,idx_video_stats_hot | S:-
+V4__outbox_inbox_reliability.sql[PM5T]: F:创建带事件ID去重的 Outbox 及按消费组、主题、键判重的 Inbox | R:- | A:reliable_event_outbox,mq_consumed_message | S:两端去重的作用域不同
+V5__media_governance.sql[PD5T]: F:扩展转码档位及封面、直传会话、举报、审核和内容风控表 | R:- | A:direct_upload_session,content_report,content_audit_log,content_risk_event | S:同一举报者对同一类型和目标ID受唯一键约束
+V6__transcode_task_lease.sql[PR5T]: F:给转码任务附加代数、令牌和微秒租约，并索引可接管任务 | R:- | A:claim_generation,claim_token,lease_until,idx_transcode_lease | S:-
+V7__adaptive_rendition_recovery.sql[PR5T]: F:扩展转码任务的高档位独立补偿状态、重试计划和扫描索引 | R:- | A:rendition_status,rendition_retry_count,rendition_next_retry_time,idx_transcode_rendition_recovery | S:档位补偿有独立状态，勿与基础转码状态混用
+V8__creator_analytics.sql[PA5T]: F:创建播放事件明细、作者视频日汇总及脏日期队列 | R:- | A:video_view_event,creator_video_daily_stats,creator_analytics_dirty_day | S:播放事件以request_id唯一去重，重算队列粒度为作者和日期
+V9__inbox_lease_fencing.sql[PR4T]: F:为 Inbox 行增加所有权代数和令牌列 | R:- | A:claim_generation,claim_token | S:既有行的代数初始值为0，令牌可空
+V12__reconcile_video_interaction_stats.sql[PD6T]: F:补齐缺失的视频统计行并按MySQL互动事实重算三项计数 | R:database://bilibili-mysql/bilibili/video_stats,database://bilibili-mysql/bilibili/user_like,database://bilibili-mysql/bilibili/collection,database://bilibili-mysql/bilibili/comment | A:Flyway V12 | S:迁移需停旧社交写入和定时同步及举报处置。点赞限视频目标，评论限正常且未软删，不回放Redis旧增量
+
+===/<repository>/bilibili-danmu-service/===
+Dockerfile[OV3T]: F:以 Java 21 容器运行弹幕服务的打包产物 | R:- | A:JAR_FILE,8083 | S:-
+pom.xml[FV4S]: F:装配弹幕服务的共享消息、MyBatis、Sa-Token、Netty、Redis和Flyway依赖 | R:code:pom.xml | A:bilibili-danmu-service | S:-
+
+===/<repository>/bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/===
+BilibiliDanmuApplication.java[EB3T]: F:启动弹幕服务，注册其数据映射器、服务发现和调度 | R:- | A:main | S:-
+
+===/<repository>/bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/config/===
+DanmuRedisPubSubConfig.java[IM4T]: F:将弹幕订阅器注册到 Redis 监听容器的跨实例广播频道 | R:- | A:danmuRedisMessageListenerContainer,danmu:broadcast | S:-
+
+===/<repository>/bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/constant/===
+DanmuConstant.java[CB4T]: F:共享弹幕消费主题、广播频道、请求去重与视频增量计数键 | R:- | A:PERSIST_TOPIC,BROADCAST_CHANNEL,REQUEST_KEY_PREFIX,STATS_PENDING_KEY | S:滑窗默认60秒20次，请求去重有效60秒
+
+===/<repository>/bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/consumer/===
+DanmuPersistConsumer.java[AM5T]: F:按弹幕ID对持久化消息判重，写入弹幕后标记创作者统计日期需重算 | R:code:bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/service/DanmuBatchPersistService.java | A:danmu-persist,onMessage | S:没有有效消息ID时直接跳过
+
+===/<repository>/bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/controller/===
+DanmuController.java[EB5T]: F:提供 HTTP 弹幕分页、发送、计数与 WebSocket 票据入口 | R:- | A:/danmu,/api/danmu,/list/{videoId},/send,/count/{videoId},/ws-ticket/{videoId} | S:分页默认500条且最多1000条
+
+===/<repository>/bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/dto/===
+DanmuSendDTO.java[EB3T]: F:承载弹幕文本、播放时间、样式选项与请求去重标识 | R:- | A:DanmuSendDTO | S:颜色需六位十六进制，requestId最长64字符
+
+===/<repository>/bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/entity/===
+Danmu.java[PD3T]: F:承载弹幕表的作者、视频、展示样式、播放位置及状态 | R:- | A:Danmu | S:实体主键使用分配ID策略
+
+===/<repository>/bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/exception/===
+GlobalExceptionHandler.java[EB3T]: F:统一弹幕接口的参数、业务、路由和服务异常响应 | R:- | A:GlobalExceptionHandler | S:未登录例外使用HTTP 401
+
+===/<repository>/bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/mapper/===
+DanmuMapper.java[PD5T]: F:按视频及时间查询弹幕并批量持久化，提供可见性检查和增量计数 | R:- | A:countPublishedVideo,insertBatch,incrementDanmuCount | S:查询只含正常弹幕，按播放时间再按ID排序，批量插入用INSERT IGNORE
+
+===/<repository>/bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/message/===
+DanmuPersistMessage.java[CM3T]: F:携带异步持久化所需的弹幕ID、视频、用户、样式及发送时间 | R:- | A:DanmuPersistMessage | S:-
+
+===/<repository>/bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/model/===
+DanmuPage.java[CB2T]: F:组合弹幕查询的本页记录和匹配总数 | R:- | A:records,total | S:-
+DanmuTimeCount.java[CD2T]: F:承载弹幕按播放时间分桶的聚合行 | R:- | A:time,count | S:-
+UserBrief.java[CB2T]: F:承载广播补充作者资料所需的昵称与头像 | R:- | A:nickname,avatar | S:-
+
+===/<repository>/bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/netty/===
+DanmuBroadcastPublisher.java[IM5T]: F:通过 Redis PubSub 发布弹幕给所有实例的播放房间 | R:code:bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/netty/DanmuRoomManager.java | A:publish,danmu:broadcast | S:发布失败或接收者为零时回退到实例本地广播
+DanmuBroadcastSubscriber.java[IM4T]: F:解码 Redis 弹幕消息并转给本地房间 | R:- | A:onMessage | S:订阅侧只本地广播，避免再次发布到Redis
+DanmuNettyServer.java[RN5S]: F:随 Spring 生命周期管理独立监听端口上的 Netty 弹幕服务 | R:code:bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/netty/DanmuWebSocketHandler.java | A:start,stop,danmu.netty.port | S:使用独立boss与worker循环，管线启用读空闲检测
+DanmuRoomManager.java[DN5T]: F:按视频ID管理本地频道的入房、离房和序列化广播 | R:- | A:join,leave,broadcastLocal | S:房间无可广播频道时直接结束
+DanmuWebSocketHandler.java[EN7M]: F:处理弹幕连接升级、票据身份、进出房及心跳协议 | R:code:bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/service/DanmuWebSocketTicketService.java,code:bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/netty/DanmuRoomManager.java | A:/api/danmu/ws/{videoId},auth,heartbeat,error | S:无票可匿名接收，提供无效票则拒绝。WS不接收弹幕写入，发送走HTTP
+
+===/<repository>/bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/service/===
+DanmuBatchPersistService.java[AB6T]: F:在消费线程内同步或经有界队列批量写入弹幕 | R:code:bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/mapper/DanmuMapper.java | A:persist,flush,danmu.persist.batch-size | S:存在事务时必须直接写入，后台线程无法加入Inbox事务
+DanmuService.java[AB3T]: F:定义按视频查询弹幕分页、发送和统计的服务边界 | R:- | A:getList,send,getCount | S:-
+DanmuWebSocketTicketService.java[AI6T]: F:为登录用户和已发布视频签发短期 WebSocket 票据，并从 Redis 原子领取 | R:- | A:issue,consume,danmu.websocket-ticket.ttl-seconds | S:核对绑定视频之前即删除票据，错绑也消耗票据
+
+===/<repository>/bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/service/impl/===
+DanmuServiceImpl.java[AB7M]: F:编排弹幕查询、匿名可读与登录发送，串接限流、去重、Outbox、计数及实时广播 | R:code:bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/mapper/DanmuMapper.java,code:bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/netty/DanmuBroadcastPublisher.java | A:getList,send,getCount | S:先保留请求ID再追加Outbox，失败只释放自身保留值，落入Outbox后才递增计数及广播
+
+===/<repository>/bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/task/===
+DanmuStatsSyncTask.java[AW5T]: F:定时把 Redis 中各视频的弹幕增量同步到数据库并刷新详情缓存 | R:- | A:syncDanmuCount | S:更新成功后只扣已落库增量，保留同步中到达的新计数
+
+===/<repository>/bilibili-danmu-service/src/main/java/com/gary/bilibili/danmu/vo/===
+DanmuAuthVO.java[EN2T]: F:在 WebSocket 鉴权事件中回传绑定的视频及用户 | R:- | A:videoId,userId | S:-
+DanmuBroadcastVO.java[EN3T]: F:承载实时推送的弹幕正文、样式、播放时间与作者资料 | R:- | A:DanmuBroadcastVO | S:-
+DanmuCountVO.java[EB2T]: F:返回视频弹幕总量与播放时间分布 | R:- | A:total,timeDistributed | S:-
+DanmuListVO.java[EB2T]: F:表示弹幕分页的一条展示记录及媒体时间和发送时间 | R:- | A:DanmuListVO | S:-
+DanmuSendVO.java[EB2T]: F:应答弹幕发送是否受理及分配的弹幕ID | R:- | A:accepted,danmuId | S:-
+DanmuTimeCountVO.java[EB2T]: F:呈现播放时间分桶及桶内弹幕数 | R:- | A:time,count | S:-
+DanmuWebSocketTicketVO.java[EI3T]: F:向 WebSocket 客户端返回一次性票据和有效时长 | R:- | A:ticket,expiresIn | S:-
+WebSocketMessageVO.java[EN3T]: F:统一 WebSocket 消息封套，区分类型、成功状态、错误及数据 | R:- | A:type,success,data,message,timestamp | S:-
+
+===/<repository>/bilibili-danmu-service/src/main/resources/===
+application-dev.yml[FC3T]: F:将弹幕开发环境的 MySQL、Redis、Nacos和RocketMQ连接覆盖为本机地址 | R:- | A:dev | S:使用MySQL 3307和Redis 6380宿主端口
+application-docker.yml[FC2T]: F:为容器内弹幕服务关闭 Nacos 注册失败即退出 | R:- | A:spring.cloud.nacos.discovery.fail-fast | S:-
+application-prod.yml[FC4T]: F:从部署环境变量连接弹幕服务的 MySQL、Redis、Nacos 和 RocketMQ | R:- | A:prod | S:生产环境的依赖凭据无开发默认值
+application.yml[FC5T]: F:设定弹幕 HTTP、Netty、Flyway、票据、消息持久化及统计同步配置 | R:code:bilibili-common-observability/src/main/resources/observability.yml | A:danmu.netty.port,danmu.persist,danmu.stats,danmu.websocket-ticket | S:HTTP默认8083，WebSocket单独监听8093
+
+===/<repository>/bilibili-danmu-service/src/test/java/com/gary/bilibili/danmu/consumer/===
+DanmuPersistConsumerTest.java[TM3T]: F:验证弹幕消息由可靠消费执行器包裹，并触发持久化和统计重算 | R:- | A:shouldDelegatePersistenceToReliableExecutor | S:-
+
+===/<repository>/bilibili-danmu-service/src/test/java/com/gary/bilibili/danmu/netty/===
+DanmuRoomManagerTest.java[TN3T]: F:用 Netty 内嵌频道验证广播只发送给同视频房间 | R:- | A:shouldBroadcastOnlyToChannelsInSameVideoRoom | S:-
+
+===/<repository>/bilibili-danmu-service/src/test/java/com/gary/bilibili/danmu/service/===
+DanmuBatchPersistServiceTest.java[TR4T]: F:测试弹幕 Inbox 事务内同步落库与无事务时队列批量落库 | R:- | A:DanmuBatchPersistServiceTest | S:-
+DanmuWebSocketTicketServiceTest.java[TI4T]: F:验证弹幕票据每次通过原子取删领取且绑定指定视频 | R:- | A:shouldConsumeTicketOnlyOnceAndOnlyForBoundVideo | S:-
+
+===/<repository>/bilibili-danmu-service/src/test/java/com/gary/bilibili/danmu/service/impl/===
+DanmuServiceImplTest.java[TB4S]: F:验证弹幕正常投递广播、重复请求复用及非法内容拒绝 | R:- | A:DanmuServiceImplTest | S:同一请求返回原ID时不再追加事件或广播
+
+===/<repository>/bilibili-gateway/===
+Dockerfile[OV3T]: F:封装 WebFlux 网关的 Java 21 容器运行环境 | R:- | A:8080,JAR_FILE | S:-
+pom.xml[FV4S]: F:编译 WebFlux Gateway、反应式 Redis、发现客户端及认证依赖 | R:- | A:bilibili-gateway,maven-enforcer-plugin | S:拒绝Servlet MVC、MyBatis Plus、RocketMQ和MinIO传递依赖
+
+===/<repository>/bilibili-gateway/src/main/java/com/gary/bilibili/gateway/===
+BilibiliGatewayApplication.java[EN3T]: F:提供 Spring Boot 网关进程入口 | R:- | A:main | S:-
+GatewayRateLimitConfiguration.java[MS5T]: F:为网关限流器选择可信转发地址或实际连接IP键 | R:code:bilibili-gateway/src/main/resources/application.yml | A:clientIpKeyResolver,gateway.rate-limit.trust-forwarded-for | S:默认禁用转发头信任，拿不到连接地址时使用unknown
+RequestCorrelationFilter.java[MO5T]: F:关联客户端、网关及下游请求ID并记录完成日志 | R:- | A:filter,X-Request-Id | S:在最高优先级注入受限格式的请求ID
+
+===/<repository>/bilibili-gateway/src/main/resources/===
+application-dev.yml[FC2T]: F:把本机网关的 Redis、Nacos 地址覆盖为开发连接参数 | R:- | A:dev | S:开发Redis默认端口6380
+application-docker.yml[FC2T]: F:允许 Docker 网关在 Nacos 注册失败时继续启动 | R:- | A:spring.cloud.nacos.discovery.fail-fast | S:-
+application-prod.yml[FC4T]: F:从环境注入生产网关 Redis 及 Nacos 地址和认证参数 | R:- | A:prod | S:-
+application.yml[FN7S]: F:声明 HTTP 及弹幕 WebSocket 路由、服务发现、连接池与按IP限流 | R:code:bilibili-gateway/src/main/java/com/gary/bilibili/gateway/GatewayRateLimitConfiguration.java | A:RequestRateLimiter,DANMU_WEBSOCKET_URI,GATEWAY_MAX_CONNECTIONS | S:精确认证和WebSocket路由先于泛路径，消息运维发往视频服务，搜索索引运维发往Canal
+
+===/<repository>/bilibili-search-service/===
+Dockerfile[OV3T]: F:用 Java 21 Alpine 容器启动搜索服务打包产物 | R:- | A:8085,JAR_FILE | S:-
+pom.xml[FV4T]: F:构建 Elasticsearch 查询服务，提供 Redis、Web及发现依赖 | R:- | A:bilibili-search-service,maven-enforcer-plugin | S:禁止引入MyBatis Plus、RocketMQ和MinIO
+
+===/<repository>/bilibili-search-service/src/main/java/com/gary/bilibili/search/===
+BilibiliSearchApplication.java[EB3T]: F:启动搜索服务并启用发现注册 | R:- | A:main | S:-
+
+===/<repository>/bilibili-search-service/src/main/java/com/gary/bilibili/search/constant/===
+SearchConstant.java[CB3T]: F:定义搜索别名、热词有序集、排序方式及热搜和建议数量 | R:- | A:VIDEO_INDEX,HOT_SEARCH_KEY,SORT_HOT,SORT_NEW | S:查询别名是video_search
+
+===/<repository>/bilibili-search-service/src/main/java/com/gary/bilibili/search/controller/===
+SearchController.java[EB5T]: F:暴露视频检索、热搜和标题建议接口并返回总数 | R:- | A:/api/search,/video,/hot,/suggest | S:热搜和建议的总数等于返回列表长度
+
+===/<repository>/bilibili-search-service/src/main/java/com/gary/bilibili/search/document/===
+VideoDocument.java[PD4T]: F:描述搜索端读取的视频 ES 字段、类型和时间格式 | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/document/VideoDocument.java | A:video_search | S:实体禁用自动创建，需与CDC投影映射一致
+
+===/<repository>/bilibili-search-service/src/main/java/com/gary/bilibili/search/exception/===
+GlobalExceptionHandler.java[EB3T]: F:把搜索业务、校验、请求体、路由及通用异常转换为统一响应 | R:- | A:GlobalExceptionHandler | S:-
+
+===/<repository>/bilibili-search-service/src/main/java/com/gary/bilibili/search/model/===
+SearchPage.java[CB2T]: F:保留视频检索匹配总数以及当前页记录 | R:- | A:total,records | S:-
+
+===/<repository>/bilibili-search-service/src/main/java/com/gary/bilibili/search/repository/===
+VideoDocumentRepository.java[PD2T]: F:声明对视频 ES 文档的 Spring Data 仓储接口 | R:- | A:VideoDocumentRepository | S:-
+
+===/<repository>/bilibili-search-service/src/main/java/com/gary/bilibili/search/service/===
+SearchResultCache.java[MP5T]: F:按关键词、分类、排序和分页缓存序列化搜索结果 | R:- | A:get,put,search.result-cache.ttl-seconds | S:默认仅缓存5秒，读取失败按未命中处理
+SearchService.java[AB3T]: F:约定视频分页、热词和联想查询的服务边界 | R:- | A:searchVideo,getHotSearch,getSuggestions | S:-
+VideoSearchIndexInitializer.java[IR5T]: F:启动时初始化搜索别名及其初始物理索引 | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/service/VideoIndexAlias.java | A:initialize | S:已有别名时直接返回，对并发创建后已存在的实体索引容错
+
+===/<repository>/bilibili-search-service/src/main/java/com/gary/bilibili/search/service/impl/===
+SearchServiceImpl.java[AB7M]: F:执行已发布视频的关键词检索、过滤和排序，并提供热搜及建议 | R:code:bilibili-search-service/src/main/java/com/gary/bilibili/search/service/SearchResultCache.java | A:searchVideo,getHotSearch,getSuggestions | S:热度在缓存读取前记录，热排先比播放量再比发布时间，热词有序集写入与裁剪在同一脚本
+
+===/<repository>/bilibili-search-service/src/main/java/com/gary/bilibili/search/vo/===
+VideoSearchVO.java[EB3T]: F:返回搜索结果的视频标识、标题、简介、作者、计数及发布时间 | R:- | A:VideoSearchVO | S:-
+
+===/<repository>/bilibili-search-service/src/main/resources/===
+application-dev.yml[FC2T]: F:为开发搜索服务覆盖本机 ES、Redis 和 Nacos 地址 | R:- | A:dev | S:开发Redis端口默认6380
+application-docker.yml[FC2T]: F:关闭 Docker 搜索服务的 Nacos 注册失败即退出 | R:- | A:spring.cloud.nacos.discovery.fail-fast | S:-
+application-prod.yml[FC4T]: F:用运行环境提供生产搜索服务的 ES、缓存和发现连接配置 | R:- | A:prod | S:-
+application.yml[FC4T]: F:声明基础搜索服务名、端口、ES 超时、Redis 及 Nacos 默认配置 | R:code:bilibili-common-observability/src/main/resources/observability.yml | A:spring.elasticsearch,spring.data.redis,8085 | S:默认profile为dev
+
+===/<repository>/bilibili-search-service/src/test/java/com/gary/bilibili/search/service/impl/===
+SearchServiceImplTest.java[TB4S]: F:验证搜索已发布文档、记录热词、复用缓存及拒绝空关键词 | R:- | A:SearchServiceImplTest | S:命中缓存不请求Elasticsearch
+
+===/<repository>/bilibili-social-service/===
+Dockerfile[OV3T]: F:以 Java 21 镜像运行社会互动服务的JAR | R:- | A:8084,JAR_FILE | S:-
+pom.xml[FV4S]: F:装配社交服务的Web、Redis、鉴权、MyBatis及共享消息依赖 | R:code:pom.xml | A:bilibili-social-service | S:-
+
+===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/===
+BilibiliSocialApplication.java[EB3T]: F:启动社交服务并启用数据映射、服务发现与任务调度 | R:- | A:main | S:-
+
+===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/constant/===
+SocialConstant.java[CB4T]: F:统一互动状态、点赞目标、默认收藏夹及社交缓存键 | R:- | A:TARGET_VIDEO,TARGET_COMMENT,DEFAULT_FOLDER_ID | S:目标1是视频，2是评论，默认收藏夹ID为0
+
+===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/controller/===
+CollectionController.java[EB5T]: F:提供视频收藏、取消、分页与收藏夹配置端点 | R:- | A:/api/collection,/list,/folder,/folders | S:列表可不传收藏夹，单页上限100
+CommentController.java[EB5T]: F:提供评论创建、按视频分页及删除接口 | R:- | A:/api/comment,/list/{videoId} | S:列表默认热度排序，只接受hot或new
+FollowController.java[EB5T]: F:提供关注、取消关注、关注状态、关注列表与粉丝列表 | R:- | A:/api/follow,/status/{userId},/following/{userId},/follower/{userId} | S:-
+LikeController.java[EB4T]: F:开放视频或评论点赞、取消与状态查询 | R:- | A:/api/like,/status | S:查询目标类型限定为1或2
+
+===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/dto/===
+CollectionDTO.java[EB2T]: F:校验收藏操作的视频ID和可选收藏夹ID | R:- | A:videoId,folderId | S:收藏夹允许0，视频ID必须为正
+CollectionFolderCreateDTO.java[EB2T]: F:承载新建收藏夹的名称、公开标志与说明 | R:- | A:name,isPublic,description | S:名称必填且不超过50字符
+CollectionFolderUpdateDTO.java[EB2T]: F:承载更新收藏夹时可选的名称、公开标志及说明 | R:- | A:name,isPublic,description | S:说明最多200字符
+CommentCreateDTO.java[EB2T]: F:承载视频评论和回复的正文、父评论和回复对象 | R:- | A:videoId,content,parentId,replyToId | S:父评论和回复对象接受0作为空关系
+LikeDTO.java[EB2T]: F:校验点赞写请求的目标类型与正数ID | R:- | A:targetType,targetId | S:-
+
+===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/entity/===
+Collection.java[PD2T]: F:映射用户与视频在指定收藏夹的记录和启用状态 | R:- | A:collection | S:-
+CollectionFolder.java[PD3T]: F:映射收藏夹归属、可见性、封面和计数 | R:- | A:collection_folder | S:deleted使用MyBatis逻辑删除
+Comment.java[PD3T]: F:映射视频评论及父评论、被回复用户和互动状态 | R:- | A:comment | S:deleted使用逻辑删除
+Follow.java[PD2T]: F:映射粉丝到被关注用户的有向关系及激活状态 | R:- | A:follow | S:-
+UserLike.java[PD2T]: F:映射用户对不同目标类型的点赞状态与时间 | R:- | A:user_like | S:-
+
+===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/exception/===
+GlobalExceptionHandler.java[EB3T]: F:将社交业务、认证和请求异常转为统一响应 | R:- | A:GlobalExceptionHandler | S:未登录返回HTTP 401
+
+===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/mapper/===
+CollectionFolderMapper.java[PD4T]: F:统计虚拟默认夹的收藏数，维护自定义夹拥有者下的计数 | R:- | A:countDefaultFolderVideos,incrementVideoCount | S:更新只作用于未删除且属指定用户的夹，计数下限为0
+CollectionMapper.java[PD5T]: F:按用户、视频和夹增改收藏状态并查询可见的收藏视频投影 | R:- | A:activate,insertActive,deactivate,selectCreatedDate | S:恢复有旧记录时改状态而不新增，列表要求视频已发布且未删
+CommentMapper.java[PD5S]: F:分页读取可见顶层评论和有序回复并更新点赞或软删除 | R:database://bilibili-mysql/bilibili/comment | A:selectTopLevel,selectReplies,markDeleted,selectAffectedDates | S:软删仅匹配尚可见评论，返回变化行数供调用方更新视频计数。顶层使用parent_id=0
+FollowMapper.java[PD5T]: F:激活或停用关注边，并查询关注状态、关注和粉丝分页 | R:- | A:activate,insertActive,deactivate,selectFollowing | S:列表只拼接启用且未删用户
+LikeMapper.java[PD5T]: F:条件更新点赞状态及检查可点赞的视频和评论 | R:- | A:activate,insertActive,deactivate,countActive,selectCreatedDate | S:切换基于当前激活状态，旧记录首创日期可供重算
+
+===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/model/===
+CollectionPage.java[CB2T]: F:组合收藏查询页的记录及总数 | R:- | A:records,total | S:-
+CollectionRow.java[PD2T]: F:承载收藏查询拼出的封面、作者、播放量、视频与收藏夹标识 | R:- | A:CollectionRow | S:-
+CommentPage.java[CB2T]: F:组合评论分页记录与匹配总数 | R:- | A:records,total | S:-
+CommentRow.java[PD2T]: F:承载评论、回复对象和双方昵称等关联查询结果 | R:- | A:CommentRow | S:-
+UserPage.java[CB2T]: F:组合关注或粉丝用户分页与总数 | R:- | A:records,total | S:-
+UserRow.java[PD2T]: F:保存社交分页查询所需用户ID、昵称、头像及签名 | R:- | A:UserRow | S:-
+
+===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/service/===
+CollectionService.java[AB3T]: F:定义收藏状态、视频列表和收藏夹读写的服务契约 | R:- | A:collect,uncollect,getList,createFolder,updateFolder,getFolders | S:-
+CommentService.java[AB3T]: F:定义按视频创建、分页读取和删除评论的服务接口 | R:- | A:create,getList,delete | S:-
+FollowService.java[AB3T]: F:定义关注关系变更、状态及双方用户分页 | R:- | A:follow,unfollow,getStatus,getFollowing,getFollowers | S:-
+LikeService.java[AB3T]: F:定义点赞、取消与目标相对当前用户的状态查询 | R:- | A:like,unlike,getStatus | S:-
+
+===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/service/impl/===
+CollectionServiceImpl.java[AB6M]: F:维护收藏关系、收藏夹及分页查询 | R:code:bilibili-social-service/src/main/java/com/gary/bilibili/social/mapper/CollectionMapper.java,code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/social/VideoInteractionStats.java | A:collect,uncollect,getList,createFolder,updateFolder,getFolders | S:仅状态实际变化才在同一事务更新视频计数和创建统计重算事件。虚拟默认夹ID为0，其他夹检查归属
+CommentServiceImpl.java[AB7M]: F:校验并创建评论或回复，组装评论树并按归属授权删除 | R:code:bilibili-social-service/src/main/java/com/gary/bilibili/social/mapper/CommentMapper.java,code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/social/VideoInteractionStats.java | A:create,getList,delete | S:回复仅能绑定同视频顶层评论。评论树按实际软删行数扣视频计数，并按受影响日期标记创作者统计
+FollowServiceImpl.java[AB5S]: F:变更关注关系、维护 Redis 集合并分页查询关系两端 | R:- | A:follow,unfollow,getStatus,getFollowing,getFollowers | S:禁止关注自己，已有未激活边优先恢复
+LikeServiceImpl.java[AB6S]: F:维护视频和评论的点赞状态及关系缓存，编排计数与创作者统计 | R:code:bilibili-social-service/src/main/java/com/gary/bilibili/social/mapper/LikeMapper.java,code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/social/VideoInteractionStats.java | A:like,unlike,getStatus | S:数据库状态实际变化才在同一事务更新对应目标计数。只有视频点赞标记创作者统计
+
+===/<repository>/bilibili-social-service/src/main/java/com/gary/bilibili/social/vo/===
+CollectionFolderVO.java[EB2T]: F:返回收藏夹名称、公开状态、说明、封面及视频量 | R:- | A:CollectionFolderVO | S:-
+CollectionListVO.java[EB2T]: F:返回视频收藏的夹归属及列表展示用的视频元数据 | R:- | A:CollectionListVO | S:-
+CollectionVO.java[EB2T]: F:返回变更后是否处于已收藏状态 | R:- | A:collected | S:-
+CommentCreateVO.java[EB2T]: F:返回成功创建评论的标识 | R:- | A:commentId | S:-
+CommentListVO.java[EB2T]: F:返回顶层评论、作者资料、点赞数及嵌套回复列表 | R:- | A:replies | S:-
+CommentReplyVO.java[EB2T]: F:返回评论的回复内容、作者及被回复用户信息 | R:- | A:replyToId,replyToNickname | S:-
+FollowStatusVO.java[EB2T]: F:表示当前用户对目标用户的关注查询状态 | R:- | A:isFollowing | S:-
+FollowVO.java[EB2T]: F:返回关注或取关后的状态 | R:- | A:followed | S:-
+LikeVO.java[EB2T]: F:返回当前用户对指定目标的点赞状态 | R:- | A:liked | S:-
+UserBriefVO.java[EB2T]: F:为关注与粉丝列表输出用户标识和公开资料 | R:- | A:UserBriefVO | S:-
+
+===/<repository>/bilibili-social-service/src/main/resources/===
+application-dev.yml[FC2T]: F:覆盖社交开发环境的本机 MySQL、Redis、Nacos 与 RocketMQ 地址 | R:- | A:dev | S:MySQL与Redis默认使用宿主映射端口3307和6380
+application-docker.yml[FC2T]: F:关闭容器社交服务的 Nacos 注册失败即退出 | R:- | A:spring.cloud.nacos.discovery.fail-fast | S:-
+application-prod.yml[FC4T]: F:通过环境变量提供生产社交服务的连接地址和访问凭据 | R:- | A:prod | S:-
+application.yml[FC4T]: F:声明社交服务的端口、数据库、Flyway、Redis、Nacos与消息连接 | R:code:bilibili-common-observability/src/main/resources/observability.yml | A:bilibili-social-service,8084,spring.flyway | S:默认dev，既有数据库由Flyway以版本0作为基线接管
+
+===/<repository>/bilibili-social-service/src/test/java/com/gary/bilibili/social/service/impl/===
+CollectionServiceImplTest.java[TB4S]: F:验证默认夹、自定义夹与分页，断言重复收藏不再次更新视频计数 | R:code:bilibili-social-service/src/main/java/com/gary/bilibili/social/service/impl/CollectionServiceImpl.java | A:shouldNotIncrementCountForRepeatedCollection | S:-
+CommentServiceImplTest.java[TB4S]: F:验证评论创建、限流、回复嵌套及视频作者删除评论树 | R:code:bilibili-social-service/src/main/java/com/gary/bilibili/social/service/impl/CommentServiceImpl.java | A:shouldAllowVideoAuthorToDeleteCommentTree | S:用实际软删的影响行数断言视频评论计数扣减
+FollowServiceImplTest.java[TB4T]: F:验证关注状态与缓存一致、重复关注、自关注拒绝及列表分页 | R:- | A:FollowServiceImplTest | S:-
+LikeServiceImplTest.java[TB4S]: F:验证重复视频点赞不再更新计数、评论点赞及目标存在校验 | R:code:bilibili-social-service/src/main/java/com/gary/bilibili/social/service/impl/LikeServiceImpl.java | A:shouldNotIncrementCountForRepeatedLike,shouldUpdateCommentLikeCountDirectly | S:-
+
+===/<repository>/bilibili-user-service/===
+.gitignore[FV1T]: F:忽略用户模块的 Maven target 目录和 JAR 产物 | R:- | A:**/target/,*.jar | S:-
+Dockerfile[OV3T]: F:用 Java 21 Alpine 容器运行用户服务打包产物 | R:- | A:8081,JAR_FILE | S:-
+pom.xml[FV4S]: F:装配用户服务的 Web、JDBC映射、Sa-Token、Redis、密码库与可靠性依赖 | R:code:pom.xml | A:bilibili-user-service | S:-
+
+===/<repository>/bilibili-user-service/src/main/java/com/gary/bilibili/user/===
+BilibiliUserApplication.java[EI3T]: F:启动用户服务并启用 MyBatis 扫描和服务注册 | R:- | A:main | S:-
+
+===/<repository>/bilibili-user-service/src/main/java/com/gary/bilibili/user/config/===
+AuthSessionProperties.java[FI5T]: F:配置访问令牌和刷新令牌时效以及刷新 Cookie 的属性 | R:- | A:auth.session | S:默认Cookie路径为/api/user，SameSite为Strict
+
+===/<repository>/bilibili-user-service/src/main/java/com/gary/bilibili/user/constant/===
+UserRedisConstant.java[CI3T]: F:统一手机号登录验证码和用户资料 Redis 键约定 | R:- | A:LOGIN_CODE_PREFIX,USER_INFO_PREFIX,LOGIN_CODE_TTL_MINUTES | S:验证码默认保留30分钟
+
+===/<repository>/bilibili-user-service/src/main/java/com/gary/bilibili/user/controller/===
+UserController.java[EI7S]: F:提供验证码、注册、登录、刷新、退出及用户资料和密码 API | R:code:bilibili-user-service/src/main/java/com/gary/bilibili/user/config/AuthSessionProperties.java | A:/api/user,/login,/refresh,/logout,/me,/profile | S:刷新先消费旧Cookie再签发新Cookie，退出撤销并清除Cookie后退出访问会话
+
+===/<repository>/bilibili-user-service/src/main/java/com/gary/bilibili/user/dto/===
+LoginDTO.java[EI3T]: F:承载手机号验证码或用户名密码登录所需字段及终端标识 | R:- | A:phone,code,username,password,terminal | S:终端默认web，密码上限64字符
+PasswordUpdateDTO.java[EI3T]: F:校验修改密码所需的旧密码和新密码 | R:- | A:oldPassword,newPassword | S:两者必填，新密码须8至64字符
+ProfileUpdateDTO.java[EI2T]: F:校验用户可更新的昵称、头像、性别、生日和签名字段 | R:- | A:ProfileUpdateDTO | S:性别只允许0到2
+RegisterDTO.java[EI3T]: F:校验注册的手机号、验证码、用户名及密码并承载终端 | R:- | A:RegisterDTO | S:用户名3至50字符，密码8至64字符
+SendCodeDTO.java[EI2T]: F:校验验证码申请中的必填中国手机号 | R:- | A:phone | S:-
+
+===/<repository>/bilibili-user-service/src/main/java/com/gary/bilibili/user/entity/===
+SysUser.java[PI4T]: F:映射用户基本资料、角色、状态和软删除标记 | R:- | A:sys_user | S:-
+SysUserAuth.java[PI4T]: F:映射账号身份类型、标识、认证凭据及验证状态 | R:- | A:sys_user_auth | S:-
+
+===/<repository>/bilibili-user-service/src/main/java/com/gary/bilibili/user/exception/===
+AuthenticationExpiredException.java[CI2T]: F:标记刷新认证缺失或失效的业务异常 | R:- | A:AuthenticationExpiredException | S:-
+GlobalExceptionHandler.java[EI3T]: F:统一用户 API 业务、会话和校验错误响应 | R:- | A:GlobalExceptionHandler | S:未登录及认证过期均走HTTP 401
+
+===/<repository>/bilibili-user-service/src/main/java/com/gary/bilibili/user/mapper/===
+SysUserAuthMapper.java[PI2T]: F:提供账号身份和认证凭据记录的 MyBatis CRUD | R:- | A:SysUserAuthMapper | S:-
+SysUserMapper.java[PD4T]: F:查询公开资料所需视频、粉丝、关注和关注关系计数 | R:- | A:SysUserMapper | S:视频统计排除未发布和软删记录
+
+===/<repository>/bilibili-user-service/src/main/java/com/gary/bilibili/user/service/===
+RefreshCookieService.java[II5T]: F:读取、签发及清除浏览器刷新 Cookie | R:code:bilibili-user-service/src/main/java/com/gary/bilibili/user/config/AuthSessionProperties.java | A:read,write,clear,Set-Cookie | S:固定HttpOnly，清除复用同路径属性并设零有效期
+RefreshSessionService.java[AI7S]: F:以 Redis 管理不透明刷新票据的签发、一次性消费和撤销 | R:code:bilibili-user-service/src/main/java/com/gary/bilibili/user/service/RefreshCookieService.java | A:issue,consume,revoke,revokeAll | S:只按票据摘要存储，消费原子取删，密码变更可走用户索引全量撤销
+UserService.java[AI3T]: F:定义用户认证、当前和公开资料、密码更新的应用服务接口 | R:- | A:UserService | S:-
+
+===/<repository>/bilibili-user-service/src/main/java/com/gary/bilibili/user/service/impl/===
+UserServiceImpl.java[AI7M]: F:编排验证码、注册、两种登录方式、访问会话和用户资料修改 | R:code:bilibili-user-service/src/main/java/com/gary/bilibili/user/service/RefreshSessionService.java | A:sendCode,register,login,refresh,updatePassword | S:验证码成功登录后删除，密码变更撤销所有刷新会话。刷新只为可用用户签发访问令牌
+
+===/<repository>/bilibili-user-service/src/main/java/com/gary/bilibili/user/vo/===
+CurrentUserVO.java[EI3T]: F:返回本人账号、手机号、生日、头像和权限角色资料 | R:- | A:CurrentUserVO | S:-
+LoginVO.java[EI4T]: F:返回访问令牌、有效秒数和登录后的用户摘要 | R:- | A:token,expiresIn,user | S:刷新票据经独立Cookie传递
+UserInfoVO.java[EI2T]: F:承载认证后使用的轻量用户摘要 | R:- | A:id,username,nickname,avatar,role | S:-
+UserProfileVO.java[EB3T]: F:返回公开资料、投稿和关系计数及访问者关注状态 | R:- | A:UserProfileVO | S:-
+
+===/<repository>/bilibili-user-service/src/main/resources/===
+application-dev.yml[FC2T]: F:配置用户服务开发环境的 MySQL、Redis 及 Nacos 宿主地址 | R:- | A:dev | S:MySQL和Redis使用3307与6380
+application-docker.yml[FC2T]: F:使用 Compose 服务名配置用户服务容器内 MySQL、Redis 和 Nacos | R:- | A:docker | S:-
+application-prod.yml[FI5T]: F:从环境注入生产用户依赖配置，并启用加固刷新 Cookie | R:- | A:auth.session.cookie,prod | S:生产Cookie强制Secure与Strict
+application.yml[FC4T]: F:设置用户服务名、端口、数据库迁移、发现及会话默认配置 | R:code:bilibili-common-observability/src/main/resources/observability.yml | A:bilibili-user-service,8081 | S:默认加载dev
+
+===/<repository>/bilibili-user-service/src/test/java/com/gary/bilibili/user/api/===
+UserApiIT.java[TI5M]: F:用容器MySQL和Redis验证12次迁移后的注册、登录、刷新、退出及指标 | R:code:bilibili-common/src/main/resources/db/migration/V12__reconcile_video_interaction_stats.sql | A:shouldMigrateRegisterLoginAndReadCurrentUserThroughHttpApi | S:旧刷新Cookie再次使用应为401，访问令牌不写Cookie
+
+===/<repository>/bilibili-user-service/src/test/java/com/gary/bilibili/user/service/===
+RefreshCookieServiceTest.java[TI3T]: F:测试刷新 Cookie 安全属性、读取和清除 | R:- | A:shouldWriteReadAndClearHardenedCookie | S:-
+
+===/<repository>/bilibili-user-service/src/test/resources/===
+application-test.yml[FQ3T]: F:为用户集成测试禁用服务发现并从空库执行Flyway迁移 | R:- | A:spring.flyway.baseline-on-migrate,test | S:-
+
+===/<repository>/bilibili-video-service/===
+Dockerfile[OH5T]: F:以 CUDA 基础镜像加装 Java 与 FFmpeg 构建视频服务运行时 | R:- | A:8082,JAVA_HOME | S:镜像含CUDA基础层，GPU分配由部署配置决定
+pom.xml[FV4S]: F:装配视频服务的持久化、存储、鉴权、可靠消息及数据库测试依赖 | R:code:bilibili-common-storage/pom.xml,code:bilibili-common-messaging/pom.xml | A:bilibili-video-service | S:-
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/===
+BilibiliVideoApplication.java[EB3T]: F:引导视频服务并启用 MyBatis、服务发现与定时任务 | R:- | A:main | S:-
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/config/===
+MinIOConfig.java[IB6S]: F:创建内网及公开 MinIO 客户端，初始化桶、公开策略及对象过期规则 | R:- | A:minioClient,publicMinioClient,minioBucketInitializer | S:公开视频桶只为播放前缀授予读取，源文件前缀和临时桶各有独立生命周期
+VideoBloomFilterInitializer.java[IP5T]: F:通过已有发布视频初始化 Redis 布隆位图 | R:- | A:run | S:写入失败时不标记过滤器已就绪
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/constant/===
+UploadConstant.java[CB4T]: F:约定分片大小、上传会话和合并锁，以及转码队列和状态 | R:- | A:CHUNK_SIZE,TASK_EXPIRE_HOURS,TRANSCODE_TOPIC | S:分片固定5 MiB，临时任务24小时
+VideoConstant.java[CB4T]: F:约定视频可见状态、Redis统计与详情键、播放去重和排序 | R:- | A:STATUS_PUBLISHED,BLOOM_FILTER_KEY,VIEW_TOPIC | S:播放请求去重标记有效7天
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/consumer/===
+CreatorAnalyticsDirtyConsumer.java[AM4T]: F:消费创作者统计日期重算消息并用事件ID保护处理 | R:- | A:onMessage,creator-analytics-dirty | S:-
+VideoTranscodeConsumer.java[AR8S]: F:在租约围栏内消费转码任务，发布基础可播放结果和完整档位结果 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/VideoTranscodeResultService.java,code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/VideoTranscodeLeaseService.java | A:onMessage,video.transcode.consumer-enabled | S:领取和发布检查代次令牌，失租忽略结果。已有可播档位后失败进入降级补偿，不能把视频回退成不可播
+VideoViewConsumer.java[AM6T]: F:消费视频播放事件，通过可靠消费和Redis脚本累加待落库计数 | R:- | A:onMessage,video.view.consumer-enabled | S:脚本同时设置去重标记、计数及待同步标识，兼容历史无请求ID的消息
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/controller/===
+CategoryController.java[EB3T]: F:输出当前视频分类列表及总数 | R:- | A:/api/category/list | S:-
+ContentGovernanceController.java[EB5T]: F:为管理后台分页读取待审视频和举报并提交审核及处置 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/ContentGovernanceService.java | A:/api/admin/content,/videos,/reports | S:管理员身份在治理服务统一检查
+ContentReportController.java[EB3T]: F:提交内容举报并返回新建或已有的举报ID | R:- | A:POST /api/report,reportId | S:-
+CreatorAnalyticsController.java[EA4T]: F:获取创作者统计看板并按日期范围主动重算 | R:- | A:/api/creator/analytics,/rebuild | S:日期使用ISO格式，排行限制1至50
+DirectUploadController.java[EB4T]: F:邀请客户端直传对象并确认已上传文件 | R:- | A:/api/upload/direct/init,/api/upload/direct/complete | S:-
+FileController.java[EB4T]: F:为以文件摘要为中心的兼容流程提供秒传检查、分块、合并与进度 | R:- | A:/api/file,/check-md5,/chunk-upload,/merge-chunks,/upload-progress/{md5} | S:分片请求用表单绑定
+UploadController.java[EB5T]: F:提供按会话检查、接收分片、合并、查询进度与转码任务的接口 | R:- | A:/api/upload,/check,/chunk,/merge,/progress/{uploadId},/transcode/{taskId} | S:分片请求用multipart表单绑定
+VideoController.java[EB5T]: F:提供视频投稿、详情、播放、列表、作者内容及元数据维护 | R:- | A:/api/video,/publish,/{videoId}/play,/list,/user/{userId} | S:列表只接受default、hot、new三种排序
+VideoOperationsController.java[ER5T]: F:提供人工发布视频和补发高档位转码的运维入口 | R:- | A:/api/admin/video,X-Admin-Token,/{videoId}/publish,/transcode/{taskId}/retry-renditions | S:两种操作都校验管理口令
+CreatorSubmissionController.java[EB5T]: F:为当前作者提供投稿分页和驳回后重提接口 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/CreatorSubmissionService.java | A:/api/creator/submissions,/{videoId}/resubmit | S:列表状态只接受0至3，单页最多100
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/dto/===
+AuditActionDTO.java[EB2T]: F:约束视频审核动作与可选审核备注 | R:- | A:APPROVE,REJECT,OFFLINE,RESTORE | S:-
+ContentReportDTO.java[EB3T]: F:校验举报目标、原因码、描述及证据链接 | R:- | A:targetType,targetId,reasonCode,description,evidenceUrl | S:目标只接受视频、评论和弹幕
+DirectUploadCompleteDTO.java[EB2T]: F:校验直传完成通知中会话ID的形状 | R:- | A:uploadId | S:要求direct_加32位小写十六进制
+DirectUploadInitDTO.java[EB3T]: F:校验直传申请的文件名、视频MIME、大小和MD5 | R:- | A:fileName,contentType,fileSize,fileMd5 | S:单文件上限5 GiB
+FileCheckDTO.java[EB2T]: F:校验兼容文件检查请求的文件名与整文件MD5 | R:- | A:md5,fileName | S:-
+FileChunkUploadDTO.java[EB3T]: F:承载兼容分片的流、整个文件及单片摘要、序号和总数 | R:- | A:md5,chunkMd5,chunkIndex,totalChunks,file,fileSize | S:分片从0开始，分片总数最多10000
+FileMergeDTO.java[EB2T]: F:校验兼容合并请求的文件标识、名称及分片总数 | R:- | A:md5,fileName,totalChunks | S:-
+ReportResolveDTO.java[EB2T]: F:限制举报处置请求为成立或驳回并接受备注 | R:- | A:UPHOLD,DISMISS,remark | S:-
+UploadCheckDTO.java[EB3T]: F:为分片上传预检查提供整文件摘要、名称、大小、分片量 | R:- | A:fileMd5,fileName,fileSize,totalChunks | S:文件大小为正且分片总数不超过10000
+UploadChunkDTO.java[EB3T]: F:校验会话分片请求的会话ID、两个摘要、分片坐标和字节流 | R:- | A:uploadId,chunkMd5,chunkIndex,chunkSize,totalChunks,file | S:分片索引最小为0，分片大小最小为1
+UploadMergeDTO.java[EB3T]: F:校验按上传会话合并分片所需的文件摘要、名称和片数 | R:- | A:uploadId,fileMd5,fileName,totalChunks | S:-
+VideoPublishDTO.java[EB4T]: F:校验投稿的视频文字元数据、来源对象描述、分类及标签 | R:- | A:title,sourceUrl,fileMd5,fileSize,categoryId,tags | S:来源URL与摘要必填，分类ID要求为正
+VideoUpdateDTO.java[EB3T]: F:校验视频元数据局部更新的标题、介绍、封面、分类与标签 | R:- | A:VideoUpdateDTO | S:提供的标签各自非空且不超过50字符
+VideoResubmitDTO.java[EB3T]: F:承载重提时替换的标题、简介和标签 | R:- | A:title,description,tags | S:简介和标签列表可为空内容，但不能省略
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/entity/===
+ContentAuditLog.java[PD3T]: F:映射内容治理动作的目标、操作者、前后状态和备注 | R:- | A:content_audit_log | S:-
+ContentReport.java[PD3T]: F:映射举报发起人、理由、佐证及状态流转处理信息 | R:- | A:content_report | S:-
+ContentRiskEvent.java[PD3T]: F:保存内容风控命中规则、分值、风险级别及决策 | R:- | A:content_risk_event | S:-
+DirectUploadSession.java[PD4T]: F:映射直传会话归属、文件摘要、对象名、完成状态和有效期 | R:- | A:direct_upload_session | S:-
+FileChunk.java[PD3T]: F:映射分片归属、整体及分片摘要、存储名、分片坐标与状态 | R:- | A:file_chunk | S:-
+Video.java[PD4T]: F:映射视频主体、作者、媒体地址、可见和审核字段 | R:- | A:video | S:-
+VideoCategory.java[PD2T]: F:映射树形视频分类的父节点、显示名称与排序 | R:- | A:video_category | S:-
+VideoStats.java[PD3T]: F:映射播放和互动聚合计数到视频统计表 | R:- | A:video_stats | S:-
+VideoTranscodeTask.java[PR5T]: F:映射转码任务的原始文件、输出与档位恢复、持有者围栏和重试数据 | R:- | A:video_transcode_task | S:基础状态和档位状态是独立字段
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/exception/===
+GlobalExceptionHandler.java[EB3T]: F:将视频服务业务、未登录、参数、请求体与上传大小错误统一响应 | R:- | A:GlobalExceptionHandler | S:未登录用401，上传超限提示单片不超过5 MB
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/===
+ContentAuditLogMapper.java[PD2T]: F:提供内容审核日志的 MyBatis 基础持久化接口 | R:- | A:ContentAuditLogMapper | S:-
+ContentReportMapper.java[PD5T]: F:查询举报目标与队列、更新处置状态并屏蔽违规评论或弹幕 | R:database://bilibili-mysql/bilibili/content_report,database://bilibili-mysql/bilibili/comment | A:resolve,blockComment,selectCommentVideoId,blockDanmu | S:举报只在状态0或1时结案。评论只在未删且正常时屏蔽，影响行数用于防止重复扣计数
+ContentRiskEventMapper.java[PD2T]: F:提供内容风险事件的 MyBatis 持久化操作 | R:- | A:ContentRiskEventMapper | S:-
+DirectUploadSessionMapper.java[PD4T]: F:按上传ID读取直传会话并原子确认完成 | R:- | A:selectByUploadId,markCompleted | S:完成更新要求归属正确、状态为0且未过期
+FileChunkMapper.java[PD2T]: F:提供分片登记表的通用持久化操作 | R:- | A:FileChunkMapper | S:-
+VideoCategoryMapper.java[PD3T]: F:从数据库读取启用的分类标识、名称和树形关系 | R:- | A:VideoCategoryMapper | S:按sort再按ID升序
+VideoMapper.java[PD6S]: F:查询公开视频、作者私有投稿、统计投影和审核队列 | R:database://bilibili-mysql/bilibili/video | A:selectPublishedDetail,selectPublishedList,selectCreatorSubmissions,selectAdminQueue | S:公开查询只取已发布且未删的视频。私有列表按作者隔离，可查非公开状态，按更新时间和ID倒序
+VideoStatsMapper.java[PD3T]: F:对数据库视频播放量应用增量 | R:- | A:incrementViewCount | S:-
+VideoTranscodeTaskMapper.java[PR8S]: F:维护基础转码、补偿档位和清理查询，条件推进所有权及结果 | R:code:bilibili-common/src/main/resources/db/migration/V6__transcode_task_lease.sql,code:bilibili-common/src/main/resources/db/migration/V7__adaptive_rendition_recovery.sql | A:selectDispatchable,markDispatched,markProcessing,markSuccess,markDegradedSuccess,countAttemptReferences | S:持有者写要求代次、令牌和有效数据库租期。分阶段结果可保留围栏，最终结果才清令牌
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/message/===
+VideoTranscodeMessage.java[CM4T]: F:承载转码任务派发的源对象身份及持有者代次和令牌 | R:- | A:taskId,claimGeneration,claimToken | S:-
+VideoViewMessage.java[CM3T]: F:承载视频播放统计事件的请求标识、视频和发生时间 | R:- | A:VideoViewMessage | S:-
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/model/===
+AdminReportRow.java[PD2T]: F:承载后台举报列表的举报人、关联目标、理由和处置状态 | R:- | A:AdminReportRow | S:-
+AdminVideoRow.java[PD2T]: F:承载审核队列的视频、作者、播放地址、风险和状态信息 | R:- | A:AdminVideoRow | S:-
+CreatorDailyMetric.java[CA2T]: F:表示日期粒度的播放、点赞、收藏、评论和弹幕计数 | R:- | A:CreatorDailyMetric | S:-
+CreatorDirtyDay.java[CA2T]: F:用作者ID和日期标识统计重算目标 | R:- | A:CreatorDirtyDay | S:-
+CreatorTopVideo.java[CA2T]: F:承载创作排行的视频展示字段及互动汇总计数 | R:- | A:CreatorTopVideo | S:-
+GovernancePage.java[CB2T]: F:把治理队列记录与总量组合成泛型分页响应 | R:- | A:records,total | S:-
+MediaTranscodeResult.java[CB3T]: F:提供转码产物的主播放列表、封面及各档位资源 | R:- | A:masterUrl,coverUrl,Variant | S:-
+UploadTask.java[CB3T]: F:保存可恢复分片任务的ID、归属、整文件摘要、大小及分片数 | R:- | A:UploadTask | S:-
+VideoDetailRow.java[PD2T]: F:承载详情查询拼出的元数据、作者资料和互动计数 | R:- | A:VideoDetailRow | S:-
+VideoListRow.java[PD2T]: F:承载视频列表投影的封面、标题、作者与关键计数 | R:- | A:VideoListRow | S:-
+VideoPage.java[CB2T]: F:组合视频列表当前页数据与总数 | R:- | A:records,total | S:-
+VideoTags.java[DB4T]: F:校验并转换业务标签列表和数据库存储文本 | R:database://bilibili-mysql/bilibili/video | A:encode,decode | S:首现顺序去重，单个标签不能有逗号，存储总长最多500
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/producer/===
+VideoTranscodeTaskPublisher.java[AW7S]: F:扫描待派发或租约过期的转码任务，领取新代次并向MQ发消息 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/VideoTranscodeTaskMapper.java | A:dispatchPendingTasks,video.transcode.publisher-enabled | S:Redis短锁只减少争用，数据库代次才决定所有权。发送异常只回退本次安装的代次
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/repository/===
+CreatorAnalyticsRepository.java[PA7M]: F:写入播放事实和脏日期，重建作者日汇总并查询趋势与排行 | R:code:bilibili-common/src/main/resources/db/migration/V8__creator_analytics.sql | A:insertViewEvent,markDirtyForVideo,lockCreator,replaceDay,findTrend,findTopVideos | S:以作者行锁串行化日期重建。重算用日期半开区间，点赞收藏以当前有效状态计入
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/service/===
+AdminAuthorizationService.java[AI4T]: F:从登录会话取得用户ID，并按数据库角色校验内容治理管理员 | R:- | A:requireAdmin | S:角色必须为admin
+CategoryService.java[AB2T]: F:定义返回可用视频分类的服务接口 | R:- | A:CategoryService | S:-
+ContentGovernanceService.java[AB7S]: F:受理举报、处理审核队列和举报处置并记录治理审计 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/ContentReportMapper.java,code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/social/VideoInteractionStats.java | A:report,videos,reports,auditVideo,resolveReport | S:发布和恢复要求已有播放URL。举报成立且首次屏蔽评论时同事务扣减视频评论数，结案竞争失败则回滚
+ContentRiskService.java[DB5T]: F:按关键词、标签、频率和重复文本评估投稿及重提，并记录风控命中 | R:database://bilibili-mysql/bilibili/content_risk_event | A:evaluate,record,RiskDecision | S:高风险返回拒绝和规则说明，通过风控的稿件仍需人工审核
+CreatorAnalyticsAggregator.java[AA5T]: F:在事务中锁定作者并替换其指定日期的统计聚合 | R:- | A:rebuildDay | S:用作者级锁协调同作者的重建写入
+CreatorAnalyticsEventService.java[AA5T]: F:记录播放事件及相应作者的脏日期，也接收外部日期重算标记 | R:- | A:recordView,markDirty | S:仅首次插入播放事实时标脏
+CreatorAnalyticsService.java[AA6S]: F:查询当前作者的趋势、合计与视频排行并支持手动区间重建 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/repository/CreatorAnalyticsRepository.java | A:getDashboard,rebuild | S:日期范围不能倒置或超过今天，手动重建使用当前作者身份
+DirectUploadService.java[AB7S]: F:签发 MinIO 直传URL并在客户端完成后校验对象、确认会话和登记转码 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/DirectUploadSessionMapper.java,code:bilibili-video-service/src/main/java/com/gary/bilibili/video/config/MinIOConfig.java | A:initiate,complete | S:确认会话要求同一用户且未过期，使用对象大小和ETag核对上传内容，条件确认与任务登记同事务
+FfmpegVideoTranscodeWorker.java[AB8M]: F:探测源视频轨道与分辨率，编码多档HLS并生成封面及播放入口 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/HlsPackageStorage.java,code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/MediaProcessRunner.java | A:transcode | S:先发布可播档位再补其余档位，只有硬件编码异常且允许时降级到软件。短视频封面可从零秒重试，最后清理工作目录
+HlsAttemptCleanupTask.java[AR7S]: F:定时扫描并删除过期、未引用的HLS尝试输出 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/VideoTranscodeTaskMapper.java | A:cleanup,video.transcode.cleanup-enabled | S:按整个尝试判断保留，任一对象仍近期或尝试仍活跃、有数据库引用时不能删除，失败留待后轮
+HlsPackageStorage.java[IB7S]: F:下载源对象，构建转码尝试前缀并发布带缓存策略的HLS包 | R:- | A:HlsPackageStorage,master.m3u8 | S:前缀包含代次和令牌，逐对象检查持有者，主列表最后写。TS可长缓存，主列表留短缓存
+HlsTranscodeCommandBuilder.java[KB6S]: F:为 FFmpeg 生成多档 HLS VOD 命令，处理缩放、音轨可选及编码器参数 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/VideoScaleGeometry.java | A:var_stream_map,hls_segment_filename | S:关键帧与分片时长绑定，带音轨和无音轨要生成不同流映射，VAAPI用独立滤镜
+MediaProcessRunner.java[RR5T]: F:限制外部媒体进程等待时间并在超时或中断时回收 | R:- | A:await | S:先杀子进程再回收包装进程，最终恢复中断标记
+UploadService.java[AB3T]: F:定义断点续传、分片写入、合并、进度和转码状态服务契约 | R:- | A:UploadService | S:-
+VideoBloomFilter.java[KP5T]: F:写入并查询 Redis 视频布隆位图，辅助过滤确定缺失的ID | R:code:bilibili-canal-service/src/main/java/com/gary/bilibili/canal/service/VideoBloomFilter.java | A:put,mightContain,markReady | S:未就绪或Redis不可用时返回可能存在，避免误拒绝
+VideoEncoder.java[CH4T]: F:把项目编码器配置名映射为 FFmpeg 编码器并区分硬件模式 | R:- | A:VideoEncoder | S:无法识别的配置立即报错
+VideoEncoderSelector.java[KH6T]: F:按显式配置或设备节点和FFmpeg支持情况选择视频编码器 | R:- | A:video.transcode.encoder | S:自动识别不能仅凭CUDA镜像环境变量，设备不可用时回退软件编码
+VideoListCache.java[MP5T]: F:按查询维度短缓存视频页，并用版本计数做批量失效 | R:- | A:get,put,invalidate | S:变更版本即可隔离旧键，旧键等待TTL
+VideoPublicationOperationsService.java[AB6T]: F:执行人工发布，按期望状态推进更新并失效视频缓存 | R:- | A:publish | S:必须已有转码播放URL，条件更新失败表示状态被并发改变
+VideoRenditionRecoveryService.java[AR4T]: F:重新排队处于可补偿失败状态的高档位任务 | R:- | A:requeue | S:数据库条件更新未命中即拒绝
+VideoScaleGeometry.java[KB4T]: F:按源宽高比计算可用于FFmpeg的目标几何 | R:- | A:fit,ffmpegFilter | S:yuv420p要求两个尺寸都为至少2的偶数
+VideoService.java[AB3T]: F:定义视频投稿、内容详情与播放、列表和作者维护接口 | R:- | A:VideoService | S:-
+VideoTranscodeLeaseService.java[MR7T]: F:定时续约转码所有权并提供对执行和发布回调的围栏 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/VideoTranscodeTaskMapper.java | A:start,assertHeld,LeaseLostException | S:续约更新不命中时作失租处理，后续断言拒绝继续
+VideoTranscodeResultService.java[AR7T]: F:在一笔事务内提交当前转码任务结果并更新已关联视频播放数据 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/VideoTranscodeTaskMapper.java | A:publish | S:先更新任务围栏，失败抛失租。匹配不到视频行可以是尚未投稿
+VideoTranscodeWorker.java[AB4T]: F:约定转码任务、首档可播回调、租约检查与最终媒体结果 | R:- | A:transcode,VideoTranscodeWorker | S:便捷重载提供空回调，受治理消费应传真实租约断言
+CreatorSubmissionService.java[AB7S]: F:分页查看本人投稿并重新提交驳回作品 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/VideoMapper.java,code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/ContentRiskService.java,database://bilibili-mysql/bilibili/content_audit_log | A:list,resubmit,RESUBMIT | S:写入按作者和未删除行加锁，只允许修改后重提已驳回且有播放地址的投稿。保留原视频与媒体引用，风控和审计随状态变更同事务提交
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/service/impl/===
+CategoryServiceImpl.java[AB3T]: F:把启用的数据库分类投影映射为API分类数据 | R:- | A:listEnabled | S:无分类时返回空列表
+UploadServiceImpl.java[AB7M]: F:编排秒传判断、分片校验与存储、进度及兼容文件API | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/upload/UploadSessionManager.java,code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/upload/UploadMergeService.java | A:check,uploadChunk,getProgress,checkFile,mergeFile | S:旧接口转换到同一会话流程。已存在分片应校验归属及摘要后复用
+VideoServiceImpl.java[AB8L]: F:管理初次投稿、公开详情与播放、分页以及作者元数据更新和软删 | R:code:bilibili-video-service/src/main/java/com/gary/bilibili/video/mapper/VideoMapper.java,code:bilibili-video-service/src/main/java/com/gary/bilibili/video/service/ContentRiskService.java,code:bilibili-video-service/src/main/java/com/gary/bilibili/video/model/VideoTags.java | A:publish,getDetail,getPlayInfo,getList,update,delete | S:投稿从已完成转码任务取得媒体URL。写操作失效列表，播放事件写入Outbox
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/service/upload/===
+UploadChunkRepository.java[PD5T]: F:登记和查询上传分片，校验合并顺序、完整性及会话归属 | R:- | A:saveChunk,loadAndValidateChunks,findUploadedChunks | S:重复分片的摘要应一致，合并要求序号连续
+UploadChunkValidator.java[DB5T]: F:校验分片规划、任务归属、片大小及实际内容摘要 | R:- | A:validateChunkPlan,validateTask,validateChunk,verifyChunkMd5 | S:分片总数按文件大小计算，最后一片大小单独校验
+UploadMergeService.java[AB6T]: F:锁住上传会话，校验完整分片、合并源对象并登记转码 | R:- | A:merge | S:合并请求文件名应与会话一致，锁用自身领取值释放
+UploadSessionManager.java[MB6S]: F:通过 Redis 保存并续期上传会话，提供恢复、限流与合并短锁 | R:- | A:findReusableTask,saveTask,loadTask,checkRateLimit,releaseLock | S:缓存不匹配时可用已有分片恢复会话，释放锁需比较持有值
+UploadStorage.java[IB5T]: F:通过通用对象存储端口上传分片、合并及生成源对象URL | R:code:bilibili-common-storage/src/main/java/com/gary/bilibili/common/storage/ObjectStorage.java | A:putChunk,composeChunks,buildSourceObjectName,sourceUrl | S:源对象已存在时跳过合并，文件后缀经过约束
+UploadTranscodeTasks.java[AB5T]: F:登记上传后的转码任务并向其所有者返回基础与档位状态 | R:- | A:getTranscodeStatus,saveTranscodeTask | S:已成功任务不会被上传重试重置
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/task/===
+CreatorAnalyticsRebuildTask.java[AW5T]: F:定时领取脏作者日期、调用聚合重建并处理完成和失败 | R:- | A:rebuildDirtyDays,creator.analytics.batch-size | S:领取返回空版本即跳过
+VideoStatsSyncTask.java[AW5T]: F:定时将 Redis 视频播放增量累加到数据库并失效详情 | R:- | A:syncViewCount | S:落库成功后只扣本轮增量，保留并发新增值
+
+===/<repository>/bilibili-video-service/src/main/java/com/gary/bilibili/video/vo/===
+CreatorAnalyticsTotalVO.java[EA2T]: F:返回日期区间内播放与四类互动汇总 | R:- | A:CreatorAnalyticsTotalVO | S:-
+CreatorAnalyticsVO.java[EA3T]: F:组合作者看板的日期范围、总计、趋势、排行与完成时间 | R:- | A:CreatorAnalyticsVO | S:-
+CreatorDailyTrendVO.java[EA2T]: F:返回作者看板的每日播放及互动趋势点 | R:- | A:date,viewCount | S:-
+CreatorTopVideoVO.java[EA2T]: F:向作者排行返回视频展示与互动汇总 | R:- | A:CreatorTopVideoVO | S:-
+DirectUploadInitVO.java[EB3T]: F:返回对象直传会话、签名上传URL、时长与要求的MIME | R:- | A:uploadId,uploadUrl,expiresIn,contentType | S:-
+FileCheckVO.java[EB2T]: F:兼容查询文件是否已有视频，并返回已上传分片编号 | R:- | A:exist,videoId,uploadedChunks | S:-
+FileMergeVO.java[EB2T]: F:返回兼容合并接口的媒体地址及视频标识字段 | R:- | A:videoUrl,videoId | S:-
+UploadCheckVO.java[EB2T]: F:返回是否秒传、来源视频或新会话的已上传分片列表 | R:- | A:instant,videoId,sourceUrl,uploadId,uploadedChunks | S:-
+UploadChunkVO.java[EB2T]: F:确认指定上传会话的片号及接收状态 | R:- | A:uploadId,chunkIndex,uploaded | S:-
+UploadMergeVO.java[EB3T]: F:返回合并或直传完成后的源地址、文件摘要和转码任务链接信息 | R:- | A:sourceUrl,fileMd5,transcodeTaskId,transcodeStatus | S:-
+UploadProgressVO.java[EB2T]: F:返回分片会话已完成的编号、总片数和百分比 | R:- | A:UploadProgressVO | S:-
+VideoAuthorVO.java[EB2T]: F:输出视频详情中的作者ID、昵称和头像 | R:- | A:VideoAuthorVO | S:-
+VideoCategoryVO.java[EB2T]: F:输出可见视频分类的编号、父关系、名称和排序 | R:- | A:VideoCategoryVO | S:-
+VideoDetailVO.java[EB3T]: F:组合视频详情文本、分类、标签、作者及互动统计 | R:- | A:VideoDetailVO | S:-
+VideoListVO.java[EB2T]: F:提供视频卡片所需标题、封面、时长、作者、计数和发布时间 | R:- | A:VideoListVO | S:-
+VideoPlayVO.java[EB3T]: F:表示视频播放的默认档位、可用档位及播放令牌字段 | R:- | A:videoId,defaultQuality,qualities,playToken | S:-
+VideoPublishVO.java[EB2T]: F:返回投稿生成的视频ID及审核或发布状态 | R:- | A:videoId,status | S:-
+VideoQualityVO.java[EB2T]: F:携带某一视频清晰度和可访问的媒体URL | R:- | A:quality,url | S:-
+VideoStatsVO.java[EB2T]: F:展示视频播放、点赞、收藏、弹幕和评论的计数 | R:- | A:VideoStatsVO | S:-
+VideoTranscodeStatusVO.java[ER3T]: F:返回转码任务基本与档位状态、重试时间、故障信息及输出 | R:- | A:VideoTranscodeStatusVO | S:-
+CreatorSubmissionVO.java[EB3T]: F:返回作者投稿列表的可编辑文字、封面、状态和审核说明 | R:- | A:CreatorSubmissionVO | S:仅包含管理页面字段，不提供原始文件或播放地址
+
+===/<repository>/bilibili-video-service/src/main/resources/===
+application-dev.yml[FC3T]: F:配置开发视频服务的宿主数据库、Redis、Nacos、MQ和MinIO地址 | R:- | A:dev | S:MinIO内部和公开地址在开发默认都指本机
+application-docker.yml[FC2T]: F:关闭容器视频服务的 Nacos 注册失败即退出 | R:- | A:spring.cloud.nacos.discovery.fail-fast | S:-
+application-prod.yml[FS5T]: F:注入生产视频服务的数据库、缓存、发现、MQ和MinIO连接与凭据 | R:code:.env.prod.example | A:prod,minio.public-read-enabled | S:生产配置关闭MinIO桶的匿名读取
+application.yml[FC6T]: F:配置视频服务外部依赖、分片大小、源及播放存储、转码处理和统计任务 | R:code:bilibili-common-observability/src/main/resources/observability.yml | A:minio,cdn,video.transcode,creator.analytics | S:租约与清理时长独立配置，默认启用渐进发布，HTTP上传限制单片5 MB
+
+===/<repository>/bilibili-video-service/src/test/java/com/gary/bilibili/video/consumer/===
+CreatorAnalyticsDirtyConsumerTest.java[TA3T]: F:验证脏日期事件按ID进入可靠执行，丢弃字段不完整消息 | R:- | A:CreatorAnalyticsDirtyConsumerTest | S:-
+VideoTranscodeConsumerTest.java[TR5S]: F:断言首档先发布、末档失败保留首档、首档写失败可重试及补偿不覆盖旧入口 | R:- | A:VideoTranscodeConsumerTest | S:首档已播后数据库最终写失败走降级
+VideoViewConsumerTest.java[TM3T]: F:验证播放事件请求ID进入原子Redis去重脚本及分析事件 | R:- | A:shouldPassRequestIdAndDedupKeyToAtomicScript | S:-
+
+===/<repository>/bilibili-video-service/src/test/java/com/gary/bilibili/video/mapper/===
+HlsAttemptReferenceMapperTest.java[TR4T]: F:验证对象引用和进行中租约可以分别保护 HLS 包免删 | R:- | A:referencesAndLiveLeaseProtectPublishedObjects | S:-
+VideoTranscodeRecoveryMySqlIT.java[TR5T]: F:在 MySQL 验证已可播任务过期接管、旧Worker拒写及高档位补发 | R:- | A:expiredPlayableAttemptIsReclaimedWithoutReplacingLowRendition | S:切换前保留既有可播URL
+VideoTranscodeTaskLeaseTest.java[TR5S]: F:验证转码补偿状态、重试耗尽、新旧租约写隔离和旧播放入口保留 | R:- | A:VideoTranscodeTaskLeaseTest | S:-
+
+===/<repository>/bilibili-video-service/src/test/java/com/gary/bilibili/video/producer/===
+VideoTranscodeTaskPublisherTest.java[TM3T]: F:验证调度器给转码主题发送稳定任务ID和派发数据 | R:- | A:shouldPublishOutboxTaskWithStableTaskId | S:-
+
+===/<repository>/bilibili-video-service/src/test/java/com/gary/bilibili/video/reliability/===
+MessageArchiveMySqlIT.java[TR5S]: F:用 MySQL 验证条件归档、失败原子回滚和Inbox压缩后历史重投去重 | R:- | A:MessageArchiveMySqlIT | S:归档保留事件去重身份
+MessageInboxLeaseMySqlIT.java[TR6M]: F:用真实 MySQL 覆盖旧消费租约、抢占、事务回滚及DLQ原子性 | R:- | A:MessageInboxLeaseMySqlIT | S:并发接管等待业务事务解锁，旧写不能复盖新所有者
+MessageLifecycleMySqlSupport.java[TQ3T]: F:为消息生命周期集成测试提供容器数据库、初始化和成功标记辅助 | R:- | A:MessageLifecycleMySqlSupport | S:-
+MessageReplayMySqlIT.java[TR5S]: F:用 MySQL 验证消息耗尽、幂等审计重放及竞争请求只生效一次 | R:- | A:MessageReplayMySqlIT | S:旧期望版本不能复位下一次失败
+OutboxLeaseMySqlIT.java[TR5S]: F:用 MySQL 验证 Outbox 并发只有一人领取，过期与失效租约不能完成 | R:- | A:OutboxLeaseMySqlIT | S:-
+
+===/<repository>/bilibili-video-service/src/test/java/com/gary/bilibili/video/repository/===
+CreatorAnalyticsMySqlIT.java[TA5S]: F:在 MySQL 验证播放去重、作者隔离、迟到事件与日聚合重建 | R:- | A:aggregationIsIdempotentLateSafeAndCreatorIsolated | S:处理期间新脏版本不得被旧收尾抹去
+VideoInteractionStatsMySqlIT.java[TB5T]: F:用真实MySQL验证历史计数重算、关系与计数回滚以及并发点赞去重 | R:code:bilibili-common/src/main/resources/db/migration/V12__reconcile_video_interaction_stats.sql,code:bilibili-common-reliability/src/main/java/com/gary/bilibili/common/social/VideoInteractionStats.java | A:backfillAndTransactionalWritesMatchCommittedInteractionFacts | S:先在V11写入有偏差的旧数据再执行V12，校验播放和弹幕不被重算改变
+
+===/<repository>/bilibili-video-service/src/test/java/com/gary/bilibili/video/service/===
+ContentRiskServiceTest.java[TB3T]: F:验证禁用关键词直接拒绝及投稿过频进入审核 | R:- | A:ContentRiskServiceTest | S:-
+CreatorAnalyticsEventServiceTest.java[TA3T]: F:验证新、重复播放与外部重算事件对脏日期队列的影响 | R:- | A:CreatorAnalyticsEventServiceTest | S:-
+CreatorAnalyticsServiceTest.java[TA4T]: F:验证看板按登录者查询、缺失日期补零、手工重算限制区间 | R:- | A:CreatorAnalyticsServiceTest | S:-
+HlsAttemptCleanupIT.java[TR4T]: F:使用真实 MinIO 验证清理孤儿尝试包且保留被引用包 | R:- | A:deletesOrphanButPreservesReferencedPackageInRealMinio | S:-
+HlsAttemptCleanupTaskTest.java[TR4T]: F:模拟HLS对象列表，验证只有旧且无引用、无租约的尝试才清除 | R:- | A:HlsAttemptCleanupTaskTest | S:-
+HlsPackageStorageTest.java[TR4T]: F:验证构建不同尝试前缀、失租上传拒绝及主列表最后发布 | R:- | A:HlsPackageStorageTest | S:-
+HlsTranscodeCommandBuilderTest.java[TB4T]: F:校验软件多档单次解码与无音频的VAAPI滤镜命令 | R:- | A:HlsTranscodeCommandBuilderTest | S:-
+MediaProcessRunnerTest.java[TR4T]: F:验证外部进程的超时、中断回收与非零退出码保留 | R:- | A:MediaProcessRunnerTest | S:-
+TranscodeFaultDatabase.java[TQ4T]: F:为故障矩阵初始化数据库记录，领取转码代次并断言播放引用 | R:- | A:claim,row,assertPlaybackReference | S:-
+TranscodeFaultMatrixIT.java[TR6M]: F:用 MySQL、MinIO 和 FFmpeg 核验异常退出、超时、部分写入及接管后的播放恢复 | R:code:docs/runbooks/transcode-fault-matrix.md | A:failureConvergesAndRepairPreservesPlayback,lateWorkerCannotPublishAfterLiveTakeover | S:必须显式打开transcode.fault.matrix，首档前故障与之后降级走不同断言
+TranscodeFaultMedia.java[TQ4S]: F:生成故障视频素材、FFmpeg包装器及可播检查，收集故障和清理证据 | R:- | A:worker,repair,assertInjected,assertPlayable | S:包装器需要POSIX执行权限
+TranscodeFaultProxy.java[TQ4T]: F:为MinIO集成测试提供本机代理并在匹配的主列表上传处注入503 | R:- | A:failMasterContaining,endpoint | S:其他对象请求继续转发给真实MinIO
+VideoScaleGeometryTest.java[TB3T]: F:验证分辨率缩放偶数约束、标准比例与非法尺寸拒绝 | R:- | A:VideoScaleGeometryTest | S:-
+VideoTranscodeResultServiceIT.java[TR5S]: F:模拟第二次数据库写失败，验证转码任务与播放地址的原子回滚和重试 | R:- | A:secondWriteFailureRollsBackTaskAndRetryUpdatesPlayback | S:-
+
+===/<repository>/bilibili-video-service/src/test/java/com/gary/bilibili/video/service/impl/===
+UploadServiceImplTest.java[TB4M]: F:验证上传秒传、固定尺寸策略、重复分片幂等及断点进度 | R:- | A:UploadServiceImplTest | S:-
+VideoServiceImplTest.java[TB4M]: F:验证视频投稿审核和初始计数，未转码拒绝及详情缓存叠加待存增量 | R:- | A:VideoServiceImplTest | S:-
+
+===/<repository>/bilibili-video-service/src/test/java/com/gary/bilibili/video/service/upload/===
+UploadChunkValidatorTest.java[TB3T]: F:验证最后一片长度和实际摘要，以及跨用户会话拒绝 | R:- | A:UploadChunkValidatorTest | S:-
+UploadMergeServiceTest.java[TR4S]: F:覆盖新旧合并入口中任务交接和分片完成的事务及锁释放 | R:- | A:UploadMergeServiceTest | S:任务登记失败时不完成分片，归属锁仍要释放
+UploadStorageTest.java[TB3T]: F:验证对象按序合并、已存在跳过与存储错误保留 | R:- | A:UploadStorageTest | S:-
+
+===/<repository>/bilibili-web/===
+.env.example[FC2T]: F:给浏览器 API 基地址提供 Vite 配置示例 | R:- | A:VITE_API_BASE_URL | S:开发默认/api经Vite转发到网关
+.gitignore[FV2T]: F:排除前端依赖、构建目录、浏览器测试产物及本地环境覆盖 | R:- | A:node_modules/,dist/,playwright-report/,test-results/ | S:-
+README.md[SG4T]: F:说明 Vue 前端构建、网关代理、浏览器回归与页面能力 | R:code:bilibili-web/package.json | A:启动,构建,回归测试 | S:常规浏览器回归用网关桩，可独立于后端启动
+eslint.config.js[FQ3T]: F:合并 JavaScript、TypeScript 和 Vue 的 ESLint 配置 | R:- | A:eslint.config.js | S:Vue文件使用TypeScript子解析器
+index.html[EU2T]: F:提供应用 HTML 元数据与 Vue 启动挂载点 | R:- | A:#app,/src/main.ts | S:-
+package.json[FV5T]: F:定义前端运行、依赖、类型检查、覆盖率、浏览器回归及发布构建 | R:- | A:dev,quality,build,test:e2e,test:e2e:real | S:quality串联lint、带覆盖率测试、类型检查和构建
+playwright.config.ts[FQ4T]: F:为常规 Playwright 回归启动本地 Vite 并保留失败诊断 | R:- | A:playwright.config.ts | S:排除真实网关用例，CI失败才重试一次
+playwright.real.config.ts[FQ4T]: F:派生 Playwright 配置以执行真实后端浏览器场景 | R:code:bilibili-web/playwright.config.ts | A:playwright.real.config.ts | S:只选real套件、单Worker、禁重试并允许自动播放
+tsconfig.app.json[FV3T]: F:为 Vue 应用源码设置严格类型检查、浏览器声明和路径别名 | R:- | A:compilerOptions,include | S:仅检查源码且不输出JS
+tsconfig.e2e.json[FQ3T]: F:为 Playwright 配置和 E2E TypeScript 启用 Node 类型及无产物检查 | R:- | A:tsconfig.e2e.json | S:-
+tsconfig.json[FV2T]: F:聚合前端应用与 Vite 配置的 TypeScript 项目引用 | R:code:bilibili-web/tsconfig.app.json,code:bilibili-web/tsconfig.node.json | A:references | S:-
+tsconfig.node.json[FV2T]: F:为 Node 侧 Vite 配置设置组合项目及打包器解析 | R:- | A:tsconfig.node.json | S:只包含vite.config.ts
+vite.config.ts[FV4T]: F:装配 Vue、源码别名和前端开发端口，并代理API与WebSocket | R:- | A:/api,5173 | S:只在开发服务器把/api转发到本机8080
+vitest.config.ts[FQ4T]: F:为前端单测配置 jsdom、Vue 编译和 V8 覆盖率门槛 | R:- | A:coverage,thresholds | S:目标文件行、函数、语句阈值90%，分支80%，排除E2E
+
+===/<repository>/bilibili-web/src/===
+App.vue[EU5T]: F:渲染全局导航、搜索与响应式菜单并加载会话和视频分类 | R:- | A:App.vue | S:认证页采用独立沉浸式布局
+env.d.ts[FV1T]: F:导入 Vite 客户端提供的 TypeScript 声明 | R:- | A:vite/client | S:-
+main.ts[EU3T]: F:创建 Vue 应用并装配 Pinia、路由和全局样式 | R:code:bilibili-web/src/App.vue | A:#app | S:-
+styles.css[FU3S]: F:提供站点色彩、字体、响应式导航、通用按钮卡片与页面样式 | R:- | A:styles.css | S:-
+
+===/<repository>/bilibili-web/src/api/===
+http.ts[II7S]: F:处理统一 API 包装、请求访问令牌及401后的刷新和重放 | R:code:bilibili-web/src/stores/auth.ts | A:apiRequest,refreshClient,observeAuthSession | S:访问令牌保存在模块内存，同一批401共享刷新请求，原请求最多重放一次
+index.ts[IB5T]: F:把前端账号、视频、互动、上传和创作者操作映射到网关API | R:code:bilibili-web/src/api/http.ts | A:userApi,videoApi,danmuApi,uploadApi,governanceApi,creatorApi | S:-
+
+===/<repository>/bilibili-web/src/components/===
+EmptyState.vue[CU2T]: F:渲染可配置标题和说明的列表空状态 | R:- | A:title,description | S:-
+VideoCard.vue[CU3T]: F:渲染带封面、播放计数和发布时间的视频卡片并跳转详情 | R:- | A:video,/video/{id} | S:-
+SubmissionResubmitForm.vue[EU4T]: F:编辑已驳回投稿的标题、简介和标签并提交表单数据 | R:code:bilibili-web/src/types/api.ts | A:submission,saving,submit,cancel | S:中英文逗号都作为标签分隔符，提交时检查每个标签的长度
+
+===/<repository>/bilibili-web/src/router/===
+index.ts[EI5T]: F:注册公开和受保护的页面路由并恢复登录会话 | R:code:bilibili-web/src/stores/auth.ts | A:beforeEach,meta.auth,meta.admin,/creator/submissions | S:未登录跳认证页并保留目标位置，管理员路由额外检查角色
+
+===/<repository>/bilibili-web/src/services/===
+chunkUpload.ts[AB5T]: F:检查秒传及已存在分片并按5 MiB补传后请求合并 | R:code:bilibili-web/src/api/index.ts | A:uploadSmallVideo | S:只上传未完成片，合并使用同一uploadId
+danmuConnection.ts[IN6T]: F:为视频建 WebSocket 连接，领取票据、解析弹幕、心跳和重连 | R:- | A:DanmuConnection | S:世代变化使旧套接字回调失效，断开时清重连与心跳计时器
+
+===/<repository>/bilibili-web/src/stores/===
+auth.ts[AI5T]: F:维护前端登录会话资料并处理刷新恢复、退出和清理 | R:code:bilibili-web/src/api/http.ts | A:useAuthStore,hydrate,logout,clear | S:并发恢复共享同一在途请求
+
+===/<repository>/bilibili-web/src/types/===
+api.ts[CB4M]: F:定义前端使用的响应、会话、视频、互动和审核重提类型 | R:- | A:ApiResult,VideoDetail,UploadMerge,CreatorSubmission,VideoResubmission | S:-
+
+===/<repository>/bilibili-web/src/utils/===
+format.ts[CU3T]: F:提供分类回退、计数和时长格式、相对时间及头像回退 | R:- | A:replaceCategories,formatCount,formatDuration,relativeTime,avatarFallback | S:后端分类列表为空时保留默认分类
+
+===/<repository>/bilibili-web/src/views/===
+AdminView.vue[EU4T]: F:为治理后台加载视频与举报列表并提交审核、处置命令 | R:code:bilibili-web/src/api/index.ts | A:AdminView.vue | S:对非通过审核以及举报处置弹出备注输入，取消即放弃请求
+AuthView.vue[EI4T]: F:呈现密码登录、验证码登录及注册，处理验证码倒计时和成功后的路由 | R:- | A:AuthView.vue | S:卸载时清理验证码计时器
+CreatorAnalyticsView.vue[EA4S]: F:展示创作者合计、趋势、排行和日期筛选并发起重建 | R:- | A:CreatorAnalyticsView.vue | S:起始范围为最近7个本地日期
+HomeView.vue[EU4S]: F:展示推荐视频、分类与排序切换，并加载热词 | R:- | A:HomeView.vue | S:热词接口异常时使用静态回退
+NotFoundView.vue[EU1T]: F:在未知路由显示404和返回首页入口 | R:- | A:NotFoundView.vue | S:-
+ProfileView.vue[EU4S]: F:展示创作者资料和公开作品，提供本人资料编辑和投稿管理入口 | R:code:bilibili-web/src/views/CreatorSubmissionsView.vue | A:ProfileView.vue | S:仅本人可见投稿管理入口，缺少目标身份时跳登录
+SearchView.vue[EU4S]: F:用路由查询串同步搜索词、筛选及排序，展示分页结果 | R:- | A:SearchView.vue | S:每页12条，切换查询条件通过路由驱动
+UploadView.vue[EB6S]: F:选择视频、计算MD5、直传或分片并等待转码后提交初稿 | R:code:bilibili-web/src/services/chunkUpload.ts,code:bilibili-web/src/views/CreatorSubmissionsView.vue | A:startUpload,waitForTranscode,publish | S:达到20 MiB走签名直传，离页终止轮询。根据服务端投稿状态显示待审或风控未通过
+VideoView.vue[EU7L]: F:组合HLS播放、清晰度切换、实时弹幕、评论、互动和举报 | R:code:bilibili-web/src/services/danmuConnection.ts,code:bilibili-web/src/api/index.ts | A:load,changeQuality,sendDanmu,attachSource | S:切视频时废弃上一加载并关闭其连接。切换清晰度保留时间与播放状态，卸载释放HLS及弹幕套接字
+CreatorSubmissionsView.vue[EU5S]: F:按审核状态分页查看本人投稿、阅读审核说明并提交驳回后的改稿 | R:code:bilibili-web/src/api/index.ts,code:bilibili-web/src/components/SubmissionResubmitForm.vue | A:load,resubmit,/creator/submissions | S:重提后切到服务器返回的状态并重新加载，只给已发布投稿提供公开查看入口
+
+===/<repository>/docker/canal/===
+instance.properties[FD4T]: F:配置 Canal 的 MySQL 主库连接、实例ID和 binlog 表过滤 | R:- | A:canal.instance.master.address,canal.instance.filter.regex | S:采集bilibili库，过滤mysql复制元数据表
+
+===/<repository>/docker/mysql/init/===
+01-init.sql[OD3T]: F:初始化项目数据库及演示环境用于复制的数据库账号 | R:- | A:bilibili,REPLICATION SLAVE,REPLICATION CLIENT | S:-
+02-schema.sql[PD5M]: F:给 Compose 数据库提供账号、媒资、弹幕与社交初始建表脚本 | R:code:bilibili-common/src/main/resources/db/migration/V1__baseline.sql | A:02-schema.sql | S:Compose首启脚本需与运行Flyway的基础表口径核对
+03-demo-data.sql[OQ3L]: F:用幂等插入更新初始化开发演示账号、视频、弹幕、评论及互动数据 | R:code:docker/mysql/init/02-schema.sql | A:03-demo-data.sql | S:重复运行会更新已有演示行
+
+===/<repository>/docker/mysql/migration/===
+001-p0-video-transcode.sql[PD3T]: F:为旧数据库补建基础视频转码任务表和派发索引 | R:code:bilibili-common/src/main/resources/db/migration/V6__transcode_task_lease.sql | A:video_transcode_task,idx_transcode_dispatch | S:这里只建立早期结构，后续租约字段来自Flyway
+
+===/<repository>/docker/nginx/===
+nginx.conf[ON5T]: F:把/api和WebSocket升降级头转发到网关并提供根路径存活响应 | R:code:bilibili-gateway/src/main/resources/application.yml | A:/api/,bilibili_gateway | S:覆盖而非追加客户端转发IP，根路径不部署前端
+
+===/<repository>/docker/observability/===
+alertmanager.yml[FO3T]: F:配置 Alertmanager 默认接收器和告警合并及重复周期 | R:- | A:default,group_by,repeat_interval | S:按告警名和应用分组
+alerts.yml[FO4T]: F:声明服务宕机、API高错误和延迟、消息堆积、生命周期和资源告警 | R:- | A:BilibiliServiceDown,MessageLifecycleFailing,MessageLifecycleStalled,RocketMqConsumerLagHigh | S:-
+loki.yml[FO3T]: F:配置 Loki 单实例的文件系统日志索引和存储 | R:- | A:3100,/loki | S:使用TSDB v13和内存ring
+prometheus.yml[FO3T]: F:定期抓取各服务Actuator指标、RocketMQ及自身，路由告警 | R:- | A:bilibili-services,rocketmq,prometheus | S:应用指标取/actuator/prometheus，间隔15秒
+promtail.yml[FO3T]: F:发现项目 Docker 容器并转发日志到 Loki，标记容器、流和Compose服务 | R:- | A:docker,positions | S:使用Docker socket进行发现
+tempo.yml[FO3T]: F:在Tempo接收Zipkin追踪，并配置本地存储和保留 | R:- | A:9411,3200,block_retention | S:默认保留24小时
+
+===/<repository>/docker/observability/grafana/dashboards/===
+bilibili-overview.json[FO3T]: F:预置服务可用性、关键接口P95、失败消息、堆内存和MQ积压面板 | R:- | A:Bilibili Service Overview | S:-
+
+===/<repository>/docker/observability/grafana/provisioning/dashboards/===
+dashboards.yml[FO2T]: F:从本地挂载目录预配 Grafana Bilibili 文件看板 | R:- | A:/var/lib/grafana/dashboards | S:允许UI修改看板
+
+===/<repository>/docker/observability/grafana/provisioning/datasources/===
+datasources.yml[FO3T]: F:注册 Prometheus、Loki、Tempo 并让日志和追踪双向跳转 | R:- | A:prometheus,loki,tempo | S:Loki按ECS trace.id提取追踪ID
+
+===/<repository>/docker/rocketmq/===
+broker.conf[FM3T]: F:配置开发 RocketMQ 主Broker、主题创建、刷盘和持久化目录 | R:- | A:broker-a,10911,storePathRootDir | S:异步主节点与异步刷盘，消息文件保留48小时
+
+===/<repository>/docker/test/===
+minio.Dockerfile[OQ4T]: F:固定版本源码编译供故障矩阵使用的 MinIO 镜像 | R:- | A:docker/test/minio.Dockerfile | S:固定提交构建，最终用scratch承载无CGO二进制
+
+===/<repository>/docs/===
+MEDIA_GOVERNANCE_RUNBOOK.md[SB4T]: F:说明媒资处理、审核、驳回重提和举报的演示及验收步骤 | R:code:scripts/e2e/browser-e2e.ps1 | A:闭环,演示,生产配置,自动回归 | S:重提复用已转码的原视频，须重新经过风控和人工审核
+PROJECT_DELIVERY.md[SG5T]: F:记录交付功能、分层验收入口、V12升级与最近一次本地发布验收 | R:code:.github/workflows/ci.yml,code:scripts/verification/release-validation.ps1,code:docs/MEDIA_GOVERNANCE_RUNBOOK.md | A:验收入口,V12 互动计数升级,2026-11-26 本地发布验收 | S:本地通过记录绑定f80433f与WSL演示测试卷。V12前停旧社交写入及视频举报处置
+
+===/<repository>/docs/architecture/===
+shared-modules-and-upload.md[SG4T]: F:记录共享模块依赖方向、上传子职责及兼容接口验证范围 | R:- | A:模块依赖,上传职责 | S:共享消息层依赖可靠性层，可靠性层不依赖MQ SDK
+
+===/<repository>/docs/interview/===
+01-media-recovery.md[SR4T]: F:以故障矩阵和旧任务时序讲解转码接管、档位保存及产物隔离 | R:code:docs/runbooks/transcode-fault-matrix.md | A:故障案例与验证 | S:文中的实测限定为对应环境与故障边界
+02-message-consistency.md[SR4T]: F:用事务时序和历史缺陷说明Outbox、Inbox围栏与失败恢复 | R:- | A:核心时序,验证证据 | S:明确区分本地事务保证和跨系统投递
+03-search-recovery.md[SR4T]: F:记录搜索影子索引恢复与CDC并发回退的例子、修复和历史口径 | R:- | A:核心时序,验证证据与口径 | S:轮询得到的待消费峰值是下界
+04-auth-session.md[SI4T]: F:解释访问令牌、刷新Cookie轮换及页面并发刷新设计与限制 | R:- | A:核心时序,设计取舍 | S:单页Promise共享不能代表跨标签协调
+05-upload-resume.md[SB4T]: F:说明断点续传、重复分片和直传完成校验，并给出故障案例 | R:- | A:核心时序,故障案例与验证 | S:ETag按MD5比较只适用于所述单PUT场景
+06-danmu-realtime.md[SN3T]: F:讲解弹幕HTTP受理、Redis广播、WebSocket票据与可靠异步落库的分层 | R:- | A:核心时序,故障案例与验证 | S:重连仅恢复后续接收，无断点补消息承诺
+07-social-interactions.md[SB3T]: F:讲解社交关系幂等、评论权限和MySQL事务计数的取舍 | R:database://bilibili-mysql/bilibili/video_stats | A:重复点赞,设计取舍 | S:数据库事务提交后详情缓存仍等待CDC失效
+08-creator-analytics.md[SA3T]: F:说明创作者看板的日聚合、脏日期重建及统计口径 | R:- | A:核心时序,故障案例与验证 | S:点赞收藏以当前有效关系计入，非源行为历史
+09-content-governance.md[SB3T]: F:介绍内容审核、举报流程、业务状态和审计边界 | R:- | A:核心时序,设计取舍 | S:内容下架不能保证外发媒体地址同步失效
+10-read-cache-search.md[SP3T]: F:介绍短时缓存、版本失效、布隆过滤与搜索层的读路径 | R:- | A:核心时序,设计取舍 | S:布隆可能命中仍需数据源确认
+11-gateway-capacity.md[SP3T]: F:解释网关按IP限流、代理信任及容量测试的口径 | R:- | A:故障案例与验证,设计取舍 | S:限流配置值不能当作实测容量
+12-observability-recovery.md[SO3T]: F:讲解请求关联、日志和指标，并串接失败消息定位及审计重放 | R:- | A:核心时序,设计取舍 | S:缺活动Span时生成的traceId无法证明有完整追踪
+13-frontend-playback.md[SU3T]: F:记录前端刷新、续传、播放及弹幕资源的生命周期与测试策略 | R:- | A:核心时序,故障案例与验证 | S:接口桩无法验证真实签名域名、跨域和编解码
+14-architecture-quality.md[SG3T]: F:解释共享模块、数据库迁移、分层测试与可复现交付 | R:- | A:核心时序,设计取舍 | S:业务服务共享数据库，部署拆分并未带来数据自治
+15-media-encoding.md[SB3T]: F:解释首档优先发布、同批多档编码及硬件失败回退 | R:- | A:核心时序,设计取舍 | S:首档与后续输出分批，一次解码只适用于同批
+README.md[SG4S]: F:组织项目介绍、架构图、十五专题及面试和演示检查 | R:code:README.md | A:全项目专题导航,简历表述候选 | S:历史实测须保留场景口径
+
+===/<repository>/docs/reports/===
+2026-09-11-release-validation-blocked.md[SV3T]: F:记录发布候选本地验证通过项与因视频CPU峰值超限而阻断 | R:- | A:最终候选复跑,未关闭项 | S:历史CPU口径需要厘清，不可直接提高门槛
+2026-09-16-project-highlights-roadmap.md[SG3T]: F:梳理项目亮点、历史读压及故障验收证据、后续优化顺序 | R:- | A:证据边界,优化顺序与验收 | S:固定环境短时读压不代表写链路或生产容量
+2026-09-17-cpu-quota-gate.md[SP3T]: F:记录根据Docker配额归一化CPU百分比及写链路门禁的修订 | R:- | A:cpuQuotaPercent,maxCpuQuotaPercent | S:缺配额应失败，原始宿主百分比继续保存
+2026-09-17-es-shadow-rebuild.md[SR3T]: F:记录搜索别名初始化、影子重建、对账切换与回滚实现 | R:- | A:video_search,/api/admin/reliability/es/rollback | S:回滚也重新和MySQL对账
+2026-09-17-frontend-regression.md[SQ3T]: F:记录早期前端分片恢复、401刷新、弹幕重连和模拟浏览器集成测试 | R:- | A:本地验证 | S:浏览器数据使用确定性API和WebSocket桩
+2026-09-17-p1-reliability-drill.md[SR3T]: F:记录双Worker崩溃接管、多个Canal及并发搜索重建实测 | R:- | A:验证范围,结果 | S:并发重建只准一个请求完成切换
+2026-09-17-project-highlights-next-plan.md[SG3T]: F:归纳当时P0至P2及前端验证结果和分优先级开发计划 | R:- | A:当前验证边界,后续计划 | S:远端结果需对应提交的Actions证据
+2026-09-17-release-validation-pass.md[SV3T]: F:记录一次本地发布复验的CPU门禁、真实链路、故障和写SLO结果 | R:- | A:执行命令,门禁结果 | S:结论绑定该Docker环境与测试运行
+2026-09-17-transcode-lease-fencing.md[SR3T]: F:记录转码代次令牌、续租、尝试路径隔离及升级兼容 | R:- | A:claim_generation,claim_token,lease_until | S:历史缺租约任务可重新领取，缺围栏字段消息被忽略
+2026-09-17-transcode-result-transaction.md[SR3T]: F:说明转码结果和视频播放地址双写失败的修复及事务回滚验证 | R:- | A:问题与改动,验证 | S:注入的是H2第二次数据库写异常
+2026-09-18-index-cutover-lock-cdc-backlog.md[SR4T]: F:量化索引切换与CDC锁指标，并记录双实例并发期间的积压采样 | R:- | A:bilibili.index.lock.wait,bilibili.index.lock.hold | S:积压峰值是轮询下界，不能当成Broker积压
+2026-09-18-p2-capacity-baseline.md[SP4T]: F:记录读、写、弹幕及双Worker转码的P2容量测量和门槛 | R:code:loadtest/capacity-baseline.json | A:执行记录 | S:短时测量使用指定配额、负载和非干净工作区
+2026-09-18-project-highlights-next-plan.md[SG3T]: F:总结截至阶段的上传、可靠消息、实时弹幕及搜索能力与改进方向 | R:- | A:项目定位与可展示亮点 | S:区分模拟浏览器、本地集成及真实生产证据
+2026-09-18-transcode-attempt-cleanup-rendition-recovery.md[SR4T]: F:记录高档位失败补偿、人工重排、有效引用及历史HLS回收 | R:- | A:业务约束与实现,验证记录 | S:补偿切换前保留旧低清播放，清理需同时确认租约和引用
+2026-09-20-linux-curl-resolution-ci-fix.md[SV3T]: F:解释 Linux runner 的curl发现返回多路径及选单个应用程序的修复 | R:code:scripts/e2e/compose-helpers.ps1 | A:触发证据,根因,修复 | S:本地Windows单路径未暴露问题
+2026-09-20-linux-curl-wildcard-ci-fix.md[SV3T]: F:记录 Linux curl no-proxy 通配符、参数数组和file URI的可移植性修复 | R:code:scripts/verification/verify-compose-helpers-portability.ps1 | A:根因,修复,验收边界 | S:无代理环境变量只在调用期间覆盖
+2026-09-20-minio-registry-ci-fix.md[SV3T]: F:记录历史 MinIO 镜像拉取失败与 Compose、Testcontainers 源对齐 | R:- | A:现象与根因,修复 | S:本机镜像缓存掩盖过远端旧标签404
+2026-09-20-project-highlights-development-plan-detailed.md[SG4M]: F:细化媒体、消息、弹幕、搜索等亮点的业务不变量、测试证据与升级计划 | R:- | A:项目定位与证据口径 | S:已记录实现和后续计划的验证状态应分开解读
+2026-09-20-project-review.md[SG3T]: F:按业务链路总结已实现能力、历史验证与改进优先级 | R:- | A:项目亮点,进一步提升 | S:不将短时本地测试外推为生产SLO
+2026-10-10-inbox-lease-fencing.md[SR4T]: F:记录 Inbox 接管、业务行锁、重试及失败记录同事务修复 | R:- | A:实现,验收范围,运行边界 | S:正在处理的竞争投递抛回Broker，已成功才确认
+2026-11-02-message-lifecycle.md[SR4T]: F:记录消息归档、永久回执、受控重放和告警的实现及验证 | R:code:docs/runbooks/message-lifecycle.md | A:实现范围,验证记录 | S:不自动删除处理中消息、失败消息和永久凭证
+2026-11-02-outbox-browser-ci.md[SR4T]: F:记录 Outbox 租约隔离、浏览器 CI 分层及本地检查结果 | R:- | A:改动,已验证 | S:真实浏览器场景被发现及通过类型检查与实跑不同
+2026-11-03-module-upload-decoupling.md[SG3T]: F:记录公共模块拆分、上传职责解耦和依赖门禁的验收边界 | R:code:docs/architecture/shared-modules-and-upload.md | A:变更范围,验证范围 | S:两套上传API和共享迁移保持原契约
+2026-11-04-transcode-fault-matrix.md[SR4T]: F:记录真实MySQL、MinIO、FFmpeg故障矩阵中7种场景及进程回收结果 | R:code:docs/runbooks/transcode-fault-matrix.md | A:结果,已验证的行为 | S:高档位补偿耗尽后首档仍须可解码
+2026-11-18-project-wrap-up.md[SV4T]: F:记录统一CI、发布依赖和MinIO准备调整及项目收尾的验证边界 | R:code:docs/PROJECT_DELIVERY.md | A:修改,本次检查 | S:Chromium结果使用模拟网关
+
+===/<repository>/docs/runbooks/===
+message-lifecycle.md[SR5T]: F:规定消息数据保留、归档、查询和运维重放的操作方法 | R:code:bilibili-common/src/main/resources/db/migration/V11__message_lifecycle.sql | A:保留边界,配置与容量 | S:成功Inbox热记录可压缩但永久去重回执无自动删除
+observability-and-reliability.md[SO4T]: F:说明指标、日志、追踪入口与消息或服务告警的定位步骤 | R:- | A:入口与数据流,核心告警处置 | S:默认Alertmanager只聚合，通知接收器需部署配置
+outbox-lease-fencing.md[SR4T]: F:说明Outbox领取隔离、V10升级顺序与至少一次投递边界 | R:code:bilibili-common/src/main/resources/db/migration/V10__outbox_lease_fencing.sql | A:claim_token,locked_until | S:迁移前停止旧发布器，避免旧SQL越过围栏
+reliability-closure.md[SR5T]: F:说明 Outbox、Inbox、DLQ、搜索对账与故障恢复的操作路径 | R:- | A:保障范围,自动回归,对账和重建,人工处置 | S:发送成功未完成状态更新可能重复投递
+transcode-fault-matrix.md[SR5T]: F:定义真实转码故障矩阵的启动条件、注入点及验证标准 | R:code:scripts/e2e/transcode-fault-matrix.sh | A:故障与断言,MinIO镜像准备,进程清理 | S:首档前断言失败收敛，首档后必须维持旧入口可读
+
+===/<repository>/loadtest/===
+.gitignore[FV1T]: F:忽略压测原始结果和HTML报告目录 | R:- | A:results/,reports/ | S:-
+PERFORMANCE_REPORT.md[SP4S]: F:汇总本地读链路k6和JMeter结果、环境事件和后续复测 | R:- | A:范围与判定标准,原始证据 | S:结果仅覆盖报告给定的本地负载和数据量
+README.md[SP4T]: F:说明 k6 读链路、长连接、写SLO及分场景容量基线的运行方法 | R:code:loadtest/write-slo.json,code:loadtest/capacity-baseline.json | A:读链路基线,WebSocket长连接,写链路SLO | S:写负载轮询演示账号以分离单用户限流
+capacity-baseline.json[FP4T]: F:设定分场景读写、弹幕和转码负载及采样、延迟、错误和资源门槛 | R:code:scripts/loadtest/p2-capacity-baseline.ps1 | A:workload,thresholds | S:读迭代含三个HTTP请求，迭代率和RPS口径不同
+danmu-baseline.js[TP4T]: F:按固定到达率登录后写入弹幕，分别统计业务失败及请求耗时 | R:- | A:danmu_business_failure,RATE | S:测量写入接口，不测所有浏览器接收者
+read-baseline.js[TP4T]: F:用 k6 固定迭代率批量请求列表、详情和搜索并统计协议与业务错误 | R:- | A:RATE,business_failure | S:每次迭代并发发三个HTTP请求
+transcode-baseline.js[TP5S]: F:用 k6 申请直传、上传固定媒体、完成会话并轮询HLS转码 | R:- | A:transcode_business_failure,RATE | S:容器内会转换签名地址的访问目标，仍需保留签名请求所需主机信息
+write-baseline.js[TP4S]: F:按独立到达率测量播放、弹幕写入及评论和点赞操作 | R:code:loadtest/write-slo.json | A:playback,danmu,interaction,write_slo_business_failure | S:写入用多个账号轮转，并检查业务成功状态
+write-http-baseline.js[TP4S]: F:为独立HTTP写场景按固定速率创建并删除评论 | R:- | A:RATE,write_business_failure | S:一轮业务包含两次写请求
+write-slo.json[FP4T]: F:定义发布验收的上传、转码、播放、弹幕、互动、资源和队列SLO | R:code:scripts/loadtest/run-write-slo.ps1 | A:workload,slo,maxCpuQuotaPercent | S:CPU阈值基于分配配额，非docker stats原始百分比
+ws-connections.js[TP4T]: F:维持指定虚拟用户的弹幕WebSocket连接，统计建连、消息和响应时间 | R:- | A:WS_URL,VUS,SESSION_MS,ws_connected | S:心跳间隔随会话调节，默认按无票接收连接测量
+
+===/<repository>/loadtest/jmeter/===
+README.md[SP3T]: F:说明如何运行和调节JMeter混合读压，以及WebSocket弹幕验证入口 | R:code:loadtest/jmeter/bilibili-read.jmx | A:快速验证,300 RPS、5 分钟基线 | S:-
+bilibili-read.jmx[TP4S]: F:使用JMeter线程组混合请求视频列表、详情和搜索，校验业务成功字段 | R:- | A:target_rpm,ConstantThroughputTimer | S:目标RPM为三路总HTTP请求数，18000 RPM约300 RPS
+
+===/<repository>/scripts/e2e/===
+browser-e2e.ps1[TQ4T]: F:在运行中的视频容器生成唯一本地媒体，运行真实后端Playwright并清理样本 | R:code:bilibili-web/playwright.real.config.ts | A:E2E_VIDEO_PATH,test:e2e:real | S:样本每次带唯一元数据以避免短路上传转码
+compose-helpers.ps1[XQ5S]: F:封装跨平台Compose、curl、业务JSON请求、MySQL标量和等待断言 | R:- | A:Invoke-Compose,Invoke-CurlNoProxy,Invoke-BiliApi,Wait-Until | S:仅在curl调用期间修改无代理环境，HTTP成功仍检查业务success
+fault-drill.ps1[TR4T]: F:在隔离验证中短停MQ、Redis及ES并断言异步恢复和索引对账 | R:- | A:Invoke-ReliabilityFaultDrill | S:MQ故障期间仍核对播放，ES恢复后显式重建并对账
+p1-reliability-drill.ps1[TR6L]: F:运行双转码Worker崩溃接管和双Canal并发切换演练，采样CDC积压 | R:code:docker-compose.p1.yml,code:scripts/e2e/compose-helpers.ps1 | A:CrashAfterPlayable,MeasureIndexCutover | S:用任务所有权、实际HLS可读性及索引一致性做现场断言，可保留首档后故障场景
+prepare-minio-test-image.sh[XQ4T]: F:为Testcontainers和隔离Compose导出可用的MinIO镜像 | R:code:docker/test/minio.Dockerfile | A:MINIO_TEST_IMAGE | S:先用本地或拉取固定镜像，拉取失败才构建固定源码的本地替代
+reliability-e2e.ps1[TQ6M]: F:用真实Compose验收视频发布播放、搜索、互动、作者统计和可选故障恢复 | R:code:docker-compose.e2e.yml,code:scripts/e2e/fault-drill.ps1,code:scripts/e2e/compose-helpers.ps1 | A:SkipBuild,RunFaultDrill,KeepRunning,KeepTestData,TestContextPath | S:互动及今日作者指标按本次视频断言。迟到事件先核对单视频落库，再用数据库作者当日总量校验趋势，以兼容演示账号既有数据
+transcode-fault-matrix.sh[TR5T]: F:检查Linux媒体工具及Docker，运行真实转码故障矩阵并保存报告 | R:code:scripts/e2e/prepare-minio-test-image.sh | A:transcode.fault.matrix,environment.txt,maven.log | S:使用隔离MySQL和MinIO，脚本传播Maven退出状态
+
+===/<repository>/scripts/loadtest/===
+capacity-common.ps1[XP4M]: F:为容量脚本采样Compose容器CPU内存、MQ积压和k6指标并汇总峰值 | R:code:scripts/loadtest/resource-normalization.ps1 | A:Get-CapacityContainerResources,Get-CapacityRocketMqBacklog,Get-CapacityResourcePeaks | S:缺少容器stats或无法解析资源口径时失败
+p2-capacity-baseline.ps1[TP6L]: F:启动真实测试依赖，依次执行读、写、弹幕与多Worker转码基线，并输出硬件和门禁证据 | R:code:loadtest/capacity-baseline.json,code:scripts/loadtest/capacity-common.ps1 | A:Invoke-K6CapacityPhase,Test-ScenarioMeasurement | S:按场景分别预热和测量，缺MQ观测默认失败
+resource-normalization.ps1[XP5S]: F:从Docker inspect优先级解析CPU核数并归一化运行采样百分比 | R:- | A:Get-CpuQuotaCoresFromInspect,Convert-RawCpuToQuotaPercent | S:优先NanoCpus，其次配额周期、CpuCount或Cpuset，缺有效配额拒绝比较
+run-write-slo.ps1[TP6L]: F:运行写路径k6混合场景，融合E2E阶段、应用错误、配额与MQ采样输出SLO报告 | R:code:loadtest/write-slo.json,code:loadtest/write-baseline.js | A:BaseUrl,SloConfigPath,E2eReportPath,ReportPath | S:旧cpuPercent字段沿用配额使用率语义，Worker资源按角色汇总
+test-resource-normalization.ps1[TP3T]: F:校验一核、四核、Cpuset和半载情况下的CPU配额换算 | R:code:scripts/loadtest/resource-normalization.ps1 | A:test-resource-normalization.ps1 | S:-
+
+===/<repository>/scripts/verification/===
+release-validation.ps1[OV6M]: F:串联环境检查、完整后端验证、真实Compose、可选浏览器和写路径SLO | R:code:scripts/e2e/reliability-e2e.ps1,code:scripts/loadtest/run-write-slo.ps1 | A:RunFaultDrill,RunBrowserE2e,release-validation.json | S:要求干净工作区以绑定版本，后端显式启用媒体故障矩阵并要求零跳过
+verify-compose-helpers-portability.ps1[TQ4T]: F:验证跨平台curl单路径解析、参数传递不展开通配符及真实请求头 | R:code:scripts/e2e/compose-helpers.ps1 | A:verify-compose-helpers-portability.ps1 | S:使用本地文件和回环监听作探针
+
+===/<repository>/bilibili-common-reliability/src/main/java/com/gary/bilibili/common/social/===
+VideoInteractionStats.java[PD7T]: F:原子更新视频的点赞、收藏及评论计数 | R:database://bilibili-mysql/bilibili/video_stats | A:changeLikes,changeCollections,changeComments | S:必须加入现有业务事务。仅在业务行实际变更后写对应差值，关系或内容回滚时计数一起回滚

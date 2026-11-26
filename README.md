@@ -1,6 +1,12 @@
 # Bilibili Cloud
 
+当前交付状态、验收入口与待验证范围见 [项目交付说明](docs/PROJECT_DELIVERY.md)。
+
 媒体处理与内容治理演示见 [docs/MEDIA_GOVERNANCE_RUNBOOK.md](docs/MEDIA_GOVERNANCE_RUNBOOK.md)。
+
+转码异常退出、挂起、MinIO 部分写入与迟到 Worker 的验证见 [转码故障矩阵](docs/runbooks/transcode-fault-matrix.md)。
+
+面试准备见 [全项目架构、十五个技术专题与故障案例](docs/interview/README.md)。
 
 一个基于 Java 21、Spring Boot 4、Spring Cloud 和 Vue 3 的视频平台示例项目。项目采用微服务架构，覆盖用户登录、分片上传、视频管理、弹幕、社交互动、搜索以及基于 Canal 的数据同步。
 
@@ -82,7 +88,8 @@ flowchart LR
 
 | 模块 | 默认端口 | 职责 |
 | --- | ---: | --- |
-| `bilibili-common` | - | 统一响应、公共异常、配置和基础依赖 |
+| `bilibili-common` | - | 无运行时依赖的统一响应、公共异常和消息契约 |
+| `bilibili-common-*` | - | 按需引入的观测、Web、可靠性、MQ 发布与存储适配 |
 | `bilibili-gateway` | 8080 | API 路由、服务发现和 WebSocket 转发 |
 | `bilibili-user-service` | 8081 | 用户、认证、验证码和资料管理 |
 | `bilibili-video-service` | 8082 | 视频上传、对象存储、发布、播放和统计 |
@@ -130,6 +137,10 @@ npm run quality
 
 GitHub Actions 会对 Push 和 Pull Request 并行执行后端、前端与 Compose 配置校验，工作流见 `.github/workflows/ci.yml`。
 
+浏览器回归分为两层：Push/PR 执行 `npm --prefix bilibili-web run test:e2e`（模拟网关，覆盖页面交互与异常恢复）；定时/手动发布验证额外执行真实服务链路，覆盖页面登录、分片上传、转码、发布、审核后 HLS 播放以及评论刷新持久化。后者不拦截 API、媒体或 WebSocket 响应。
+
+在隔离的演示环境运行完整验证：先在 `bilibili-web` 安装依赖并执行 `npx playwright install --with-deps chromium`，再运行 `pwsh scripts/verification/release-validation.ps1 -RunBrowserE2e`。已有运行中的演示服务可直接执行 `pwsh scripts/e2e/browser-e2e.ps1`。脚本使用 FFmpeg 生成带唯一元数据的短视频，避免秒传跳过转码；默认使用种子演示账号，可通过 `E2E_USERNAME` / `E2E_PASSWORD` 和 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 覆盖。仅用于测试环境，测试会发布、审核并删除自己的视频与评论；软删除、上传对象和任务记录仍保留在测试存储中。失败诊断见 `bilibili-web/test-results` 和 CI 附件，trace 可能包含测试凭证，仅使用测试账号。
+
 ## 分环境配置
 
 所有服务默认使用 `dev`，并提供以下配置：
@@ -164,11 +175,14 @@ MySQL 表结构由 `bilibili-common/src/main/resources/db/migration` 统一管�
 curl -H "X-Admin-Token: change-me-in-production" \
   "http://localhost:8080/api/admin/mq/failures?status=FAILED&page=1&size=20"
 
-curl -X POST -H "X-Admin-Token: change-me-in-production" \
+curl -X POST -H "X-Admin-Token: change-me-in-production" -H "Content-Type: application/json" \
+  -d '{"requestId":"replay-request-000001","expectedReplayCount":0,"reason":"Dependency repaired and verified"}' \
   "http://localhost:8080/api/admin/mq/failures/1/replay"
 ```
 
 生产环境必须设置高强度 `OPERATIONS_ADMIN_TOKEN`。告警处置、DLQ 重放边界和排障查询见 `docs/runbooks/observability-and-reliability.md`。
+
+消息生命周期默认将已发布 Outbox 在 7 天后归档，将成功 Inbox 在 30 天后压缩为永久去重凭证；失败和处理中记录不清理。Outbox 重试耗尽后进入 `EXHAUSTED`，支持管理员查询及带原因、请求编号、版本校验的事务化重放。归档策略、升级顺序和完整接口见 [消息生命周期运维手册](docs/runbooks/message-lifecycle.md)。
 
 CDC 对账和 Elasticsearch 全量重建同样使用管理员令牌：
 
@@ -495,7 +509,8 @@ mvn -pl bilibili-video-service -am test
 
 ```text
 .
-├── bilibili-common/          # 公共响应、异常和配置
+├── bilibili-common/          # 基础类型与共享 SQL 资源
+├── bilibili-common-*/        # 按需引入的观测、Web、可靠性、MQ 和存储组件
 ├── bilibili-gateway/         # Spring Cloud Gateway
 ├── bilibili-user-service/    # 用户与认证
 ├── bilibili-video-service/   # 视频与文件上传
@@ -547,8 +562,10 @@ docker logs bilibili-user-service
 
 ### 视频转码失败或播放地址无法访问
 
-视频服务镜像会安装 FFmpeg，并从 MinIO 的 `source/` 对象读取源文件，将 MP4 产物写入 `play/`。应用默认只给播放产物前缀配置匿名读权限，不会公开源文件；可通过 `MINIO_PUBLIC_READ_ENABLED=false` 关闭。Compose 默认把 `MINIO_PUBLIC_ENDPOINT` 配置为 `http://localhost:9000`，如果前端不在宿主机访问，请按实际浏览器可访问的 MinIO 地址覆盖该变量。
+视频服务镜像会安装 FFmpeg，并从 MinIO 的 `source/` 对象读取源文件，将 HLS 播放列表、分片和封面写入 `play/<任务标识>/attempt-<代次>-<令牌>/`。应用默认只给播放产物前缀配置匿名读权限，不会公开源文件；可通过 `MINIO_PUBLIC_READ_ENABLED=false` 关闭。Compose 默认把 `MINIO_PUBLIC_ENDPOINT` 配置为 `http://localhost:9000`，如果前端不在宿主机访问，请按实际浏览器可访问的 MinIO 地址覆盖该变量。
 
 ### Docker 构建时访问 Docker Hub 超时
 
 这是镜像仓库网络问题。确认代理或网络配置后重新执行 Compose 构建；Java 代码可以先通过 Maven 单独构建，不受 Docker Hub 状态影响。
+
+公共模块依赖与上传职责见 [架构说明](docs/architecture/shared-modules-and-upload.md)。

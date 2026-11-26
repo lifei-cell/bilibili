@@ -87,3 +87,11 @@ video:
   view:
     consumer-enabled: ${VIDEO_VIEW_CONSUMER_ENABLED:true}
 
+creator:
+  analytics:
+    rebuild-enabled: ${CREATOR_ANALYTICS_REBUILD_ENABLED:true}
+    rebuild-interval: ${CREATOR_ANALYTICS_REBUILD_INTERVAL:30000}
+    rebuild-initial-delay: ${CREATOR_ANALYTICS_REBUILD_INITIAL_DELAY:10000}
+    batch-size: ${CREATOR_ANALYTICS_BATCH_SIZE:50}
+    lease-seconds: ${CREATOR_ANALYTICS_LEASE_SECONDS:60}
+

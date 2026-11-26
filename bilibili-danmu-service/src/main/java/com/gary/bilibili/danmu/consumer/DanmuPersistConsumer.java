@@ -1,5 +1,6 @@
 package com.gary.bilibili.danmu.consumer;
 
+import com.gary.bilibili.common.analytics.CreatorAnalyticsDirtyPublisher;
 import com.gary.bilibili.common.reliability.ReliableMessageExecutor;
 import com.gary.bilibili.danmu.constant.DanmuConstant;
 import com.gary.bilibili.danmu.message.DanmuPersistMessage;
@@ -19,11 +20,14 @@ public class DanmuPersistConsumer implements RocketMQListener<DanmuPersistMessag
 
     private final DanmuBatchPersistService batchPersistService;
     private final ReliableMessageExecutor reliableMessageExecutor;
+    private final CreatorAnalyticsDirtyPublisher analyticsDirtyPublisher;
 
     public DanmuPersistConsumer(DanmuBatchPersistService batchPersistService,
-                                ReliableMessageExecutor reliableMessageExecutor) {
+                                ReliableMessageExecutor reliableMessageExecutor,
+                                CreatorAnalyticsDirtyPublisher analyticsDirtyPublisher) {
         this.batchPersistService = batchPersistService;
         this.reliableMessageExecutor = reliableMessageExecutor;
+        this.analyticsDirtyPublisher = analyticsDirtyPublisher;
     }
 
     @Override
@@ -36,6 +40,12 @@ public class DanmuPersistConsumer implements RocketMQListener<DanmuPersistMessag
                 CONSUMER_GROUP,
                 message.getId().toString(),
                 message,
-                () -> batchPersistService.persist(message));
+                () -> {
+                    batchPersistService.persist(message);
+                    analyticsDirtyPublisher.publishStandalone(
+                            message.getVideoId(),
+                            message.getSendTime() == null
+                                    ? null : message.getSendTime().toLocalDate());
+                });
     }
 }

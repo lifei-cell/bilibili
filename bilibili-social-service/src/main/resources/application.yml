@@ -31,6 +31,8 @@ spring:
 
 rocketmq:
   name-server: ${ROCKETMQ_NAME_SERVER:rocketmq-namesrv:9876}
+  producer:
+    group: ${ROCKETMQ_PRODUCER_GROUP:bilibili-social-producer}
 
 mybatis-plus:
   configuration:
@@ -40,8 +42,3 @@ mybatis-plus:
       logic-delete-field: deleted
       logic-delete-value: 1
       logic-not-delete-value: 0
-
-social:
-  stats:
-    sync-interval: ${SOCIAL_STATS_SYNC_INTERVAL:60000}
-    sync-initial-delay: ${SOCIAL_STATS_SYNC_INITIAL_DELAY:60000}

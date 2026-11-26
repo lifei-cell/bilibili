@@ -19,38 +19,24 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.gary.bilibili</groupId>
+            <artifactId>bilibili-common-observability</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-jwt</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-redis-jackson</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
         <dependency>
             <groupId>com.gary.bilibili</groupId>
             <artifactId>bilibili-common</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>cn.dev33</groupId>
-                    <artifactId>sa-token-spring-boot4-starter</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-data-redis</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.baomidou</groupId>
-                    <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.rocketmq</groupId>
-                    <artifactId>rocketmq-spring-boot-starter</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.minio</groupId>
-                    <artifactId>minio</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.springframework</groupId>
-                    <artifactId>spring-webmvc</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
@@ -81,6 +67,30 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-module-boundary</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>org.springframework:spring-webmvc</exclude>
+                                        <exclude>com.baomidou:*</exclude>
+                                        <exclude>org.apache.rocketmq:*</exclude>
+                                        <exclude>io.minio:*</exclude>
+                                    </excludes>
+                                    <searchTransitive>true</searchTransitive>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

@@ -1,0 +1,30 @@
+#AOCI-DATABASE-VOLUME: 1
+
+===bilibili-mysql/bilibili/database://bilibili-mysql/bilibili/===
+collection[RU5T]: F:持久化用户把视频收藏到指定收藏夹的关系及当前有效状态 | R:database://bilibili-mysql/bilibili/collection_folder,database://bilibili-mysql/bilibili/video | A:收藏关系,默认收藏夹 | S:默认夹用0且无需实际夹记录，重新收藏恢复原记录；只有状态实际改变才更新计数并触发统计重算
+collection_folder[EU4T]: F:持久化用户创建的自定义视频收藏夹及展示属性 | R:database://bilibili-mysql/bilibili/collection | A:自定义收藏夹 | S:默认夹由应用构造，当前视频数实时从收藏关系汇总
+comment[EU6T]: F:保存视频顶层评论及其回复的内容与可见状态 | R:database://bilibili-mysql/bilibili/video | A:顶层评论,回复,软删除 | S:回复只可挂在同视频的顶层评论；作者或视频所有者删除顶层时可软删其回复并重算受影响日期
+content_audit_log[LK5T]: F:保留视频治理状态转换的操作者、原因与前后状态 | R:database://bilibili-mysql/bilibili/video | A:视频审核审计 | S:与视频状态转换同一数据库事务，仅状态真的改变才写日志
+content_report[TK5T]: F:记录用户对视频、评论或弹幕提出的举报及处理结果 | R:database://bilibili-mysql/bilibili/video,database://bilibili-mysql/bilibili/comment,database://bilibili-mysql/bilibili/danmu | A:举报队列,/api/admin/content/reports | S:举报成立时下架或屏蔽目标，与举报状态的条件更新同事务；仅待处理状态可结案
+content_risk_event[LK4T]: F:保存投稿时规则风控的命中证据和处置建议 | R:database://bilibili-mysql/bilibili/video | A:VIDEO_PUBLISH | S:文本与频率评分供治理使用，视频最终可见性由视频状态控制
+creator_analytics_dirty_day[QW6T]: F:调度创作者指定统计日的可重跑聚合任务 | R:database://bilibili-mysql/bilibili/creator_video_daily_stats | A:作者与日期,脏版本,领取令牌 | S:新事件累加脏版本并重置领取；结束或失败操作只作用于版本和令牌仍匹配的任务，避免吞掉新标记
+creator_video_daily_stats[AA6T]: F:保存按作者、视频和日期归集的可重建互动指标，供看板读取 | R:database://bilibili-mysql/bilibili/video_view_event,database://bilibili-mysql/bilibili/creator_analytics_dirty_day | A:作者视频日粒度,创作者看板 | S:按作者行加锁后在事务内整日替换；点赞收藏按有效关系的创建日算，评论弹幕按当前可见性过滤
+danmu[TU5T]: F:保存视频播放时间轴上的弹幕内容和展示样式 | R:database://bilibili-mysql/bilibili/video,database://bilibili-mysql/bilibili/mq_consumed_message | A:弹幕ID,按视频及播放时间读 | S:异步重投沿用同一业务ID并用INSERT IGNORE；已有Inbox事务时写入需在消费者线程执行
+direct_upload_session[SB6T]: F:跟踪用户预签名直传至转码交接的一次性会话 | R:database://bilibili-mysql/bilibili/video_transcode_task | A:upload_id,/api/upload/direct/complete | S:完成前核对归属、期限和对象大小，存在ETag时校验MD5；确认会话和插入转码任务同事务
+file_chunk[MB5T]: F:记录分片上传的对象位置与完成状态以支持续传和顺序合并 | R:database://bilibili-mysql/bilibili/video_transcode_task | A:上传会话与片号,已上传片号清单 | S:同一片重复提交时校验摘要，合并要求所有片序号连续并匹配会话，转码交接成功后才标记分片完成
+flyway_schema_history[LV4T]: F:保留 Flyway 对数据库迁移的应用记录和校验信息 | R:code:bilibili-common/src/main/resources/db/migration/V1__baseline.sql | A:Flyway schema history | S:升级沿已有迁移序列追加版本，历史迁移按已记录的校验值验证
+follow[RU5T]: F:保存用户关注另一账号的有向关系及激活状态 | R:database://bilibili-mysql/bilibili/sys_user | A:关注关系,关注和粉丝列表 | S:应用禁止关注自己，已取消的关系通过重新激活原记录恢复
+mq_consumed_message[SR8T]: F:保存每个消费身份的处理结果与当前可接管的 Inbox 租约 | R:database://bilibili-mysql/bilibili/mq_inbox_receipt,database://bilibili-mysql/bilibili/mq_failed_message | A:消费组和主题及业务键,租约接管 | S:回调事务须持有当前Inbox行锁。成功或失败标记验证代数、令牌及数据库租约有效期，忙碌重复消息应重投
+mq_failed_message[QR7T]: F:作为应用死信记录保留消费失败及待处置重放的线索 | R:database://bilibili-mysql/bilibili/mq_replay_audit,database://bilibili-mysql/bilibili/reliable_event_outbox | A:失败指纹,FAILED,REPLAYED,RESOLVED | S:指纹包含序列化载荷，失败重试累加次数。受控重放经Outbox投递，后续成功才按相同指纹解决失败记录
+mq_inbox_receipt[SR7T]: F:保存从热 Inbox 压缩后的永久消费成功标记 | R:database://bilibili-mysql/bilibili/mq_consumed_message | A:消费组和主题及业务键 | S:归档在同一事务搬移，热表领取前后都检查凭证以覆盖并发压缩，删除凭证可能使历史重投再次执行业务
+mq_replay_audit[LR6T]: F:持久化 Outbox 与应用死信重放的操作审计及幂等回执 | R:database://bilibili-mysql/bilibili/reliable_event_outbox,database://bilibili-mysql/bilibili/mq_failed_message | A:request_id,期望重放版本 | S:同一个请求ID仅能复用完全相同的操作。审计与源状态变更同事务，旧期望版本不能重放后续失败周期
+reliable_event_outbox[QM8T]: F:记录本地事务提交后需要可靠发布给 RocketMQ 的业务事件 | R:database://bilibili-mysql/bilibili/reliable_event_outbox_archive,database://bilibili-mysql/bilibili/mq_replay_audit | A:event_id,owner,投递租约 | S:发布完成回写需匹配当前令牌与有效租期；MQ发送和数据库回写不原子。重新追加前后核对归档身份，避免历史事件复活
+reliable_event_outbox_archive[HM6T]: F:保存从热 Outbox 搬出的已发布事件及其历史身份 | R:database://bilibili-mysql/bilibili/reliable_event_outbox | A:event_id,发布归档查询 | S:仅过保留期的已发布事件可搬移，源行加锁后事务内先复制再删除，热表追加要查归档防重
+sys_user[EI7T]: F:保存用户账户主身份、公开资料和权限状态 | R:database://bilibili-mysql/bilibili/sys_user_auth | A:账号ID,用户名与手机号身份,管理员角色 | S:注册在同一事务写入账号及两类认证行，登录刷新只为未删除的启用账号签发。作者日汇总用账号行锁协调重建
+sys_user_auth[MI6T]: F:保存账号登录方式的身份标识与认证凭据 | R:database://bilibili-mysql/bilibili/sys_user | A:identity_type与identifier,账户认证 | S:手机号和密码登录分别登记，密码保存编码值。改密后清资料缓存并撤销刷新会话，勿仅对库中凭据做孤立替换
+user_like[RU5T]: F:持久化用户对视频或评论的点赞关系和当前有效状态 | R:database://bilibili-mysql/bilibili/video,database://bilibili-mysql/bilibili/comment | A:视频点赞,评论点赞 | S:重新点赞恢复原关系，只有变更状态才计数。评论直接更新自身计数，视频走Redis增量并标记创建日期重算
+video[EB8T]: F:保存投稿的视频主体、播放引用和公开可见状态 | R:database://bilibili-mysql/bilibili/video_transcode_task,database://bilibili-mysql/bilibili/video_stats,database://bilibili-mysql/bilibili/content_audit_log | A:视频ID,发布状态,公开播放URL | S:投稿播放引用来自已完成的转码任务。只有发布且未软删的行进入公开列表及搜索投影，审核恢复要求已有播放地址
+video_category[CB4T]: F:定义视频投稿和公开检索使用的分类层级及排序 | R:database://bilibili-mysql/bilibili/video | A:分类ID,/api/category/list | S:根分类父ID为0；列表只发布启用分类并按sort和ID排序
+video_stats[AB6T]: F:保存面向视频读路径的播放与互动聚合计数 | R:database://bilibili-mysql/bilibili/video | A:视频级聚合,热榜播放量 | S:投稿事务初始化统计行。异步同步落库后只扣Redis中本轮已写入的增量，避免误清并发产生的计数
+video_transcode_task[QR8T]: F:持久化媒体转码工作的领取、重试与HLS结果状态 | R:database://bilibili-mysql/bilibili/video,database://bilibili-mysql/bilibili/file_chunk,database://bilibili-mysql/bilibili/direct_upload_session | A:task_id,基础可播状态,高档位补偿 | S:结果写须匹配当前代次、令牌和有效租约，任务与已投稿视频播放引用一起提交。高档位失败保留已发布首档，仅最终结果解除成功路径上的围栏
+video_view_event[TA6T]: F:保存供作者按发生日重算的去重播放事实 | R:database://bilibili-mysql/bilibili/video,database://bilibili-mysql/bilibili/creator_analytics_dirty_day | A:request_id,发生时间,作者归属 | S:作者取自写入时未删除的视频归属；只有首次成功插入才在同一事务标记发生日，迟到事件按发生日重算

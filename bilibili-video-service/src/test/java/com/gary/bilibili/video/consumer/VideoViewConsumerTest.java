@@ -3,6 +3,7 @@ package com.gary.bilibili.video.consumer;
 import com.gary.bilibili.common.reliability.ReliableMessageExecutor;
 import com.gary.bilibili.video.constant.VideoConstant;
 import com.gary.bilibili.video.message.VideoViewMessage;
+import com.gary.bilibili.video.service.CreatorAnalyticsEventService;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
@@ -21,17 +22,19 @@ class VideoViewConsumerTest {
     void shouldPassRequestIdAndDedupKeyToAtomicScript() {
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         ReliableMessageExecutor executor = mock(ReliableMessageExecutor.class);
+        CreatorAnalyticsEventService analytics = mock(CreatorAnalyticsEventService.class);
         doAnswer(invocation -> {
             invocation.<Runnable>getArgument(4).run();
             return null;
         }).when(executor).execute(any(), any(), any(), any(), any());
-        VideoViewConsumer consumer = new VideoViewConsumer(redisTemplate, executor);
+        VideoViewConsumer consumer = new VideoViewConsumer(redisTemplate, executor, analytics);
         VideoViewMessage message = new VideoViewMessage();
         message.setVideoId(10001L);
         message.setRequestId("view-request-001");
 
         consumer.onMessage(message);
 
+        verify(analytics).recordView("view-request-001", 10001L, null);
         verify(redisTemplate).execute(
                 any(RedisScript.class),
                 eq(List.of(

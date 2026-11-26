@@ -27,14 +27,17 @@ public class ContentRiskService {
     }
 
     public RiskDecision evaluate(long userId, VideoPublishDTO request) {
+        return evaluate(userId, request.getTitle(), request.getDescription(), request.getTags());
+    }
+
+    public RiskDecision evaluate(long userId, String title, String description, List<String> tags) {
         int score = 0;
         List<String> rules = new ArrayList<>();
-        String text = (request.getTitle() + " " + request.getDescription() + " "
-                + String.join(" ", request.getTags())).toLowerCase(Locale.ROOT);
+        String text = (title + " " + description + " " + String.join(" ", tags)).toLowerCase(Locale.ROOT);
         if (blockedKeywords.stream().anyMatch(text::contains)) { score += 80; rules.add("BLOCKED_KEYWORD"); }
-        if (request.getTags().size() > 10) { score += 20; rules.add("EXCESSIVE_TAGS"); }
+        if (tags.size() > 10) { score += 20; rules.add("EXCESSIVE_TAGS"); }
         if (videoMapper.countRecentPublishes(userId) >= 5) { score += 40; rules.add("PUBLISH_VELOCITY"); }
-        if (request.getTitle().matches(".*(.)\\1{7,}.*")) { score += 20; rules.add("REPEATED_TEXT"); }
+        if (title.matches(".*(.)\\1{7,}.*")) { score += 20; rules.add("REPEATED_TEXT"); }
         String level = score >= 80 ? "HIGH" : score >= 40 ? "MEDIUM" : "LOW";
         String decision = score >= 80 ? "REJECT" : score >= 40 ? "REVIEW" : "PASS";
         return new RiskDecision(level, score, List.copyOf(rules), decision);
@@ -53,5 +56,13 @@ public class ContentRiskService {
         eventMapper.insert(event);
     }
 
-    public record RiskDecision(String level, int score, List<String> rules, String decision) { }
+    public record RiskDecision(String level, int score, List<String> rules, String decision) {
+        public boolean rejected() {
+            return "REJECT".equals(decision);
+        }
+
+        public String rejectionRemark() {
+            return rejected() ? "风控规则拒绝: " + String.join(",", rules) : null;
+        }
+    }
 }

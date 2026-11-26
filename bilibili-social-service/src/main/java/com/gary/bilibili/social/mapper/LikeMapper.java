@@ -7,6 +7,8 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
+import java.time.LocalDate;
+
 public interface LikeMapper extends BaseMapper<UserLike> {
 
     @Update("update user_like set status = 1 where user_id = #{userId} and target_type = #{targetType} and target_id = #{targetId} and status = 0")
@@ -23,6 +25,11 @@ public interface LikeMapper extends BaseMapper<UserLike> {
     int deactivate(@Param("userId") Long userId,
                    @Param("targetType") Integer targetType,
                    @Param("targetId") Long targetId);
+
+    @Select("select date(create_time) from user_like where user_id = #{userId} and target_type = #{targetType} and target_id = #{targetId} limit 1")
+    LocalDate selectCreatedDate(@Param("userId") Long userId,
+                                @Param("targetType") Integer targetType,
+                                @Param("targetId") Long targetId);
 
     @Select("select count(*) from user_like where user_id = #{userId} and target_type = #{targetType} and target_id = #{targetId} and status = 1")
     Long countActive(@Param("userId") Long userId,

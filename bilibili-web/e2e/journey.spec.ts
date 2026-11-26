@@ -41,7 +41,7 @@ test.beforeEach(async ({ page }) => {
     scope.WebSocket = new Proxy(NativeWebSocket, {
       construct(target, args) {
         if (String(args[0]).includes('/api/danmu/ws/')) return new FakeSocket(String(args[0])) as unknown as WebSocket
-        return new target(...args)
+        return Reflect.construct(target, args)
       },
     })
   })
@@ -59,6 +59,7 @@ async function mockGateway(page: Page, recovery = false) {
   let refreshCount = 0
   let checkCount = 0
   let chunkCount = 0
+  let analyticsRebuildCount = 0
   const checkTokens: string[] = []
   await page.route(/^https?:\/\/[^/]+\/api\//, async route => {
     const request = route.request()
@@ -101,10 +102,34 @@ async function mockGateway(page: Page, recovery = false) {
     if (path === '/api/danmu/ws-ticket/77') return fulfill({ ticket: 'ws-ticket', expiresIn: 60 })
     if (path === '/api/danmu/send') return fulfill({ danmuId: 99 })
     if (path === '/api/video/list') return fulfill([])
+    if (path === '/api/creator/analytics' && method === 'GET') return fulfill({
+      startDate: '2026-09-16', endDate: '2026-09-22',
+      totals: { viewCount: 12, likeCount: 3, collectCount: 2, commentCount: 1, danmuCount: 4 },
+      trend: [
+        { date: '2026-09-16', viewCount: 5, likeCount: 1, collectCount: 1, commentCount: 0, danmuCount: 2 },
+        { date: '2026-09-22', viewCount: 7, likeCount: 2, collectCount: 1, commentCount: 1, danmuCount: 2 },
+      ],
+      topVideos: [{ videoId: 77, title: '测试作品', coverUrl: '', viewCount: 12, likeCount: 3, collectCount: 2, commentCount: 1, danmuCount: 4 }],
+      lastAggregatedAt: '2026-09-22T12:00:00',
+    })
+    if (path === '/api/creator/analytics/rebuild' && method === 'POST') {
+      analyticsRebuildCount += 1
+      if (new URL(request.url()).searchParams.has('userId')) throw new Error('Creator analytics must not accept userId')
+      return fulfill({
+        startDate: '2026-09-16', endDate: '2026-09-22',
+        totals: { viewCount: 13, likeCount: 3, collectCount: 2, commentCount: 1, danmuCount: 4 },
+        trend: [{ date: '2026-09-22', viewCount: 13, likeCount: 3, collectCount: 2, commentCount: 1, danmuCount: 4 }],
+        topVideos: [{ videoId: 77, title: '测试作品', coverUrl: '', viewCount: 13, likeCount: 3, collectCount: 2, commentCount: 1, danmuCount: 4 }],
+        lastAggregatedAt: '2026-09-22T12:01:00',
+      })
+    }
     throw new Error(`Unexpected API request: ${method} ${path}`)
   })
   await page.route('**/media/**', route => route.fulfill({ status: 200, contentType: 'video/webm', body: playableVideo }))
-  return { get refreshCount() { return refreshCount }, get checkCount() { return checkCount }, get chunkCount() { return chunkCount }, checkTokens }
+  return {
+    get refreshCount() { return refreshCount }, get checkCount() { return checkCount },
+    get chunkCount() { return chunkCount }, get analyticsRebuildCount() { return analyticsRebuildCount }, checkTokens,
+  }
 }
 
 async function loginAndChooseVideo(page: Page) {
@@ -153,4 +178,20 @@ test('401 refresh and interrupted chunk upload recover through the UI', async ({
   expect(gateway.checkCount).toBe(3)
   expect(gateway.checkTokens).toEqual(['token-1', 'token-2', 'token-2'])
   expect(gateway.chunkCount).toBe(3)
+})
+
+test('creator analytics shows own trend and rebuilds without a selectable identity', async ({ page }) => {
+  const gateway = await mockGateway(page)
+  await page.goto('/creator/analytics')
+  await expect(page).toHaveURL(/\/auth\?redirect=/)
+  await page.getByPlaceholder('请输入用户名').fill('creator')
+  await page.getByPlaceholder('至少 8 位字符').fill('Password123')
+  await page.locator('.submit-button').click()
+
+  await expect(page).toHaveURL(/\/creator\/analytics$/)
+  await expect(page.getByRole('heading', { name: '创作者数据中心' })).toBeVisible()
+  await expect(page.getByRole('link', { name: '测试作品' })).toBeVisible()
+  await page.getByRole('button', { name: '重新聚合' }).click()
+  await expect.poll(() => gateway.analyticsRebuildCount).toBe(1)
+  await expect(page.getByText('13').first()).toBeVisible()
 })

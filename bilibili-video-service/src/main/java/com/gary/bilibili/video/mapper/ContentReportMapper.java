@@ -31,8 +31,11 @@ public interface ContentReportMapper extends BaseMapper<ContentReport> {
     int resolve(@Param("id") long id, @Param("status") int status,
                 @Param("adminId") long adminId, @Param("remark") String remark);
 
-    @Update("update comment set status = 1 where id = #{id} and deleted = 0")
+    @Update("update comment set status = 1 where id = #{id} and status = 0 and deleted = 0")
     int blockComment(@Param("id") long id);
+
+    @Select("select video_id from comment where id = #{id}")
+    long selectCommentVideoId(@Param("id") long id);
 
     @Update("update danmu set status = 1 where id = #{id}")
     int blockDanmu(@Param("id") long id);

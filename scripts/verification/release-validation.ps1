@@ -2,6 +2,7 @@ param(
     [switch]$SkipBackendVerify,
     [switch]$RunFaultDrill,
     [switch]$KeepRunning,
+    [switch]$RunBrowserE2e,
     [string]$AdminToken = 'change-me-in-production',
     [string]$SloConfigPath,
     [string]$ResultsDirectory,
@@ -51,6 +52,7 @@ $steps = [ordered]@{
     resourceNormalization = 'NOT_RUN'
     backendVerify = 'NOT_RUN'
     composeE2e = 'NOT_RUN'
+    browserE2e = 'NOT_RUN'
     writeSlo = 'NOT_RUN'
     cleanup = 'NOT_RUN'
 }
@@ -162,7 +164,7 @@ try {
         Write-Host '[release] Backend verify'
         Push-Location $repositoryRoot
         try {
-            & mvn -s .mvn/settings.xml --batch-mode --no-transfer-progress clean verify
+            & mvn -s .mvn/settings.xml --batch-mode --no-transfer-progress clean verify '-Dtranscode.fault.matrix=true'
             if ($LASTEXITCODE -ne 0) { throw 'Maven clean verify failed' }
             $backendTestSummary = Get-MavenTestSummary
             if ($backendTestSummary.tests -le 0 -or $backendTestSummary.failures -ne 0 `
@@ -183,6 +185,15 @@ try {
         -AdminToken $AdminToken
     $steps.composeE2e = 'PASSED'
     $activeStep = $null
+
+    if ($RunBrowserE2e) {
+        $activeStep = 'browserE2e'
+        & (Join-Path $repositoryRoot 'scripts/e2e/browser-e2e.ps1')
+        $steps.browserE2e = 'PASSED'
+        $activeStep = $null
+    } else {
+        $steps.browserE2e = 'SKIPPED'
+    }
 
     $activeStep = 'writeSlo'
     $context = Get-Content -Raw -LiteralPath $contextPath | ConvertFrom-Json

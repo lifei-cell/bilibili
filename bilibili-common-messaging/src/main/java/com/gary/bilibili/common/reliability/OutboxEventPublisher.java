@@ -1,0 +1,105 @@
+package com.gary.bilibili.common.reliability;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.apache.rocketmq.spring.core.RocketMQTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Component
+@ConditionalOnProperty(name = {"spring.datasource.url", "rocketmq.producer.group"})
+public class OutboxEventPublisher {
+
+    private static final Logger log = LoggerFactory.getLogger(OutboxEventPublisher.class);
+
+    private final OutboxEventRepository repository;
+    private final ObjectMapper objectMapper;
+    private final RocketMQTemplate rocketMQTemplate;
+    private final String owner;
+    private final int batchSize;
+    private final int maxAttempts;
+    private final int reclaimSeconds;
+    private final int retrySeconds;
+    private final Counter publishedCounter;
+    private final Counter failedCounter;
+
+    public OutboxEventPublisher(OutboxEventRepository repository,
+                                ObjectMapper objectMapper,
+                                RocketMQTemplate rocketMQTemplate,
+                                MeterRegistry meterRegistry,
+                                @Value("${spring.application.name:unknown-service}") String owner,
+                                @Value("${reliability.outbox.batch-size:50}") int batchSize,
+                                @Value("${reliability.outbox.max-attempts:100}") int maxAttempts,
+                                @Value("${reliability.outbox.reclaim-seconds:60}") int reclaimSeconds,
+                                @Value("${reliability.outbox.retry-seconds:2}") int retrySeconds) {
+        this.repository = repository;
+        this.objectMapper = objectMapper;
+        this.rocketMQTemplate = rocketMQTemplate;
+        this.owner = owner;
+        this.batchSize = Math.max(1, Math.min(500, batchSize));
+        this.maxAttempts = Math.max(1, maxAttempts);
+        this.reclaimSeconds = Math.max(10, reclaimSeconds);
+        this.retrySeconds = Math.max(1, retrySeconds);
+        this.publishedCounter = Counter.builder("bilibili.outbox.publish")
+                .tag("owner", owner).tag("result", "success").register(meterRegistry);
+        this.failedCounter = Counter.builder("bilibili.outbox.publish")
+                .tag("owner", owner).tag("result", "failure").register(meterRegistry);
+        Gauge.builder("bilibili.outbox.pending", repository,
+                        value -> value.countPending(owner))
+                .tag("owner", owner).register(meterRegistry);
+        Gauge.builder("bilibili.outbox.exhausted", repository, value -> value.countExhausted(owner))
+                .tag("owner", owner).register(meterRegistry);
+    }
+
+    @Scheduled(fixedDelayString = "${reliability.outbox.dispatch-interval:500}",
+            initialDelayString = "${reliability.outbox.initial-delay:3000}")
+    public void dispatch() {
+        repository.exhaust(owner, maxAttempts, reclaimSeconds, batchSize);
+        List<OutboxEvent> events = repository.findDispatchable(
+                owner, batchSize, reclaimSeconds, maxAttempts);
+        events.forEach(this::publish);
+    }
+
+    private void publish(OutboxEvent event) {
+        var claimed = repository.claim(event.id(), reclaimSeconds, maxAttempts);
+        if (claimed.isEmpty()) {
+            return;
+        }
+        OutboxEventLease lease = claimed.orElseThrow();
+        try {
+            if (objectMapper.readTree(event.payload()) == null) {
+                throw new IllegalStateException("Empty outbox JSON payload");
+            }
+            // RocketMQ sends String payloads as UTF-8 bytes. Preserve stored JSON exactly and
+            // allow DLQ replay across services without loading another service's Java classes.
+            rocketMQTemplate.syncSend(event.topic(), event.payload(), 3000);
+            if (repository.markPublished(lease)) {
+                publishedCounter.increment();
+            } else {
+                log.warn("Outbox completion ignored after lease loss, owner={}, eventId={}", owner, event.eventId());
+            }
+        } catch (Exception exception) {
+            if (repository.markFailed(lease, safeMessage(exception),
+                    LocalDateTime.now().plusSeconds(retrySeconds))) {
+                failedCounter.increment();
+            }
+            log.warn("Outbox dispatch failed, owner={}, eventId={}, topic={}, attempt={}",
+                    owner, event.eventId(), event.topic(), event.attemptCount() + 1, exception);
+        }
+    }
+
+    private String safeMessage(Exception exception) {
+        String message = exception.getMessage();
+        return message == null || message.isBlank()
+                ? exception.getClass().getSimpleName() : message;
+    }
+}
