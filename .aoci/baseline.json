@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-18T15:31:50Z",
-  "updated_at": "2026-11-25T03:18:10Z",
+  "updated_at": "2026-11-26T04:08:00Z",
   "files": {
     ".env.prod.example": {
       "role": "index",
@@ -35,15 +35,15 @@
     },
     ".repo_memory/PROFILE.md": {
       "role": "index",
-      "sha256": "9a2436c9986d2d8f4cf90de67d72df6bf1d04a7e8351ec666214bdb325eed745",
-      "size": 5763,
-      "normalized_sha256": "9a2436c9986d2d8f4cf90de67d72df6bf1d04a7e8351ec666214bdb325eed745"
+      "sha256": "5ac17f2e2cb6fefdcea0c9f2ed600cf468c500edab3fcbe155178c236bfaa746",
+      "size": 5615,
+      "normalized_sha256": "5ac17f2e2cb6fefdcea0c9f2ed600cf468c500edab3fcbe155178c236bfaa746"
     },
     ".repo_memory/resources/commits.md": {
       "role": "index",
-      "sha256": "3bb65d548797a35bf2a8f0ee8d141d3b382a5b50f6c7c348e2c4c5a3fc8544c3",
-      "size": 65011,
-      "normalized_sha256": "3bb65d548797a35bf2a8f0ee8d141d3b382a5b50f6c7c348e2c4c5a3fc8544c3"
+      "sha256": "8f230198a52e097c5fd8116dfb326c2388ce777e875f785275141f26fa58b860",
+      "size": 80406,
+      "normalized_sha256": "8f230198a52e097c5fd8116dfb326c2388ce777e875f785275141f26fa58b860"
     },
     ".vite/deps/_metadata.json": {
       "role": "index",
@@ -71,9 +71,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "eea94b4096948279eb90efb44ec3d696cd63493e362385c1ff488e9054315c8c",
-      "size": 131485,
-      "normalized_sha256": "eea94b4096948279eb90efb44ec3d696cd63493e362385c1ff488e9054315c8c"
+      "sha256": "db42a99123eeed83524efd3f20151056d11fb08ebf04ebc013d64df0f2bb9aeb",
+      "size": 131815,
+      "normalized_sha256": "db42a99123eeed83524efd3f20151056d11fb08ebf04ebc013d64df0f2bb9aeb"
     },
     "aoci.database.txt": {
       "role": "index",
@@ -3011,9 +3011,9 @@
     },
     "docs/PROJECT_DELIVERY.md": {
       "role": "index",
-      "sha256": "3ed5bf068c9da22d69ed0c27ff70c16266209a7bc9ed59dfa5aa92c12b0368ae",
-      "size": 3949,
-      "normalized_sha256": "3ed5bf068c9da22d69ed0c27ff70c16266209a7bc9ed59dfa5aa92c12b0368ae"
+      "sha256": "34044014e50b24547f96bcac68883323c57a0650484073038ed32de5fd16f443",
+      "size": 4501,
+      "normalized_sha256": "34044014e50b24547f96bcac68883323c57a0650484073038ed32de5fd16f443"
     },
     "docs/architecture/shared-modules-and-upload.md": {
       "role": "index",
@@ -3585,9 +3585,9 @@
     },
     "scripts/e2e/reliability-e2e.ps1": {
       "role": "index",
-      "sha256": "34b2ca7c21abf26bf07be3469922d3bf5951acc7a2d46dd8b2eda05f63cc1ae8",
-      "size": 21805,
-      "normalized_sha256": "34b2ca7c21abf26bf07be3469922d3bf5951acc7a2d46dd8b2eda05f63cc1ae8"
+      "sha256": "49ad943178dbd3c8be1a9e7d38e36cdb0dd6119186f55201aa16b0cc7c2f132e",
+      "size": 22475,
+      "normalized_sha256": "e740472bd4cf0feae7aa7e6a12a81744ad393a8f81c01cf0935fc69ed3d229bc"
     },
     "scripts/e2e/transcode-fault-matrix.sh": {
       "role": "index",

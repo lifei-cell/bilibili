@@ -24,10 +24,10 @@ ci.yml[OV7S]: F:编排后端、前端、Compose及完整发布验收并保存运
 settings.xml[FV3T]: F:提供 Maven 构建的仓库镜像与项目内依赖缓存配置 | R:- | A:localRepository,mirrorOf | S:镜像ID虽然叫alimaven，实际地址是Maven Central
 
 ===/<repository>/.repo_memory/===
-PROFILE.md[SG3T]: F:记录仓库记忆快照并把媒体、可靠性与运行验证调查导向对应文档 | R:code:README.md,code:.repo_memory/resources/commits.md | A:Major Areas,Trust State | S:轻量快照依据文档建立，不能证明当前源码行为或实测结果
+PROFILE.md[SG3T]: F:作为仓库记忆入口，给出绑定提交、模块职责和媒体、可靠性及验收调查路径 | R:code:README.md,code:.repo_memory/resources/commits.md | A:Major Areas,Provider Context,Incremental Update Scope | S:轻量地图源于文档。快照未取得PR和Issue证据，不能据此判定当前行为或远端记录
 
 ===/<repository>/.repo_memory/resources/===
-commits.md[SG2L]: F:按本地提交整理历史变更及其对应模块、源码和验证入口 | R:code:.repo_memory/PROFILE.md | A:Commit Resource Snapshot | S:以文内记录的快照提交为终点，不代表当前HEAD
+commits.md[SG2L]: F:按本地Git提交组织改动摘要、相关模块、路径和验证入口 | R:code:.repo_memory/PROFILE.md | A:Commit Resource Snapshot,git_commit_facets | S:基于原始提交条目和增量Git证据，止于文内记录的快照提交，未执行应用验收
 
 ===/<repository>/.vite/deps/===
 _metadata.json[XV1T]: F:保存 Vite 依赖预构建的失效指纹与优化产物清单 | R:- | A:configHash,lockfileHash,optimized,chunks | S:该快照的优化与分块清单为空
@@ -803,7 +803,7 @@ minio.Dockerfile[OQ4T]: F:固定版本源码编译供故障矩阵使用的 MinIO
 
 ===/<repository>/docs/===
 MEDIA_GOVERNANCE_RUNBOOK.md[SB4T]: F:说明媒资处理、审核、驳回重提和举报的演示及验收步骤 | R:code:scripts/e2e/browser-e2e.ps1 | A:闭环,演示,生产配置,自动回归 | S:重提复用已转码的原视频，须重新经过风控和人工审核
-PROJECT_DELIVERY.md[SG5T]: F:记录项目交付范围、各层验收入口及V12互动计数升级 | R:code:.github/workflows/ci.yml,code:scripts/verification/release-validation.ps1 | A:验收入口,V12 互动计数升级,CI收尾 | S:完整发布需Linux或WSL的媒体工具，升级前停旧版社交写入和视频举报处置
+PROJECT_DELIVERY.md[SG5T]: F:记录交付功能、分层验收入口、V12升级与最近一次本地发布验收 | R:code:.github/workflows/ci.yml,code:scripts/verification/release-validation.ps1,code:docs/MEDIA_GOVERNANCE_RUNBOOK.md | A:验收入口,V12 互动计数升级,2026-11-26 本地发布验收 | S:本地通过记录绑定f80433f与WSL演示测试卷。V12前停旧社交写入及视频举报处置
 
 ===/<repository>/docs/architecture/===
 shared-modules-and-upload.md[SG4T]: F:记录共享模块依赖方向、上传子职责及兼容接口验证范围 | R:- | A:模块依赖,上传职责 | S:共享消息层依赖可靠性层，可靠性层不依赖MQ SDK
@@ -883,7 +883,7 @@ compose-helpers.ps1[XQ5S]: F:封装跨平台Compose、curl、业务JSON请求、
 fault-drill.ps1[TR4T]: F:在隔离验证中短停MQ、Redis及ES并断言异步恢复和索引对账 | R:- | A:Invoke-ReliabilityFaultDrill | S:MQ故障期间仍核对播放，ES恢复后显式重建并对账
 p1-reliability-drill.ps1[TR6L]: F:运行双转码Worker崩溃接管和双Canal并发切换演练，采样CDC积压 | R:code:docker-compose.p1.yml,code:scripts/e2e/compose-helpers.ps1 | A:CrashAfterPlayable,MeasureIndexCutover | S:用任务所有权、实际HLS可读性及索引一致性做现场断言，可保留首档后故障场景
 prepare-minio-test-image.sh[XQ4T]: F:为Testcontainers和隔离Compose导出可用的MinIO镜像 | R:code:docker/test/minio.Dockerfile | A:MINIO_TEST_IMAGE | S:先用本地或拉取固定镜像，拉取失败才构建固定源码的本地替代
-reliability-e2e.ps1[TQ6M]: F:运行真实Compose视频旅程并校验播放、搜索、互动计数及可选故障演练 | R:code:docker-compose.e2e.yml,code:scripts/e2e/fault-drill.ps1 | A:SkipBuild,RunFaultDrill,KeepRunning,KeepTestData | S:重复点赞后直接核对已提交的数据库计数。输出隔离数据上下文供写压与后续清理
+reliability-e2e.ps1[TQ6M]: F:用真实Compose验收视频发布播放、搜索、互动、作者统计和可选故障恢复 | R:code:docker-compose.e2e.yml,code:scripts/e2e/fault-drill.ps1,code:scripts/e2e/compose-helpers.ps1 | A:SkipBuild,RunFaultDrill,KeepRunning,KeepTestData,TestContextPath | S:互动及今日作者指标按本次视频断言。迟到事件先核对单视频落库，再用数据库作者当日总量校验趋势，以兼容演示账号既有数据
 transcode-fault-matrix.sh[TR5T]: F:检查Linux媒体工具及Docker，运行真实转码故障矩阵并保存报告 | R:code:scripts/e2e/prepare-minio-test-image.sh | A:transcode.fault.matrix,environment.txt,maven.log | S:使用隔离MySQL和MinIO，脚本传播Maven退出状态
 
 ===/<repository>/scripts/loadtest/===
