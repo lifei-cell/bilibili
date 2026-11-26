@@ -298,14 +298,14 @@ try {
     }
     $today = [DateTime]::Today.ToString('yyyy-MM-dd')
     $creatorAnalytics = Invoke-BiliApi -Method POST `
-        -Uri "http://localhost:8080/api/creator/analytics/rebuild?startDate=$today&endDate=$today" `
+        -Uri "http://localhost:8080/api/creator/analytics/rebuild?startDate=$today&endDate=$today&limit=50" `
         -Headers $authHeaders
-    Assert-True ($creatorAnalytics.data.totals.viewCount -ge 1) 'Creator analytics missed the playback event'
-    Assert-True ($creatorAnalytics.data.totals.likeCount -eq 1) 'Creator analytics missed the like'
-    Assert-True ($creatorAnalytics.data.totals.commentCount -eq 1) 'Creator analytics missed the comment'
-    Assert-True ($creatorAnalytics.data.totals.danmuCount -eq 1) 'Creator analytics missed the danmu'
-    Assert-True (@($creatorAnalytics.data.topVideos | Where-Object { $_.videoId -eq $videoId }).Count -eq 1) `
-        'Creator analytics Top videos did not include the owned video'
+    $ownedVideo = @($creatorAnalytics.data.topVideos | Where-Object { $_.videoId -eq $videoId })
+    Assert-True ($ownedVideo.Count -eq 1) 'Creator analytics Top videos did not include the owned video'
+    Assert-True ($ownedVideo[0].viewCount -eq 1) 'Creator analytics missed the playback event'
+    Assert-True ($ownedVideo[0].likeCount -eq 1) 'Creator analytics missed the like'
+    Assert-True ($ownedVideo[0].commentCount -eq 1) 'Creator analytics missed the comment'
+    Assert-True ($ownedVideo[0].danmuCount -eq 1) 'Creator analytics missed the danmu'
     $otherCreatorAnalytics = Invoke-BiliApi -Method GET `
         -Uri "http://localhost:8080/api/creator/analytics?startDate=$today&endDate=$today" `
         -Headers $contentAdminHeaders
@@ -328,12 +328,14 @@ try {
     Wait-Until -TimeoutSeconds 120 -Description 'late creator analytics rebuild' -Condition {
         [long](Get-MySqlScalar "select coalesce(sum(view_count), 0) from creator_video_daily_stats where creator_id=$creatorUserId and video_id=$videoId and stat_date='$lateDay'") -eq 1
     }
+    # The dashboard sums every video owned by this demo account, including earlier test runs.
+    $expectedLateViews = [long](Get-MySqlScalar "select coalesce(sum(view_count), 0) from creator_video_daily_stats where creator_id=$creatorUserId and stat_date='$lateDay'")
     $lateAnalytics = Invoke-BiliApi -Method GET `
         -Uri "http://localhost:8080/api/creator/analytics?startDate=$lateDay&endDate=$today" `
         -Headers $authHeaders
     $lateTrend = @($lateAnalytics.data.trend | Where-Object { $_.date -eq $lateDay })
-    Assert-True ($lateTrend.Count -eq 1 -and $lateTrend[0].viewCount -eq 1) `
-        'Late event was not visible after automatic day recomputation'
+    Assert-True ($lateTrend.Count -eq 1 -and $lateTrend[0].viewCount -eq $expectedLateViews) `
+        "Creator analytics view trend for $lateDay did not match the rebuilt author total of $expectedLateViews"
 
     $report = Invoke-BiliApi -Method GET -Uri 'http://localhost:8080/api/admin/reliability/cdc/reconcile' -Headers $adminHeaders
     Assert-True $report.data.consistent 'CDC reconciliation failed after the core journey'
